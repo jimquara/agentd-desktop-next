@@ -265,6 +265,9 @@ const RPC_AGGREGATES = {
   [WS_METHODS.agentdEula]: "agentd",
   [WS_METHODS.agentdSetupStart]: "agentd",
   [WS_METHODS.agentdSubscribeSetup]: "agentd",
+  [WS_METHODS.libraosGatewayStatus]: "libraosGateway",
+  [WS_METHODS.libraosGatewayConnect]: "libraosGateway",
+  [WS_METHODS.libraosGatewayDisconnect]: "libraosGateway",
 } as const satisfies Readonly<Record<WsRpcMethod, string>>;
 
 const RPC_SPAN_PREFIX = "ws.rpc";

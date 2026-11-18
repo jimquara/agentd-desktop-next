@@ -403,6 +403,11 @@ import {
   AgentdTaskOthersInput,
 } from "./agentd.ts";
 import {
+  LibraosGatewayConnectInput,
+  LibraosGatewayError,
+  LibraosGatewayStatus,
+} from "./libraosGateway.ts";
+import {
   UsageLimitSourceError,
   ProviderConsumeResetCreditInput,
   ProviderConsumeResetCreditResult,
@@ -715,6 +720,10 @@ export const WS_METHODS = {
   agentdEula: "agentd.eula",
   agentdSetupStart: "agentd.setupStart",
   agentdSubscribeSetup: "agentd.subscribeSetup",
+
+  libraosGatewayStatus: "libraosGateway.status",
+  libraosGatewayConnect: "libraosGateway.connect",
+  libraosGatewayDisconnect: "libraosGateway.disconnect",
 } as const;
 
 const WsServerUpsertKeybindingRpc = Rpc.make(WS_METHODS.serverUpsertKeybinding, {
@@ -2407,6 +2416,26 @@ const WsAgentdSubscribeSetupRpc = Rpc.make(WS_METHODS.agentdSubscribeSetup, {
   stream: true,
 });
 
+const LibraosGatewayRpcError = Schema.Union([LibraosGatewayError, EnvironmentAuthorizationError]);
+
+const WsLibraosGatewayStatusRpc = Rpc.make(WS_METHODS.libraosGatewayStatus, {
+  payload: Schema.Struct({}),
+  success: LibraosGatewayStatus,
+  error: LibraosGatewayRpcError,
+});
+
+const WsLibraosGatewayConnectRpc = Rpc.make(WS_METHODS.libraosGatewayConnect, {
+  payload: LibraosGatewayConnectInput,
+  success: LibraosGatewayStatus,
+  error: LibraosGatewayRpcError,
+});
+
+const WsLibraosGatewayDisconnectRpc = Rpc.make(WS_METHODS.libraosGatewayDisconnect, {
+  payload: Schema.Struct({}),
+  success: LibraosGatewayStatus,
+  error: LibraosGatewayRpcError,
+});
+
 export class RpcScopeAuthorization extends RpcMiddleware.Service<RpcScopeAuthorization>()(
   "t3/contracts/RpcScopeAuthorization",
   { error: EnvironmentAuthorizationError },
@@ -2643,6 +2672,9 @@ export const WsRpcGroup = RpcGroup.make(
   WsAgentdEulaRpc,
   WsAgentdSetupStartRpc,
   WsAgentdSubscribeSetupRpc,
+  WsLibraosGatewayStatusRpc,
+  WsLibraosGatewayConnectRpc,
+  WsLibraosGatewayDisconnectRpc,
   WsOrchestrationV2DispatchCommandRpc,
   WsOrchestrationV2GetWorkflowScriptRpc,
   WsOrchestrationV2GetNativeChildWorkRpc,
