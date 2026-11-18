@@ -554,7 +554,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     ),
   );
 
-  it.effect("names the Electron window class in the Linux desktop entry", () =>
+  it.effect("uses the AgentD Desktop identity in the Linux package and launcher", () =>
     Effect.gen(function* () {
       const linux = yield* createBuildConfig(
         "linux",
@@ -566,7 +566,22 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         undefined,
       );
 
-      assert.nestedPropertyVal(linux, "linux.desktop.entry.StartupWMClass", "com.t3tools.T3Code");
+      assert.propertyVal(linux, "appId", "ai.libraos.agentd-desktop");
+      assert.propertyVal(linux, "productName", "AgentD Desktop");
+      assert.propertyVal(linux, "artifactName", "AgentD-Desktop-${version}-${arch}.${ext}");
+      assert.nestedPropertyVal(linux, "linux.executableName", "agentd-desktop");
+      assert.nestedPropertyVal(linux, "linux.syncDesktopName", true);
+      assert.nestedPropertyVal(
+        linux,
+        "extraMetadata.desktopName",
+        "ai.libraos.agentd-desktop.desktop",
+      );
+      assert.nestedPropertyVal(
+        linux,
+        "linux.desktop.entry.StartupWMClass",
+        "ai.libraos.agentd-desktop",
+      );
+      assert.nestedPropertyVal(linux, "deb.packageName", "agentd-desktop");
     }),
   );
 
@@ -580,9 +595,8 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       const stable = yield* appImageName("0.0.37");
       const nightly = yield* appImageName("0.0.38-nightly.20261026.3740");
 
-      assert.notInclude(stable, "${version}");
-      assert.notInclude(nightly, "${version}");
-      assert.notEqual(stable, nightly);
+      assert.equal(stable, "AgentD-Desktop-${arch}.${ext}");
+      assert.equal(nightly, "AgentD-Desktop-Nightly-${arch}.${ext}");
     }).pipe(
       Effect.provide(
         ConfigProvider.layer(
@@ -1564,7 +1578,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     });
 
     assert.deepStrictEqual(configuration, {
-      appId: "com.t3tools.t3code",
+      appId: "ai.libraos.agentd-desktop",
       teamId: "ABC1234567",
       rpDomains: ["example.clerk.accounts.dev"],
       provisioningProfilePath: "/tmp/t3code.provisionprofile",
@@ -1587,7 +1601,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       "clerk.example.com",
       "example.clerk.accounts.dev",
     ]);
-    assert.include(entitlements, "<string>ABC1234567.com.t3tools.t3code</string>");
+    assert.include(entitlements, "<string>ABC1234567.ai.libraos.agentd-desktop</string>");
     assert.include(entitlements, "<string>webcredentials:clerk.example.com</string>");
     assert.include(entitlements, "<string>webcredentials:example.clerk.accounts.dev</string>");
     assert.include(entitlements, "<key>com.apple.security.cs.allow-jit</key>");
