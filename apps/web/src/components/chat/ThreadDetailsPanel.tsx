@@ -255,6 +255,7 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
                     key={item.id}
                     threadRef={activeThreadRef}
                     repositoryIdentity={project?.repositoryIdentity ?? null}
+                    workspaceRoot={project?.workspaceRoot ?? null}
                     usage={props.usage.contextWindow}
                   />
                 ) : null,

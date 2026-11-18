@@ -49,6 +49,7 @@ export const AgentdHandoffListJsonRow = Schema.Struct({
   state: Schema.String,
   worker_state: NullableString,
   worker_running: Schema.optionalKey(Schema.Boolean),
+  worker_cwd: NullableString,
   claimer: NullableString,
   claimer_user: NullableString,
   cloud_state: NullableString,
@@ -193,6 +194,8 @@ export const AgentdTaskRow = Schema.Struct({
   /** From the claiming session; `handoff list` names no worker tool. */
   workerTool: Schema.NullOr(Schema.String),
   workerName: NullableString,
+  /** The checkout the task was offered in; the worker runs in a worktree of it. */
+  workerCwd: NullableString,
   runsOn: AgentdRunsOn,
   project: Schema.NullOr(Schema.String),
   issue: Schema.NullOr(Schema.String),
