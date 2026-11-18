@@ -39,10 +39,12 @@ if [ "${AGENTD_BUILD_INSIDE:-}" != 1 ]; then
   if [ -z "${AGENTD_DIST_DIR:-}" ]; then
     release=${AGENTD_RELEASE:-$(gh release view -R libraos/agentd --json tagName -q .tagName)}
     AGENTD_DIST_DIR=$repo/release/agentd-dist/$release
-    if [ ! -s "$AGENTD_DIST_DIR/SHA256SUMS" ]; then
+    # The Skills too: the packager bundles them beside the binary (#55).
+    if [ ! -s "$AGENTD_DIST_DIR/SHA256SUMS" ] || [ ! -s "$AGENTD_DIST_DIR/SKILL-agentd.md" ]; then
       mkdir -p "$AGENTD_DIST_DIR"
       gh release download "$release" -R libraos/agentd -D "$AGENTD_DIST_DIR" --clobber \
-        -p SHA256SUMS -p agentd-linux-amd64 -p agentd-windows-amd64.exe
+        -p SHA256SUMS -p agentd-linux-amd64 -p agentd-windows-amd64.exe \
+        -p SKILL.md -p SKILL-agentd.md
     fi
   fi
   AGENTD_DIST_DIR=$(cd "$AGENTD_DIST_DIR" && pwd)
