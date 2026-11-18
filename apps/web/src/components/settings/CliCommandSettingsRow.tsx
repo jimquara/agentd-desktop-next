@@ -20,7 +20,7 @@ const FAILURE_TITLES = {
   addToPath: msg("Could not add t3 to PATH"),
 } as const;
 
-/** The desktop `t3` command's state, and its actions with a toast on failure. */
+/** The desktop `agentd-desktop` command's state, and its actions with a toast on failure. */
 export function useDesktopCliCommand() {
   const bridge = getDesktopCliCommandBridge();
   const query = useEnvironmentQuery(bridge ? desktopCliCommandStateAtom : null);
@@ -70,7 +70,7 @@ export function CliCommandSettingsRow() {
         ),
       )
     : !installed
-      ? resolve(msg("Run AgentD Desktop's CLI as `t3` from any terminal."))
+      ? resolve(msg("Run AgentD Desktop's CLI as `agentd-desktop` from any terminal."))
       : state.onPath
         ? resolve(
             msg("Installed at {path}. Open a new terminal to use it.", {
@@ -92,7 +92,7 @@ export function CliCommandSettingsRow() {
               )
             : resolve(
                 msg(
-                  "Installed at {path}, which is not on your PATH yet. Add its folder to your PATH to run `t3`.",
+                  "Installed at {path}, which is not on your PATH yet. Add its folder to your PATH to run `agentd-desktop`.",
                   { path: state.installedPath },
                 ),
               );
@@ -115,8 +115,8 @@ export function CliCommandSettingsRow() {
             onClick={() => run(installed ? "uninstall" : "install")}
           >
             {installed
-              ? resolve(msg("Remove", { $context: "verb, uninstalls the t3 command" }))
-              : resolve(msg("Install", { $context: "verb, installs the t3 command" }))}
+              ? resolve(msg("Remove", { $context: "verb, uninstalls the agentd-desktop command" }))
+              : resolve(msg("Install", { $context: "verb, installs the agentd-desktop command" }))}
           </Button>
         </div>
       }

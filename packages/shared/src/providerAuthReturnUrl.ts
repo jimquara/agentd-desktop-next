@@ -1,10 +1,13 @@
+import { APP_LINK_SCHEME } from "./desktopIdentity.ts";
 import { isLoopbackHost } from "./preview.ts";
 
 export function providerAuthReturnUrl(value: string | undefined): string | undefined {
   if (!value) return undefined;
   try {
     const url = new URL(value);
-    const desktop = ["t3code:", "t3code-dev:"].includes(url.protocol) && url.host === "app";
+    const desktop =
+      [`${APP_LINK_SCHEME}:`, `${APP_LINK_SCHEME}-dev:`].includes(url.protocol) &&
+      url.host === "app";
     // This build has no hosted app, so only a loopback web client can be returned to.
     const web = ["http:", "https:"].includes(url.protocol) && isLoopbackHost(url.hostname);
     if (
