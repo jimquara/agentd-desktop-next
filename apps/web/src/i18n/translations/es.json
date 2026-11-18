@@ -2967,7 +2967,42 @@
       "v": "v"
     }
   ],
-  "054addb669385cde": "Agent unknown",
+  "7085a0cecf98446c": "Submitting",
+  "3c6c746fd9d96b14": "Queued",
+  "622a159ad0eabdcb": "Running",
+  "e42e410c2c64f481": "Settling",
+  "496f4b9a48eba645": "Completed",
+  "1168d0b54232a485": "Failed",
+  "2311ac44877bbec7": "Failed verification",
+  "7cda14a9e8aaefb0": "Stopped",
+  "61fd8a69256ec45d": "Budget exceeded",
+  "1b7494da22e37c28": "Status unavailable",
+  "35c01798af22a7d2": "Your API key",
+  "91b7cf85b9257618": [
+    "Worker cost: ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    }
+  ],
+  "f0a3b6c634005437": "Inference: billed by your provider",
+  "55ef559afc9d79f5": [
+    "Inference: ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    }
+  ],
+  "9061e0e8eb5009f4": [
+    "Total (LibraOS): ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    }
+  ],
   "bd62e25fc77404d5": [
     "Branch: ",
     {
@@ -2976,6 +3011,7 @@
       "v": "v"
     }
   ],
+  "054addb669385cde": "Agent unknown",
   "4a690634dc7d2014": "Branch unavailable",
   "b64b09bd048f268b": [
     "Couldn't load task details: ",
@@ -2986,6 +3022,26 @@
     }
   ],
   "7ecfd641e85ffecf": "Loading task details…",
+  "8b9fa521cecb4f8d": "Uses",
+  "803dbf99343f4441": "Installed for the terminal",
+  "b21f66984690c19a": [
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " (your own agentd, kept)"
+  ],
+  "dfc8bb891b63700d": [
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " is not on your PATH"
+  ],
+  "c86e02018b5fd3b3": "To run agentd in a terminal, add this line to your shell profile:",
+  "a28dff6e4d10f8e1": "Got it",
   "6e9713c6903d19da": "AgentD",
   "001d17590be2a445": "AgentD",
   "893bb44a7b9c9094": "Actualizar",
@@ -3028,6 +3084,7 @@
     },
     " on this environment."
   ],
+  "bae4248da670b729": "Set up AgentD",
   "aeb3e97bdc42aa73": "Team",
   "a804d8c3337bb790": "Not joined",
   "6fb067a018b056c6": "Join a team",
@@ -3038,7 +3095,6 @@
   "b492fd18c9ddb087": "Answer in a terminal on this environment using one of the commands below.",
   "3159c4f6f80940f4": "Inbox",
   "07911bc94d59f04e": "No open inbox items.",
-  "622a159ad0eabdcb": "Running",
   "b29e1856c4aab31f": "Esta máquina",
   "2823a2135028ee1a": "Team nodes",
   "0f5e80eaf21b47af": "Unknown node",
@@ -3046,6 +3102,57 @@
   "ff7073d416e5882b": "No task reported.",
   "8921053c4410665e": "Cloud Workers",
   "5d4dbe8e9827c146": "No active workers or team nodes reported.",
+  "6504cbf31f8c20ec": "AgentD could not start agentd init.",
+  "cb388ed2ffb145e6": "agentd init asked a question this app does not answer, so it was stopped. Run agentd init in a terminal to answer it.",
+  "6eedc4ecfecbde0e": "agentd init took longer than 10 minutes and was stopped.",
+  "469d821e1e603be3": "agentd init could not be started.",
+  "86f968a1ce0f9e87": "agentd init did not finish (exit code {code}). What it said is above.",
+  "3105a8d810eb31b5": "AgentD End User Agreement",
+  "4ff72c2acc7f6656": "Cargando…",
+  "a3fbb65455fe1542": "agentd init output",
+  "07bbddf7090492d3": "Starting agentd init…",
+  "e0cf8fafb9435c1e": [
+    "AgentD runs tasks and workers for your agents. To set it up, accept its End User Agreement: Accept runs ",
+    {
+      "t": "code",
+      "i": 1,
+      "c": "agentd init"
+    },
+    " on this environment, which records your acceptance and sets agentd up. Chat and code work without it."
+  ],
+  "3484ef509d3d5695": [
+    "AgentD End User Agreement, version ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    }
+  ],
+  "4d83655857c9e5a8": "AgentD End User Agreement",
+  "91c4f0c974f88fbb": [
+    "Couldn't read the agreement from agentd: ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    }
+  ],
+  "7eaaca79eda9bac7": [
+    "Also at",
+    " ",
+    {
+      "t": "a",
+      "i": 1,
+      "c": "libraos.com/eula"
+    },
+    "."
+  ],
+  "e75f4c5789fd67c7": "This connection cannot set up AgentD on this environment.",
+  "f6c45e941d56c587": "Setting up AgentD…",
+  "a6234507ed8a5337": "agentd init stopped",
+  "21d0ab2cb7685f9c": "Ahora no",
+  "8ea6026d5157e5e2": "Setting up…",
+  "86ae486300890787": "Accept and set up",
   "2342316d1114d0e2": "Task output",
   "da66023072c473d1": [
     "No se pudo cargar la salida: ",
@@ -3058,6 +3165,19 @@
   "5b56b7c5d024d2f2": "Cargando la salida…",
   "fc6012fd5e61997a": "No output yet.",
   "346e42415ac6d374": "No se muestra la salida anterior",
+  "fa8f7c1aa8ed7a9d": "AgentD could not change team work.",
+  "2443192ab5658745": "No agent installed",
+  "30369af9f0646a93": "Choose",
+  "ff1728d6a7065373": "Working",
+  "574dcdb8e9c276e7": "Waiting for work",
+  "8e73b883d41d4102": "Desactivado",
+  "a17815fd5df7ac9d": "Work for the team",
+  "9fd8bf4b7e928172": "While on, the team server can give this environment a task when you are not using the app. The agent works in a new branch of the folder and pushes it.",
+  "066217798e6896ad": "Agent",
+  "bfd26c6102d0b50b": "Project folder",
+  "8d5568a13d3cc8c6": "Worker ticket (only if AgentD asks for one)",
+  "24967071e70d3647": "Team work",
+  "4f8d75498480050f": "This connection cannot change team work.",
   "2252c202442904ae": [
     "Running ",
     {
@@ -3120,6 +3240,40 @@
   "668e353261860b41": "Background work",
   "2132a271f96567bb": "This session",
   "8158821ace63ea8e": "No live output is available for this session task.",
+  "480b43a826eb2720": "Your API key",
+  "1cdcb8450d2249b5": "Open Cloud Workers setup in LibraOS Console",
+  "0606bddb2fb895bd": "Run in the cloud",
+  "e2f5cc2eeccfc92b": "Cloud Workers require a GitHub repository as the checkout’s origin.",
+  "16c7fc3b7eaea196": [
+    "Cloud repository: ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    }
+  ],
+  "8b21ccdccad92c0a": "Checking LibraOS credit…",
+  "e959699c0a2955e1": [
+    "Available LibraOS credit: ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    }
+  ],
+  "eb6e2b6aae32f93b": "Cloud Workers aren’t set up. Check the cloud configuration and account key file.",
+  "d016144cc5a6dbad": "The repository owner must install the Cloud Workers GitHub App on this repository.",
+  "893f91bfccd064b9": "There is not enough LibraOS credit.",
+  "faff20f08da2ce6c": "LibraOS balance unavailable.",
+  "188b5f5868e1ceea": "Dollar cap (USD)",
+  "8f3320315e697b15": "Time limit in minutes (optional)",
+  "4952a48d2f114ac9": "Enter a positive dollar cap and, if needed, a positive time limit.",
+  "168a996246dfcd04": "Model access",
+  "0d575788064a43d5": "Enter at least one absolute key file path on this environment’s machine. Do not paste the API key itself.",
+  "07420cedda5d2275": "Anthropic key file path",
+  "553eb762abefeda2": "OpenAI key file path",
+  "7d7bb753c7e99807": "Worker time is billed to LibraOS credits. Your provider bills inference separately; it isn’t covered by this dollar cap.",
+  "2ae0b42ad8251297": "Worker time and inference are both billed to LibraOS credits.",
   "c0cdda8786778243": "The working directory is not a Git repository.",
   "423f5560c920e52f": "Check out a named branch in this working directory first.",
   "a542a9e7e7d46218": "The working directory is on {branch}. Switch to a different branch first.",
@@ -3142,12 +3296,15 @@
   "27c99031d8a1610a": "The session’s agent did not return a usable draft. You can still fill in the form.",
   "8f660e6463ebada2": "Goal",
   "676cd0b0577d694d": "Acceptance criteria (one per line)",
+  "813a3b5fad1ceb33": "Check command (optional)",
   "321df332c71150b8": "Check command",
+  "dd25a23507821777": "Without a check command, you’ll need to accept the result yourself.",
   "cbfab84097a2d2dc": "Worker",
   "ae9b81c97752ee2b": "Choose a worker",
   "fe8a0b7a0c5d9c6f": "Budget",
   "e73e1115fbe0de91": "Working directory",
   "72985eae43f9def3": "Issue (optional)",
+  "096a8482c9b1451a": "AgentD saved task {taskId}, but it didn’t start in Cloud Workers. Check Background tasks for updates before trying again.",
   "4d4ec2226fc46ee3": "Task {taskId} was offered but did not start.",
   "c9a534209fb06061": "Hand to a worker",
   "b2d4a97a97c93f80": "Review the task and its budget before starting a worker on your account.",
@@ -3156,6 +3313,10 @@
   "e91857c891498df2": "This connection cannot start AgentD tasks.",
   "bba1e3a22505b87f": "Starting…",
   "7a4e5e17bc86fd03": "Start",
+  "ba11407290619dfd": "Another team member",
+  "bcbc9d1a1c242a9a": "{name}: {work}",
+  "ed6cfe7ed4cfde97": "Others are working here",
+  "2c4dc9543b216e86": "You can still start this task.",
   "fb2e161d9c17d766": "Waiting for a person",
   "129dc286945d9504": "Worker exited",
   "cb3dda683f549805": "Worker stopped",
@@ -5172,7 +5333,6 @@
   "21bd4c14d977d6ed": "Los dispositivos que inician sesión en tu cuenta de T3 Connect esperan hasta que alguien ya conectado aquí los apruebe.",
   "830c0d59f168e295": "Conecta tus dispositivos entre sí. Publica este entorno y conecta el resto, todo en un mismo lugar.",
   "caaf2ca5395728f5": "No volver a mostrar",
-  "21d0ab2cb7685f9c": "Ahora no",
   "fb4516dffeebe159": "Terminado",
   "a4461ecfdea68985": "Aún no hay otros entornos publicados en tu cuenta. Publica uno desde otro dispositivo y aparecerá aquí.",
   "45fb5ac2c21df202": "Comprobando la instalación actual",
@@ -5595,7 +5755,6 @@
   "3c3e2a86f7fb439d": "No se pudo copiar la mención",
   "b3a779a7cf9fccab": "Abre un chat para este proyecto y vuelve a intentarlo.",
   "e3796d26e9912913": "El chat no está listo para aceptar entradas ahora mismo.",
-  "4ff72c2acc7f6656": "Cargando…",
   "69858f722a57708c": "Buscar archivos de {projectName}",
   "e1e1094e43a5f3d7": "{error} Haz clic para reintentarlo.",
   "ddb58ada5516a46d": "Archivos de {projectName}",
@@ -10925,7 +11084,6 @@
   "b0d0aebadc521ed1": "Elimina las capturas del navegador guardadas tras este número de días. Los enlaces a capturas antiguas dejarán de abrirse.",
   "fe4208562792c313": "Eliminar registros rotados antiguos",
   "8debac9c8e9cff47": "Elimina los archivos de registro rotados inactivos tras este número de días. Se conservan los registros actuales.",
-  "8e73b883d41d4102": "Desactivado",
   "80d58a3fd4e4212a": "Proyecto",
   "de770505be25f1ff": "Carpeta",
   "ada7b9a4d96959d2": "Hilo",
