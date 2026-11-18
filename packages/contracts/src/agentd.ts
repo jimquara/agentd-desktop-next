@@ -50,6 +50,7 @@ export const AgentdHandoffListJsonRow = Schema.Struct({
   worker_state: NullableString,
   worker_running: Schema.optionalKey(Schema.Boolean),
   claimer: NullableString,
+  claimer_user: NullableString,
   cloud_state: NullableString,
   project: NullableString,
   issue: NullableString,
@@ -127,6 +128,8 @@ export const AgentdInboxListJson = Schema.Array(
   Schema.Struct({
     id: Schema.String,
     kind: Schema.String,
+    from: NullableString,
+    claimer: NullableString,
     title: NullableString,
     goal: NullableString,
     handoff: NullableString,
@@ -171,6 +174,7 @@ export const AgentdStatus = Schema.Struct({
   version: Schema.String,
   ok: Schema.Boolean,
   setUp: Schema.Boolean,
+  teamServer: NullableString,
   checks: Schema.Array(AgentdDoctorCheck),
 });
 export type AgentdStatus = typeof AgentdStatus.Type;
@@ -187,6 +191,7 @@ export const AgentdTaskRow = Schema.Struct({
   workerRunning: Schema.Boolean,
   /** From the claiming session; `handoff list` names no worker tool. */
   workerTool: Schema.NullOr(Schema.String),
+  workerName: NullableString,
   runsOn: AgentdRunsOn,
   project: Schema.NullOr(Schema.String),
   issue: Schema.NullOr(Schema.String),
@@ -232,6 +237,7 @@ export type AgentdTask = typeof AgentdTask.Type;
 export const AgentdApproval = Schema.Struct({
   id: Schema.String,
   text: Schema.String,
+  requester: NullableString,
   action: Schema.NullOr(Schema.String),
   handoff: Schema.NullOr(Schema.String),
   project: Schema.NullOr(Schema.String),
@@ -245,6 +251,7 @@ export const AgentdInboxItem = Schema.Struct({
   id: Schema.String,
   kind: Schema.String,
   title: Schema.String,
+  requester: NullableString,
   handoff: Schema.NullOr(Schema.String),
   at: Schema.NullOr(Schema.String),
   read: Schema.Boolean,
@@ -268,10 +275,22 @@ export const AgentdHolder = Schema.Struct({
 });
 export type AgentdHolder = typeof AgentdHolder.Type;
 
+export const AgentdNode = Schema.Struct({
+  name: Schema.String,
+  host: Schema.String,
+  person: Schema.NullOr(Schema.String),
+  state: Schema.String,
+  why: Schema.NullOr(Schema.String),
+  seen: Schema.String,
+  offline: Schema.Boolean,
+});
+export type AgentdNode = typeof AgentdNode.Type;
+
 export const AgentdPeople = Schema.Struct({
   people: Schema.Array(AgentdPerson),
   /** Who works at `target` now (`agentd who`); empty without a target. */
   holders: Schema.Array(AgentdHolder),
+  nodes: Schema.optionalKey(Schema.Array(AgentdNode)),
 });
 export type AgentdPeople = typeof AgentdPeople.Type;
 
@@ -312,6 +331,7 @@ export type AgentdStartTaskResult = typeof AgentdStartTaskResult.Type;
 
 export const AgentdPeopleInput = Schema.Struct({
   target: Schema.optionalKey(Schema.Union([AbsolutePath, IssueRef])),
+  includeNodes: Schema.optionalKey(Schema.Boolean),
 });
 export type AgentdPeopleInput = typeof AgentdPeopleInput.Type;
 
