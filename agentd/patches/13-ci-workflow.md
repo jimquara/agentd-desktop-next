@@ -14,6 +14,10 @@ upstream's private task cache.
 - `.github/workflows/ci.yml`: rewritten. Upstream's version ran on Blacksmith runners and read the
   `T3_TASK_CACHE_READ_TOKEN` secret.
 
+- `knip.jsonc`: the four scripts only those workflows ran (`mirror-play-apk.cjs`, `resolve-nightly-release.ts`,
+  `smoke-cli-archive.ts`, `apps/web/scripts/verify-built-boot.ts`) are entries, kept for upstream merges.
+- `scripts/build-desktop-artifact.test.ts`: removed the case that read `desktop-macos-preview-publish.yml`.
+
 ## Deleted workflows
 
 - `agent-context-budget.yml`: failed a PR that raised `agentContextBudget.json` above main's value.
