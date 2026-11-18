@@ -148,7 +148,7 @@ const pullRequestView = {
 };
 
 const pairingUrl = "https://vps.example.com/pair#token=ABC123";
-const pairLink = `t3code://pair?pairingUrl=${encodeURIComponent(pairingUrl)}`;
+const pairLink = `agentd-desktop://pair?pairingUrl=${encodeURIComponent(pairingUrl)}`;
 
 function setup() {
   vi.clearAllMocks();
@@ -302,7 +302,7 @@ it("does not spend the pairing token when the user declines", async () => {
   state.confirm.mockResolvedValueOnce(false);
   await using _coordinator = await mount(
     pairLink,
-    `t3code://pair?pairingUrl=${encodeURIComponent(otherPairingUrl)}`,
+    `agentd-desktop://pair?pairingUrl=${encodeURIComponent(otherPairingUrl)}`,
   );
   await vi.waitFor(() => expect(state.connectPairing).toHaveBeenCalled());
   expect(state.confirm).toHaveBeenCalledTimes(2);
@@ -315,7 +315,7 @@ it("skips a repeat of a pairing link that already paired", async () => {
   await using _coordinator = await mount(
     pairLink,
     pairLink,
-    `t3code://pair?pairingUrl=${encodeURIComponent(otherPairingUrl)}`,
+    `agentd-desktop://pair?pairingUrl=${encodeURIComponent(otherPairingUrl)}`,
   );
   await vi.waitFor(() =>
     expect(state.connectPairing).toHaveBeenLastCalledWith({ pairingUrl: otherPairingUrl }),
