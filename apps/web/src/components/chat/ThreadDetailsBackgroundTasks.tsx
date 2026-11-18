@@ -32,7 +32,7 @@ import { openBackgroundTasks } from "./useRightPanelActions";
 const MAX_RUNNING_TASKS = 5;
 const isHandoffId = Schema.is(AgentdHandoffId);
 
-function LiveDuration({ startedAt }: { startedAt: number }) {
+export function LiveDuration({ startedAt }: { startedAt: number }) {
   const messages = useMessages();
   return formatDuration(Math.max(1_000, useNowSecond() - startedAt), messages);
 }

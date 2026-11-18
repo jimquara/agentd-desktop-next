@@ -4191,12 +4191,24 @@
       "v": "v"
     }
   ],
+  "f96e4b41a83d1712": "AgentD workers",
+  "8458762cc6877710": "Waiting for input",
+  "6194e526b967d95c": "AgentD workers",
+  "0434783fc0c052fb": "agentd was not found.",
+  "b472e405a4f6af23": "Agentd tasks are unavailable.",
+  "b27e5cac5560a6ef": "No workers running",
+  "f8cc6ac12ae1f393": [
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " more"
+  ],
   "48c9e7725e78f9d8": "Stop this background task?\n{goal}",
   "644117b263e9ee7c": "Stopped from the session panel.",
   "d2c8e1110caa9dca": "Stop {goal}",
   "4dd0416786c692fa": "Background tasks",
-  "0434783fc0c052fb": "agentd was not found.",
-  "b472e405a4f6af23": "Agentd tasks are unavailable.",
   "80f1cf914d3be1a3": [
     {
       "i": 1,
