@@ -1,3 +1,14 @@
+# AgentD Desktop
+
+This repository is AgentD Desktop, a fork of T3 Code that keeps following upstream (`pingdotgg/t3code`). These rules come first; upstream's rules below still hold where they do not conflict.
+
+- agentd is the authority. The app reads tasks, approvals and worker state from agentd and keeps no copy of its own as the truth.
+- No upstream name, icon or hosted service (app.t3.codes, T3 Connect, update feeds, stores) ships in our builds.
+- No model access in the app and no preferred agent: what works for Claude Code must hold for Codex and opencode, or say why not.
+- Our code lives under `agentd/`, `apps/web/src/components/agentd/` and `apps/server/src/agentd/` where it can.
+- Each change to an upstream file is small and listed, one line per file with the reason, in `agentd/patches/<issue>-<slug>.md`.
+- How we merge upstream and resolve its conflicts: [agentd/UPSTREAM.md](agentd/UPSTREAM.md).
+
 # T3 Code
 
 T3 Code is a minimal GUI for coding agents. A Node WebSocket server wraps provider CLIs and agents (Codex, Claude Code, Cursor, Grok, OpenCode, Antigravity, Kiro, Pi, Muse Code, fx) and serves web, desktop, and mobile clients.

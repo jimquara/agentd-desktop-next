@@ -7,7 +7,8 @@ const CONNECT_LOOPBACK_CALLBACK_PATH = "/callback";
 
 const CONNECT_AUTHORIZE_PATH = "/connect";
 
-export const DEFAULT_HOSTED_APP_URL = "https://app.t3.codes";
+/** This build has no hosted app; features that need one are not available unless one is configured. */
+export const DEFAULT_HOSTED_APP_URL: string | undefined = undefined;
 
 export const CONNECT_OAUTH_SCOPES = ["openid", "profile", "email", "offline_access"] as const;
 

@@ -178,6 +178,7 @@ import * as ProviderRegistry from "./provider/ProviderRegistry.ts";
 import * as SecretCheck from "./secrets/SecretCheck.ts";
 import * as AcpRegistrySessions from "./provider/AcpRegistrySessions.ts";
 import * as ProviderInstanceRegistry from "./provider/ProviderInstanceRegistry.ts";
+import { withAcpRegistryDiscovery } from "./policy/managedProviders.ts";
 import * as AcpRegistrySupport from "@t3tools/provider-acp-registry/server/AcpRegistrySupport";
 import * as AcpRegistryRuntimeCoordinator from "@t3tools/provider-acp-registry/server/AcpRegistryRuntimeCoordinator";
 import * as ProviderMaintenanceRunner from "./provider/providerMaintenanceRunner.ts";
@@ -238,6 +239,7 @@ import * as EnvironmentAuth from "./auth/EnvironmentAuth.ts";
 import { requiredScopeForDeviceList, rpcAuthorizationError } from "./auth/RpcAuthorization.ts";
 import * as RpcAuthorization from "./auth/RpcAuthorization.ts";
 import { RpcInstrumentation, rpcInstrumentationLayer } from "./observability/RpcInstrumentation.ts";
+import * as AgentdBridge from "./agentd/AgentdBridge.ts";
 import * as ProcessDiagnostics from "./diagnostics/ProcessDiagnostics.ts";
 import * as ProcessResourceMonitor from "./diagnostics/ProcessResourceMonitor.ts";
 import * as ResourceTelemetry from "./resourceTelemetry/ResourceTelemetry.ts";
@@ -1589,6 +1591,7 @@ export const layerWsRpc = (
       const bootstrapCredentials = yield* PairingGrantStore.PairingGrantStore;
       const sessions = yield* SessionStore.SessionStore;
       const processDiagnostics = yield* ProcessDiagnostics.ProcessDiagnostics;
+      const agentd = yield* AgentdBridge.AgentdBridge;
       const triage = yield* TriageService.TriageService;
       const hostResources = yield* HostResources.HostResources;
       const processResourceMonitor = yield* ProcessResourceMonitor.ProcessResourceMonitor;
@@ -2367,15 +2370,23 @@ export const layerWsRpc = (
             deferNetworkDiscovery: false,
           }),
         [WS_METHODS.serverSearchAcpRegistry]: (input) =>
-          acpRegistryCatalog
-            .search(input)
-            .pipe(Effect.mapError(AcpRegistrySupport.toAcpRegistryOperationError)),
+          withAcpRegistryDiscovery(
+            serverSettings.getSettings,
+            serverSettings.managedPolicy,
+            acpRegistryCatalog
+              .search(input)
+              .pipe(Effect.mapError(AcpRegistrySupport.toAcpRegistryOperationError)),
+          ),
         [WS_METHODS.serverPrepareAcpRegistryAgent]: (input) =>
           Effect.annotateCurrentSpan({ "acp_registry.agent_id": input.agentId }).pipe(
             Effect.andThen(
-              acpRegistryCatalog
-                .prepare(input)
-                .pipe(Effect.mapError(AcpRegistrySupport.toAcpRegistryOperationError)),
+              withAcpRegistryDiscovery(
+                serverSettings.getSettings,
+                serverSettings.managedPolicy,
+                acpRegistryCatalog
+                  .prepare(input)
+                  .pipe(Effect.mapError(AcpRegistrySupport.toAcpRegistryOperationError)),
+              ),
             ),
           ),
         [WS_METHODS.serverUninstallAcpRegistryManagedBinary]: (input) =>
@@ -3577,6 +3588,17 @@ export const layerWsRpc = (
               Stream.concat(Stream.make(latest), changes),
             ),
           ),
+        [WS_METHODS.agentdStatus]: (_input) => agentd.status,
+        [WS_METHODS.agentdSubscribeTasks]: (_input) => agentd.subscribeTasks,
+        [WS_METHODS.agentdTask]: (input) => agentd.task(input),
+        [WS_METHODS.agentdSubscribeTaskOutput]: (input) => agentd.subscribeTaskOutput(input),
+        [WS_METHODS.agentdStopTask]: (input) => agentd.stopTask(input),
+        [WS_METHODS.agentdStartTask]: (input) => agentd.startTask(input),
+        [WS_METHODS.agentdApprovals]: (_input) => agentd.approvals,
+        [WS_METHODS.agentdInbox]: (_input) => agentd.inbox,
+        [WS_METHODS.agentdPeople]: (input) => agentd.people(input),
+        [WS_METHODS.agentdConnectAgent]: (input) => agentd.connectAgent(input),
+        [WS_METHODS.agentdJoinTeam]: (input) => agentd.joinTeam(input),
       });
       const splitHandlers: Pick<typeof handlers, SplitWsRpc["_tag"]> = handlers;
       const otherHandlers: Pick<typeof handlers, Exclude<ServerWsRpc, SplitWsRpc>["_tag"]> =

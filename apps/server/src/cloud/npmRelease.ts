@@ -3,7 +3,12 @@ import {
   ServerNpmReleaseInput,
   type ServerNpmRelease,
 } from "@t3tools/contracts";
-import { npmReleaseDatabaseMigration } from "@t3tools/shared/cliRelease";
+import * as HostProcess from "@t3tools/shared/HostProcess";
+import {
+  CLI_RELEASE_BASE_URL_ENV,
+  npmReleaseDatabaseMigration,
+  UPDATES_NOT_CONFIGURED_REASON,
+} from "@t3tools/shared/cliRelease";
 import { resolveCommandPath } from "@t3tools/shared/shell";
 import * as Cache from "effect/Cache";
 import * as Context from "effect/Context";
@@ -58,6 +63,10 @@ function toRelease(spec: string, json: string) {
 export const make = Effect.fn("NpmRelease.make")(function* () {
   const runner = yield* ProcessRunner.ProcessRunner;
   const http = yield* HttpClient.HttpClient;
+  // Upstream publishes its releases as npm `t3`; this build only looks once a release source is set.
+  const updatesConfigured = Boolean(
+    (yield* HostProcess.Environment)[CLI_RELEASE_BASE_URL_ENV]?.trim(),
+  );
   const lookupPublic = Effect.fn("NpmRelease.lookupPublic")(function* (spec: string) {
     const unreachable = new ServerNpmReleaseError({
       reason: "npm is not installed and the public npm registry could not be reached.",
@@ -122,6 +131,9 @@ export const make = Effect.fn("NpmRelease.make")(function* () {
           () => new ServerNpmReleaseError({ reason: "Invalid release version or track." }),
         ),
       );
+      if (!updatesConfigured) {
+        return yield* new ServerNpmReleaseError({ reason: UPDATES_NOT_CONFIGURED_REASON });
+      }
       return yield* Cache.get(cache, spec);
     }),
   });

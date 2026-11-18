@@ -21,7 +21,7 @@ import {
   type EnvironmentId,
   type ProviderInstanceConfig,
   type ProviderInstanceEnvironmentVariable,
-  isManagedDriverAllowed,
+  isProviderDriverOffered,
 } from "@t3tools/contracts";
 
 import {
@@ -172,20 +172,19 @@ export function AddProviderInstanceDialog({
 
   const [wizardStep, setWizardStep] = useState(0);
   const [addingChatGptAccount, setAddingChatGptAccount] = useState(false);
-  // Drivers the administrator's policy leaves out are not offered at all.
   const managedPolicy = useManagedPolicy(environmentId);
+  const isOffered = (kind: ProviderDriverKind) =>
+    isProviderDriverOffered(managedPolicy, settings.showOtherAgents, kind);
   const featuredDriverOptions = FEATURED_DRIVER_OPTIONS.filter((option) =>
-    isManagedDriverAllowed(managedPolicy, option.driverKind),
+    isOffered(option.driverKind),
   );
-  const moreDriverOptions = MORE_DRIVER_OPTIONS.filter((option) =>
-    isManagedDriverAllowed(managedPolicy, option.driverKind),
-  );
-  const acpRegistryAllowed = isManagedDriverAllowed(managedPolicy, ACP_REGISTRY_DRIVER_KIND);
-  const [driver, setDriver] = useState<ProviderDriverKind>(
-    () =>
-      (featuredDriverOptions[0] ?? moreDriverOptions[0])?.driverKind ??
-      (acpRegistryAllowed ? ACP_REGISTRY_DRIVER_KIND : DEFAULT_DRIVER_KIND),
-  );
+  const moreDriverOptions = MORE_DRIVER_OPTIONS.filter((option) => isOffered(option.driverKind));
+  const acpRegistryAllowed = isOffered(ACP_REGISTRY_DRIVER_KIND);
+  const defaultDriver =
+    (featuredDriverOptions[0] ?? moreDriverOptions[0])?.driverKind ??
+    (acpRegistryAllowed ? ACP_REGISTRY_DRIVER_KIND : DEFAULT_DRIVER_KIND);
+  const [selectedDriver, setDriver] = useState(defaultDriver);
+  const driver = wizardStep === 0 && !isOffered(selectedDriver) ? defaultDriver : selectedDriver;
   const [identityByDriver, setIdentityByDriver] = useState<Record<string, ProviderIdentityDraft>>(
     {},
   );
@@ -194,7 +193,9 @@ export function AddProviderInstanceDialog({
     ReadonlyArray<ProviderInstanceEnvironmentVariable>
   >([]);
   const [isManualAcpConfiguration, setIsManualAcpConfiguration] = useState(false);
-  const [showMoreProviders, setShowMoreProviders] = useState(initialShowMoreProviders);
+  const [showMoreProviders, setShowMoreProviders] = useState(
+    initialShowMoreProviders || featuredDriverOptions.length === 0,
+  );
   const [configByDriver, setConfigByDriver] = useState<Record<string, Record<string, unknown>>>({});
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -211,11 +212,13 @@ export function AddProviderInstanceDialog({
   const driverOption = providerClients.get(driver) ?? DEFAULT_DRIVER_OPTION;
   const isAcpRegistry = driver === ACP_REGISTRY_DRIVER_KIND;
   const showRegistrySearch =
+    open &&
+    acpRegistryAllowed &&
+    showMoreProviders &&
     !createdInstanceId &&
     !addingChatGptAccount &&
     wizardStep === 0 &&
     !(isAcpRegistry && isManualAcpConfiguration);
-  // Searches while Show more is closed, so the fold opens on results.
   const registry = useAcpRegistrySearch(environmentId, showRegistrySearch);
   const isPreparingRegistryAgent = registry.preparingId !== null;
   const defaultIdentity: ProviderIdentityDraft = {
@@ -285,7 +288,8 @@ export function AddProviderInstanceDialog({
   };
 
   const applyWizardNavigation = (navigation: WizardNavigation) => {
-    if (isSaving || isPreparingRegistryAgent || createdInstanceId) return;
+    if (isSaving || isPreparingRegistryAgent || createdInstanceId || !isOffered(driver)) return;
+    setDriver(driver);
     if (navigation.kind === "blocked") {
       setHasAttemptedSubmit(true);
     }
@@ -315,6 +319,7 @@ export function AddProviderInstanceDialog({
   };
 
   const handleAcpPrepared = (agent: AcpRegistrySearchAgent) => {
+    if (!acpRegistryAllowed) return;
     setDriver(ACP_REGISTRY_DRIVER_KIND);
     const nextLabel = agent.name;
     const registryIconUrl = resolveOfficialAcpRegistryIconUrl(agent.icon);
@@ -384,7 +389,7 @@ export function AddProviderInstanceDialog({
 
   const handleSave = async () => {
     if (!readEnvironmentScope(environmentId, AuthProvidersManageScope)) return;
-    if (isSaving || createdInstanceId) return;
+    if (isSaving || createdInstanceId || !isOffered(driver)) return;
     setHasAttemptedSubmit(true);
     if (instanceIdError !== null || (isAcpRegistry && acpSelectionError !== null)) return;
 
@@ -773,10 +778,15 @@ export function AddProviderInstanceDialog({
               </Button>
               {wizardStep === 0 && driver === "codex" ? (
                 <>
-                  <Button variant="outline" size="sm" onClick={() => navigateToStep(1)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!isOffered(driver)}
+                    onClick={() => navigateToStep(1)}
+                  >
                     <T>Configure manually</T>
                   </Button>
-                  {driverLocks?.configKeys.has("setupMode") ? null : (
+                  {!isOffered(driver) || driverLocks?.configKeys.has("setupMode") ? null : (
                     <ChatGptConnectionButton
                       size="sm"
                       onClick={() => setAddingChatGptAccount(true)}
@@ -786,7 +796,7 @@ export function AddProviderInstanceDialog({
               ) : wizardStep < (isAcpRegistry ? 1 : 2) ? (
                 <Button
                   size="sm"
-                  disabled={isPreparingRegistryAgent}
+                  disabled={isPreparingRegistryAgent || !isOffered(driver)}
                   onClick={() => navigateToStep(wizardStep + 1)}
                 >
                   <T>Next</T>
@@ -794,7 +804,7 @@ export function AddProviderInstanceDialog({
               ) : (
                 <Button
                   size="sm"
-                  disabled={isSaving || !canManageProviders}
+                  disabled={isSaving || !canManageProviders || !isOffered(driver)}
                   onClick={() => void handleSave()}
                 >
                   {isSaving

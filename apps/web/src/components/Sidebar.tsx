@@ -256,6 +256,7 @@ import {
 } from "./ui/combobox";
 import { SidebarContent, SidebarGroup, useSidebar } from "./ui/sidebar";
 import { SidebarChromeFooter, SidebarChromeHeader } from "./sidebar/SidebarChrome";
+import { ChatCodeSwitch } from "./sidebar/ChatCodeSwitch";
 import { SidebarHeaderIconButton, SidebarThreadHeader } from "./sidebar/SidebarThreadHeader";
 import { TooltipProvider } from "./ui/tooltip";
 import {
@@ -2978,6 +2979,15 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   return (
     <SidebarFolderDrop>
       <SidebarChromeHeader isElectron={isElectron} />
+      <ChatCodeSwitch
+        threadKey={
+          routeDraftThread
+            ? scopedThreadKey(
+                scopeThreadRef(routeDraftThread.environmentId, routeDraftThread.threadId),
+              )
+            : routeThreadKey
+        }
+      />
       <SidebarContent
         ref={sidebarContentRef}
         className="min-h-full"

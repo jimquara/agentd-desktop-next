@@ -1,0 +1,101 @@
+import { WS_METHODS } from "@t3tools/contracts";
+import * as Effect from "effect/Effect";
+import * as Stream from "effect/Stream";
+import { Atom } from "effect/reactivity";
+
+import type { EnvironmentRegistry } from "../connection/registry.ts";
+import * as Persistence from "../platform/persistence.ts";
+import { applyCommandOutputFrame, EMPTY_COMMAND_OUTPUT } from "./commandOutput.ts";
+import {
+  createAtomCommandScheduler,
+  createEnvironmentRpcCommand,
+  createEnvironmentRpcQueryAtomFamily,
+  createEnvironmentRpcSubscriptionAtomFamily,
+} from "./runtime.ts";
+
+/**
+ * agentd on one environment: its status, its tasks and their output, and the commands that start
+ * and stop them. agentd keeps the truth; these atoms only read it and ask it to act.
+ */
+export function createAgentdEnvironmentAtoms<R, E>(
+  runtime: Atom.AtomRuntime<EnvironmentRegistry | Persistence.EnvironmentCacheStore | R, E>,
+) {
+  const scheduler = createAtomCommandScheduler();
+  const status = createEnvironmentRpcQueryAtomFamily(runtime, {
+    label: "environment-data:agentd:status",
+    tag: WS_METHODS.agentdStatus,
+    staleTimeMs: 30_000,
+  });
+  const task = createEnvironmentRpcQueryAtomFamily(runtime, {
+    label: "environment-data:agentd:task",
+    tag: WS_METHODS.agentdTask,
+    staleTimeMs: 5_000,
+  });
+  const approvals = createEnvironmentRpcQueryAtomFamily(runtime, {
+    label: "environment-data:agentd:approvals",
+    tag: WS_METHODS.agentdApprovals,
+    staleTimeMs: 5_000,
+  });
+  const inbox = createEnvironmentRpcQueryAtomFamily(runtime, {
+    label: "environment-data:agentd:inbox",
+    tag: WS_METHODS.agentdInbox,
+    staleTimeMs: 5_000,
+  });
+  return {
+    status,
+    tasks: createEnvironmentRpcSubscriptionAtomFamily(runtime, {
+      label: "environment-data:agentd:tasks",
+      tag: WS_METHODS.agentdSubscribeTasks,
+      idleTtlMs: 0,
+    }),
+    task,
+    taskOutput: createEnvironmentRpcSubscriptionAtomFamily(runtime, {
+      label: "environment-data:agentd:task-output",
+      tag: WS_METHODS.agentdSubscribeTaskOutput,
+      idleTtlMs: 0,
+      transform: (frames) =>
+        frames.pipe(Stream.scan(() => EMPTY_COMMAND_OUTPUT, applyCommandOutputFrame)),
+    }),
+    approvals,
+    inbox,
+    people: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:agentd:people",
+      tag: WS_METHODS.agentdPeople,
+      staleTimeMs: 30_000,
+    }),
+    startTask: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:agentd:start-task",
+      tag: WS_METHODS.agentdStartTask,
+      scheduler,
+    }),
+    stopTask: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:agentd:stop-task",
+      tag: WS_METHODS.agentdStopTask,
+      scheduler,
+      onSettled: (target, registry) =>
+        Effect.sync(() =>
+          registry.refresh(
+            task({ environmentId: target.environmentId, input: { id: target.input.id } }),
+          ),
+        ),
+    }),
+    connectAgent: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:agentd:connect-agent",
+      tag: WS_METHODS.agentdConnectAgent,
+      scheduler,
+      onSettled: (target, registry) =>
+        Effect.sync(() =>
+          registry.refresh(status({ environmentId: target.environmentId, input: {} })),
+        ),
+    }),
+    joinTeam: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:agentd:join-team",
+      tag: WS_METHODS.agentdJoinTeam,
+      scheduler,
+      onSettled: (target, registry) =>
+        Effect.sync(() =>
+          registry.refresh(status({ environmentId: target.environmentId, input: {} })),
+        ),
+    }),
+  };
+}

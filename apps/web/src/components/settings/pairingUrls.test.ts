@@ -7,8 +7,9 @@ describe("settings pairing URL helpers", () => {
     vi.unstubAllEnvs();
   });
 
-  it("uses direct backend pairing URLs for HTTP endpoints", () => {
+  it("uses direct backend pairing URLs for HTTP endpoints and builds without a hosted app", () => {
     expect(resolveHostedPairingUrl("http://192.168.1.44:3773", "PAIRCODE")).toBeNull();
+    expect(resolveHostedPairingUrl("https://host.example.ts.net:3773", "PAIRCODE")).toBeNull();
     expect(resolveDesktopPairingUrl("http://192.168.1.44:3773", "PAIRCODE")).toBe(
       "http://192.168.1.44:3773/pair#token=PAIRCODE",
     );

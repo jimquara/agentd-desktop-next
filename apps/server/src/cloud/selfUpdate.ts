@@ -24,6 +24,7 @@ import {
   CLI_RELEASE_BASE_URL_ENV,
   cliReleaseChannelOf,
   crossesReleaseTrack,
+  UPDATES_NOT_CONFIGURED_REASON,
 } from "@t3tools/shared/cliRelease";
 
 import packageJson from "../../package.json" with { type: "json" };
@@ -147,7 +148,10 @@ export const make = Effect.fn("cloud.server_self_update.make")(function* () {
   const mirror = managedUpdateMirror(policy.document);
   const releaseBaseUrl =
     mirror?.feedUrl ??
-    Option.getOrUndefined(yield* Config.String(CLI_RELEASE_BASE_URL_ENV).pipe(Config.option));
+    (Option.getOrUndefined(
+      yield* Config.String(CLI_RELEASE_BASE_URL_ENV).pipe(Config.option),
+    )?.trim() ||
+      undefined);
   const inFlight = yield* Ref.make(false);
 
   yield* pruneRuntimesOnStart({ baseDir: serverConfig.baseDir, managed: launcher.managed }).pipe(
@@ -201,6 +205,8 @@ export const make = Effect.fn("cloud.server_self_update.make")(function* () {
         "Remote updates require the T3 Code background service. Run `t3 service install` on the server machine.",
       );
     }
+
+    if (releaseBaseUrl === undefined) return yield* failWith(UPDATES_NOT_CONFIGURED_REASON);
 
     const unsafeCrossing = crossesTrackUnsafely(input);
     if (unsafeCrossing !== null) return yield* failWith(unsafeCrossing);

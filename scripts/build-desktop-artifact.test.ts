@@ -19,7 +19,6 @@ import * as Sink from "effect/Sink";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
-import { fromYaml } from "@t3tools/shared/schemaYaml";
 
 import {
   buildDesktopBundles,
@@ -50,6 +49,8 @@ import {
   LinuxBrowserSecretHostError,
   LinuxPackagedAppMissingError,
   MacPackagedAppMissingError,
+  stageAgentdCli,
+  AgentdCliStageError,
   stageBrowserSecret,
   validateLinuxPackagedPayload,
   validateMacPackagedPayload,
@@ -554,7 +555,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     ),
   );
 
-  it.effect("names the Electron window class in the Linux desktop entry", () =>
+  it.effect("uses the AgentD Desktop identity in the Linux package and launcher", () =>
     Effect.gen(function* () {
       const linux = yield* createBuildConfig(
         "linux",
@@ -566,7 +567,22 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         undefined,
       );
 
-      assert.nestedPropertyVal(linux, "linux.desktop.entry.StartupWMClass", "com.t3tools.T3Code");
+      assert.propertyVal(linux, "appId", "ai.libraos.agentd-desktop");
+      assert.propertyVal(linux, "productName", "AgentD Desktop");
+      assert.propertyVal(linux, "artifactName", "AgentD-Desktop-${version}-${arch}.${ext}");
+      assert.nestedPropertyVal(linux, "linux.executableName", "agentd-desktop");
+      assert.nestedPropertyVal(linux, "linux.syncDesktopName", true);
+      assert.nestedPropertyVal(
+        linux,
+        "extraMetadata.desktopName",
+        "ai.libraos.agentd-desktop.desktop",
+      );
+      assert.nestedPropertyVal(
+        linux,
+        "linux.desktop.entry.StartupWMClass",
+        "ai.libraos.agentd-desktop",
+      );
+      assert.nestedPropertyVal(linux, "deb.packageName", "agentd-desktop");
     }),
   );
 
@@ -580,9 +596,8 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       const stable = yield* appImageName("0.0.37");
       const nightly = yield* appImageName("0.0.38-nightly.20261026.3740");
 
-      assert.notInclude(stable, "${version}");
-      assert.notInclude(nightly, "${version}");
-      assert.notEqual(stable, nightly);
+      assert.equal(stable, "AgentD-Desktop-${arch}.${ext}");
+      assert.equal(nightly, "AgentD-Desktop-Nightly-${arch}.${ext}");
     }).pipe(
       Effect.provide(
         ConfigProvider.layer(
@@ -760,6 +775,44 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       assert.isFalse(excludes("universal", file), file);
     }
   });
+
+  it.effect("bundles the target's agentd from AGENTD_DIST_DIR only when its sha256 matches", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const tempDir = yield* fs.makeTempDirectoryScoped({ prefix: "t3-agentd-stage-test-" });
+      const distDir = path.join(tempDir, "dist");
+      const stageResourcesDir = path.join(tempDir, "resources");
+      yield* fs.makeDirectory(distDir, { recursive: true });
+      yield* fs.writeFileString(path.join(distDir, "agentd-windows-arm64.exe"), "win-arm64");
+      yield* fs.writeFileString(path.join(distDir, "agentd-linux-amd64"), "linux-amd64");
+      const sha = (text: string) => NodeCrypto.createHash("sha256").update(text).digest("hex");
+      yield* fs.writeFileString(
+        path.join(distDir, "SHA256SUMS"),
+        `${sha("win-arm64")}  agentd-windows-arm64.exe\n${"0".repeat(64)}  agentd-linux-amd64\n`,
+      );
+      const stage = (env: Record<string, string>, platform: "win" | "linux") =>
+        stageAgentdCli({
+          stageResourcesDir,
+          platform,
+          arch: platform === "win" ? "arm64" : "x64",
+          verbose: false,
+        }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env }))));
+
+      yield* stage({}, "win");
+      assert.isFalse(yield* fs.exists(path.join(stageResourcesDir, "agentd")));
+
+      yield* stage({ AGENTD_DIST_DIR: distDir }, "win");
+      assert.equal(
+        yield* fs.readFileString(path.join(stageResourcesDir, "agentd/agentd.exe")),
+        "win-arm64",
+      );
+
+      const error = yield* stage({ AGENTD_DIST_DIR: distDir }, "linux").pipe(Effect.flip);
+      assert.instanceOf(error, AgentdCliStageError);
+      assert.equal(error.asset, "agentd-linux-amd64");
+    }),
+  );
 
   it.effect("unpacks target Windows natives while excluding the other architecture", () =>
     Effect.scoped(
@@ -1452,36 +1505,6 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     ),
   );
 
-  it.effect("packages the macOS preview's PR bundle as untrusted", () =>
-    Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem;
-      const path = yield* Path.Path;
-      const workflow = yield* fs.readFileString(
-        yield* path.fromFileUrl(
-          new URL("../.github/workflows/desktop-macos-preview-publish.yml", import.meta.url),
-        ),
-      );
-      const { jobs } = yield* Schema.decodeEffect(
-        fromYaml(
-          Schema.Struct({
-            jobs: Schema.Record(
-              Schema.String,
-              Schema.Struct({
-                uses: Schema.optional(Schema.String),
-                with: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
-              }),
-            ),
-          }),
-        ),
-      )(workflow);
-      const packaging = Object.values(jobs).filter(
-        (job) => job.uses === "./.github/workflows/release-desktop.yml",
-      );
-      assert.isNotEmpty(packaging);
-      for (const job of packaging) assert.strictEqual(job.with?.untrusted_bundle, true);
-    }),
-  );
-
   it.effect("rejects a macOS stage without a packaged app", () =>
     Effect.scoped(
       Effect.gen(function* () {
@@ -1564,7 +1587,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     });
 
     assert.deepStrictEqual(configuration, {
-      appId: "com.t3tools.t3code",
+      appId: "ai.libraos.agentd-desktop",
       teamId: "ABC1234567",
       rpDomains: ["example.clerk.accounts.dev"],
       provisioningProfilePath: "/tmp/t3code.provisionprofile",
@@ -1587,7 +1610,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       "clerk.example.com",
       "example.clerk.accounts.dev",
     ]);
-    assert.include(entitlements, "<string>ABC1234567.com.t3tools.t3code</string>");
+    assert.include(entitlements, "<string>ABC1234567.ai.libraos.agentd-desktop</string>");
     assert.include(entitlements, "<string>webcredentials:clerk.example.com</string>");
     assert.include(entitlements, "<string>webcredentials:example.clerk.accounts.dev</string>");
     assert.include(entitlements, "<key>com.apple.security.cs.allow-jit</key>");

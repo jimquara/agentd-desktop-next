@@ -1581,7 +1581,7 @@ describe("sidebarFolderExpansionKeys", () => {
 });
 
 describe("groupSidebarThreadsByProject", () => {
-  it("puts each thread in its project's folder and drops empty projects unless kept", () => {
+  it("keeps empty open projects but hides empty archived and scratch folders unless requested", () => {
     const remoteEnvironmentId = EnvironmentId.make("environment-remote");
     const t3code = ProjectId.make("t3code");
     const t3codeRemote = ProjectId.make("t3code-remote");
@@ -1594,6 +1594,7 @@ describe("groupSidebarThreadsByProject", () => {
     const groups = [
       {
         projectKey: "t3code",
+        archived: false,
         memberProjectRefs: [
           { environmentId: localEnvironmentId, projectId: t3code },
           { environmentId: remoteEnvironmentId, projectId: t3codeRemote },
@@ -1601,12 +1602,22 @@ describe("groupSidebarThreadsByProject", () => {
       },
       {
         projectKey: "fleet",
+        archived: false,
         memberProjectRefs: [{ environmentId: localEnvironmentId, projectId: fleet }],
       },
       {
         projectKey: "notes",
+        archived: true,
         memberProjectRefs: [
           { environmentId: localEnvironmentId, projectId: ProjectId.make("notes") },
+        ],
+      },
+      {
+        projectKey: "scratch",
+        archived: false,
+        isScratch: true as const,
+        memberProjectRefs: [
+          { environmentId: localEnvironmentId, projectId: ProjectId.make("scratch") },
         ],
       },
     ];
@@ -1626,10 +1637,9 @@ describe("groupSidebarThreadsByProject", () => {
       { projectKey: "t3code", threads: ["a", "b"] },
       { projectKey: "fleet", threads: [] },
       { projectKey: "notes", threads: [] },
+      { projectKey: "scratch", threads: [] },
     ]);
-    expect(summarize(() => false)).toEqual([{ projectKey: "t3code", threads: ["a", "b"] }]);
-    // A pinned project keeps its empty folder while other empty projects drop out.
-    expect(summarize((group) => group.projectKey === "fleet")).toEqual([
+    expect(summarize(() => false)).toEqual([
       { projectKey: "t3code", threads: ["a", "b"] },
       { projectKey: "fleet", threads: [] },
     ]);

@@ -20,6 +20,7 @@ import {
 import { ThreadDetailsSection } from "./ThreadDetailsSection";
 import { cn } from "../../lib/utils";
 import { ScheduledRelativeLabel } from "../settings/ScheduledTasksSettings";
+import { productProfile } from "~/productProfile";
 import { scheduleLabel } from "../settings/scheduledTasksSettings.logic";
 import { useEnvironmentQuery } from "../../state/query";
 import { serverEnvironment } from "../../state/server";
@@ -70,10 +71,16 @@ function taskScheduleLine(
   );
 }
 
-export function ThreadAutomationsPanel(props: {
+interface ThreadAutomationsPanelProps {
   readonly environmentId: EnvironmentId;
   readonly threadId: ThreadId;
-}) {
+}
+
+export function ThreadAutomationsPanel(props: ThreadAutomationsPanelProps) {
+  return productProfile.scheduledTasks ? <EnabledThreadAutomationsPanel {...props} /> : null;
+}
+
+function EnabledThreadAutomationsPanel(props: ThreadAutomationsPanelProps) {
   const canOperate = useAtomValue(
     serverEnvironment.runScheduledTaskNow.permissionAtom(props.environmentId),
   );

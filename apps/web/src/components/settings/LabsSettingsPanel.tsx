@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { T, useGT, useMessages } from "gt-react";
 
 import { hasCloudPublicConfig } from "~/cloud/publicConfig";
+import { productProfile } from "~/productProfile";
 import { useT3ConnectAuthPrompt } from "../clerk/useT3ConnectAuthPrompt";
 import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
@@ -22,7 +23,8 @@ export function LabsSettingsPanel() {
       <SettingsSection id="beta" title={gt("Beta")}>
         <BoringSidebarRow />
         {/* Clerk is only mounted when this build has T3 Connect. */}
-        {hasCloudPublicConfig() ? <GuestLinksRowWithSignIn /> : <GuestLinksRow />}
+        {productProfile.sharingAndAccess &&
+          (hasCloudPublicConfig() ? <GuestLinksRowWithSignIn /> : <GuestLinksRow />)}
         <LinkedEnvironmentsRow />
         <PromptSuggestionsRow />
         <SimlockHostsRow />
@@ -33,13 +35,13 @@ export function LabsSettingsPanel() {
 }
 
 function BoringSidebarRow() {
-  const searchableSetting = useSearchableSetting();
+  const groupingSetting = useSearchableSetting()("boring-sidebar");
   const settings = useScopedSettings();
   const updateSettings = useUpdateScopedSettings();
   const gt = useGT();
   return (
     <SettingsRow
-      {...searchableSetting("boring-sidebar")}
+      {...groupingSetting}
       description={gt(
         "Group sidebar threads into project folders. Pinned threads stay on top, and Snoozed and Settled stay below the folders.",
       )}
@@ -47,7 +49,7 @@ function BoringSidebarRow() {
         <Switch
           checked={settings.boringSidebarEnabled}
           onCheckedChange={(checked) => updateSettings({ boringSidebarEnabled: Boolean(checked) })}
-          aria-label={gt("Boring sidebar (group by project)")}
+          aria-label={groupingSetting.title}
         />
       }
     >

@@ -1,6 +1,7 @@
 import { HOSTED_APP_CHANNEL } from "~/branding";
 import { isElectron, isSecretsFeatureEnabled } from "~/env";
 import { isMacPlatform, isWindowsPlatform, normalizeSearchText } from "~/lib/utils";
+import { productProfile } from "~/productProfile";
 import { STATIC_KEYBINDING_COMMANDS, type KeybindingCommand } from "@t3tools/contracts";
 import type { EnvironmentId } from "@t3tools/contracts";
 import type { EnvironmentConnectionPhase } from "@t3tools/client-runtime/connection";
@@ -75,6 +76,7 @@ export interface SettingsSearchItem {
   readonly textGeneratorsOnly?: boolean;
   readonly secondary?: boolean;
   readonly requiresThreadAutoSettlement?: boolean;
+  readonly productFeature?: keyof typeof productProfile;
 }
 
 export interface SettingsSearchAvailability {
@@ -99,7 +101,7 @@ export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
   "/settings/general": msg("General"),
   "/settings/appearance": msg("Appearance"),
   "/settings/chat": msg("Chat"),
-  "/settings/diffs": msg("Diffs & pull requests"),
+  "/settings/diffs": productProfile.pullRequests ? msg("Diffs & pull requests") : msg("Diffs"),
   "/settings/keybindings": msg("Keybindings"),
   "/settings/snap-shot": msg("SnapShots"),
   "/settings/providers": msg("Providers"),
@@ -107,7 +109,9 @@ export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
   "/settings/browser": msg("Browser"),
   "/settings/devices": msg("Devices"),
   "/settings/scheduled-tasks": msg("Scheduled tasks"),
-  "/settings/source-control": msg("Source control & issues"),
+  "/settings/source-control": productProfile.issues
+    ? msg("Source control & issues")
+    : msg("Source control"),
   "/settings/worktrees": msg("Worktrees"),
   "/settings/connections": msg("Environments"),
   "/settings/access": msg("Sharing & access"),
@@ -122,9 +126,9 @@ export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
 /** Sidebar labels; an entry of its own lets a translator shorten one below its page title. */
 export const SETTINGS_NAV_LABELS: Readonly<Record<SettingsPath, string>> = {
   ...SETTINGS_SECTION_LABELS,
-  "/settings/source-control": msg("Source control & issues", {
-    $context: "settings navigation item",
-  }),
+  "/settings/source-control": productProfile.issues
+    ? msg("Source control & issues", { $context: "settings navigation item" })
+    : SETTINGS_SECTION_LABELS["/settings/source-control"],
   "/settings/access": msg("Sharing & access", { $context: "settings navigation item" }),
 };
 
@@ -154,7 +158,7 @@ export const SETTINGS_NAV_GROUPS: ReadonlyArray<{
       "/settings/threads",
       "/settings/browser",
       "/settings/devices",
-      "/settings/scheduled-tasks",
+      ...(productProfile.scheduledTasks ? (["/settings/scheduled-tasks"] as const) : []),
     ],
   },
   {
@@ -165,7 +169,7 @@ export const SETTINGS_NAV_GROUPS: ReadonlyArray<{
     heading: msg("Connections"),
     paths: [
       "/settings/connections",
-      "/settings/access",
+      ...(productProfile.sharingAndAccess ? (["/settings/access"] as const) : []),
       ...(isSecretsFeatureEnabled ? (["/settings/secrets"] as const) : []),
     ],
   },
@@ -489,7 +493,7 @@ export const SETTINGS_SEARCH_ITEMS = [
   },
   {
     id: "boring-sidebar",
-    title: msg("Boring sidebar (group by project)"),
+    title: msg("Group sessions by project"),
     to: "/settings/labs",
     searchTerms: [msg("beta folders project tree classic sidebar")],
   },
@@ -535,6 +539,7 @@ export const SETTINGS_SEARCH_ITEMS = [
     id: "guest-links",
     title: msg("Guest links"),
     to: "/settings/labs",
+    productFeature: "sharingAndAccess",
     scope: "environment",
     searchTerms: [msg("beta share guest invite link teammate watch t3 connect tunnel")],
   },
@@ -777,6 +782,7 @@ export const SETTINGS_SEARCH_ITEMS = [
     id: "proactive-panels",
     title: msg("Open pull requests and changes panels proactively"),
     to: "/settings/diffs",
+    productFeature: "pullRequests",
     searchTerms: [
       msg("proactive automatically open diff pull request pr right panel agent completion"),
     ],
@@ -947,6 +953,7 @@ export const SETTINGS_SEARCH_ITEMS = [
     id: "mobile-app",
     title: msg("Mobile app"),
     to: "/settings/about",
+    productFeature: "mobileApp",
     searchTerms: [msg("phone tablet iPhone iPad iOS Android App Store Google Play QR")],
   },
   {
@@ -1175,6 +1182,7 @@ export const SETTINGS_SEARCH_ITEMS = [
     id: "pull-request-links-open-in-app",
     title: msg("Open pull requests in T3 Code"),
     to: "/settings/diffs",
+    productFeature: "pullRequests",
     searchTerms: [
       `pr commit links ${SOURCE_CONTROL_HOST_LABELS} browser external click default pull request view panel`,
     ],
@@ -1212,6 +1220,7 @@ export const SETTINGS_SEARCH_ITEMS = [
     id: "issue-trackers",
     title: msg("Issue trackers"),
     to: "/settings/source-control",
+    productFeature: "issues",
     scope: "environment-defaults",
     searchTerms: [msg("linear jira issues tracker team api key connect bind project")],
   },
@@ -1429,6 +1438,7 @@ export const SETTINGS_SEARCH_ITEMS = [
     id: "pull-request-routing",
     title: msg("Pull request sharing"),
     to: "/settings/connections",
+    productFeature: "pullRequests",
     searchTerms: [
       `pull request routing trusted environments shared credentials permissions read actions source control ${SOURCE_CONTROL_HOST_LABELS}`,
     ],
@@ -1459,6 +1469,13 @@ export const SETTINGS_SEARCH_ITEMS = [
 export type SettingsSearchItemId = (typeof SETTINGS_SEARCH_ITEMS)[number]["id"];
 
 const SEARCH_ITEMS_BY_ID = new Map(SETTINGS_SEARCH_ITEMS.map((item) => [item.id, item] as const));
+
+const visibleSettingsSearchItems = (SETTINGS_SEARCH_ITEMS as readonly SettingsSearchItem[]).filter(
+  (item) =>
+    (item.to !== "/settings/scheduled-tasks" || productProfile.scheduledTasks) &&
+    (item.to !== "/settings/access" || productProfile.sharingAndAccess) &&
+    (item.productFeature === undefined || productProfile[item.productFeature]),
+);
 
 const SETTINGS_CATEGORY_SCOPES: Readonly<Record<SettingsPath, SettingsSearchScope | null>> = {
   "/settings/diagnostics": "environment",
@@ -1518,7 +1535,7 @@ export function movedSettingsPath(pathname: string, hash: string): SettingsPath 
 }
 
 export function getSettingsSearchTargetScope(targetId: string) {
-  const items: readonly SettingsSearchItem[] = SETTINGS_SEARCH_ITEMS;
+  const items = visibleSettingsSearchItems;
   const item =
     items.find((candidate) => candidate.id === targetId) ??
     items.find((candidate) => candidate.targetId === targetId);
@@ -1604,8 +1621,7 @@ export function useSearchableSetting() {
 export function filterAvailableSettingsSearchItems(
   availability: SettingsSearchAvailability,
 ): ReadonlyArray<SettingsSearchItem> {
-  const items: ReadonlyArray<SettingsSearchItem> = SETTINGS_SEARCH_ITEMS;
-  return items.filter(
+  return visibleSettingsSearchItems.filter(
     (item) =>
       (!item.cloudOnly || availability.hasCloudPublicConfig) &&
       (!item.environmentOnly || availability.hasEnvironment) &&
@@ -1640,7 +1656,7 @@ export function settingsForThisPlatform(
 
 export function searchSettings(
   query: string,
-  items: ReadonlyArray<SettingsSearchItem> = SETTINGS_SEARCH_ITEMS,
+  items: ReadonlyArray<SettingsSearchItem> = visibleSettingsSearchItems,
   translate: (message: string) => string = (message) => message,
 ): ReadonlyArray<SettingsSearchItem> {
   const normalizedQuery = normalizeSearchText(query);
