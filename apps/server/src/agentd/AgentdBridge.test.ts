@@ -83,9 +83,10 @@ const DOCTOR_JSON = `{
  "checks": [
   { "id": "binary", "status": "pass", "detail": "agentd v0.1.13 0d0b360a58c0" },
   { "id": "opencode", "status": "optional", "detail": "not found; agentd works without it", "fix": "install opencode" },
-  { "id": "model-prices", "status": "warn", "detail": "unpriced models" }
+  { "id": "model-prices", "status": "warn", "detail": "unpriced models" },
+  { "id": "server", "status": "fail", "detail": "https://team.example:8443/agentd: device dev-123 (cli, person Les): device revoked", "fix": "join with a new ticket" }
  ],
- "ok": true,
+ "ok": false,
  "set_up": true
 }`;
 
@@ -133,8 +134,9 @@ describe("AgentdBridge", () => {
 
       expect(yield* bridge.status).toEqual({
         version: "agentd v0.1.13 0d0b360a58c0",
-        ok: true,
+        ok: false,
         setUp: true,
+        teamServer: "https://team.example:8443/agentd",
         checks: [
           { id: "binary", status: "pass", detail: "agentd v0.1.13 0d0b360a58c0", fix: null },
           {
@@ -144,6 +146,13 @@ describe("AgentdBridge", () => {
             fix: "install opencode",
           },
           { id: "model-prices", status: "warn", detail: "unpriced models", fix: null },
+          {
+            id: "server",
+            status: "fail",
+            detail:
+              "https://team.example:8443/agentd: device dev-123 (cli, person Les): device revoked",
+            fix: "join with a new ticket",
+          },
         ],
       });
 
@@ -156,6 +165,7 @@ describe("AgentdBridge", () => {
           workerState: null,
           workerRunning: true,
           workerTool: "codex",
+          workerName: "ccao",
           runsOn: "local",
           project: "libraos/agentd-desktop-next",
           issue: "libraos/agentd-desktop-next#16",
@@ -171,6 +181,7 @@ describe("AgentdBridge", () => {
           workerState: null,
           workerRunning: false,
           workerTool: "claude",
+          workerName: "claude-8c11cb50d2",
           runsOn: "local",
           project: "libraos/agentd-core",
           issue: "libraos/agentd-core#897",
@@ -210,6 +221,60 @@ describe("AgentdBridge", () => {
         started: "2026-11-18T06:24:58+00:00",
         updated: "2026-11-18T06:47:57+00:00",
       });
+    }),
+  );
+
+  it.effect("preserves requesters and node cards and names leased and cloud work", () =>
+    Effect.gen(function* () {
+      const bridge = yield* makeBridge({ AGENTD_BIN: process.execPath }, (input) => {
+        switch (input.args.join(" ")) {
+          case "user list --json":
+            return Effect.succeed(output(`[{"name":"Les","role":"owner"}]`));
+          case "server nodes --json":
+            return Effect.succeed(
+              output(
+                `[{"name":"build-box","host":"runner-2","state":"busy","why":"Building locally","person":"Les","offline":false,"seen":"2026-11-18T09:14:00Z"}]`,
+              ),
+            );
+          case "approval list --state pending --json":
+            return Effect.succeed(
+              output(`[{"id":"ap-01","text":"Raise the budget?","session":"codex-abc"}]`),
+            );
+          case "inbox list --mine --json":
+            return Effect.succeed(
+              output(
+                `[{"id":"in-01","kind":"blocked","title":"Which release?","from":"les","claimer":"claude-abc"}]`,
+              ),
+            );
+          case "handoff list --json":
+            return Effect.succeed(
+              output(`[
+              {"id":"hof-abc123","state":"claimed","goal":"Run tests","claimer":"wrk-build-box"},
+              {"id":"hof-abc456","state":"claimed","goal":"Check docs","claimer":"cloud","cloud_state":"running"}
+            ]`),
+            );
+          default:
+            return Effect.die(`unexpected agentd ${input.args.join(" ")}`);
+        }
+      });
+      expect((yield* bridge.people({ includeNodes: true })).nodes).toEqual([
+        {
+          name: "build-box",
+          host: "runner-2",
+          person: "Les",
+          state: "busy",
+          why: "Building locally",
+          seen: "2026-11-18T09:14:00Z",
+          offline: false,
+        },
+      ]);
+      expect(yield* bridge.approvals).toMatchObject([{ id: "ap-01", requester: "codex-abc" }]);
+      expect(yield* bridge.inbox).toMatchObject([{ id: "in-01", requester: "claude-abc" }]);
+      const first = yield* Stream.runHead(bridge.subscribeTasks);
+      expect(first._tag === "Some" ? first.value : null).toMatchObject([
+        { id: "hof-abc123", runsOn: "team", workerName: "build-box" },
+        { id: "hof-abc456", runsOn: "cloud", workerState: "running" },
+      ]);
     }),
   );
 

@@ -29,10 +29,15 @@ function nonEmpty(value: string | null | undefined): string | null {
 }
 
 export function agentdStatus(version: string, doctor: AgentdDoctorJson): AgentdStatus {
+  const serverDetail = doctor.checks.find((check) => check.id === "server")?.detail;
+  const teamServer = serverDetail?.startsWith("not joined to an agentd server:")
+    ? null
+    : serverDetail?.match(/^(https?:\/\/\S+): device /)?.[1];
   return {
     version: version.trim(),
     ok: doctor.ok ?? doctor.checks.every((check) => check.status !== "fail"),
     setUp: doctor.set_up ?? true,
+    ...(teamServer === undefined ? {} : { teamServer }),
     checks: doctor.checks.map((check) => ({
       id: check.id,
       status: check.status,
@@ -43,14 +48,19 @@ export function agentdStatus(version: string, doctor: AgentdDoctorJson): AgentdS
 }
 
 export function agentdTaskRow(row: AgentdHandoffListJsonRow): AgentdTaskRow {
+  const cloudState = nonEmpty(row.cloud_state);
+  const node = row.claimer?.match(/^wrk-(.+)$/)?.[1];
+  const runsOn = cloudState !== null ? "cloud" : node === undefined ? "local" : "team";
+  const workerName = node ?? nonEmpty(row.claimer_user) ?? nonEmpty(row.claimer);
   return {
     id: row.id,
     title: nonEmpty(row.title) ?? row.goal ?? "",
     state: row.state,
-    workerState: nonEmpty(row.worker_state),
+    workerState: nonEmpty(row.worker_state) ?? cloudState,
     workerRunning: row.worker_running === true,
     workerTool: toolOfSession(row.claimer),
-    runsOn: nonEmpty(row.cloud_state) === null ? "local" : "cloud",
+    ...(workerName === null || runsOn === "cloud" ? {} : { workerName }),
+    runsOn,
     project: nonEmpty(row.project),
     issue: nonEmpty(row.issue),
     started: null,
@@ -104,6 +114,7 @@ export function agentdApprovals(list: typeof AgentdApprovalListJson.Type): Agent
   return list.map((approval) => ({
     id: approval.id,
     text: approval.text,
+    requester: nonEmpty(approval.session),
     action: approval.action ?? null,
     handoff: nonEmpty(approval.handoff),
     project: nonEmpty(approval.project),
@@ -118,6 +129,7 @@ export function agentdInbox(list: typeof AgentdInboxListJson.Type): AgentdInboxI
     id: item.id,
     kind: item.kind,
     title: nonEmpty(item.title) ?? item.goal ?? "",
+    requester: nonEmpty(item.claimer) ?? nonEmpty(item.from),
     handoff: nonEmpty(item.handoff),
     at: nonEmpty(item.at),
     read: item.read === true,
