@@ -1,12 +1,18 @@
 import {
+  AgentdNotFoundError,
   CheckpointRef,
   EnvironmentId,
   ProjectId,
   RunId,
   ThreadId,
+  type AgentdTask,
+  type AgentdTaskRow,
+  type RepositoryIdentity,
   type ScopedThreadRef,
   type ThreadPullRequestLink,
 } from "@t3tools/contracts";
+import { scopedThreadKey } from "@t3tools/client-runtime/environment";
+import type { ThreadStructure } from "@t3tools/client-runtime/state/shell";
 import type { ThreadCheckpointSummary } from "@t3tools/client-runtime/state/thread-checkpoints";
 import {
   deriveLatestContextWindowSnapshot,
@@ -15,6 +21,7 @@ import {
 import { AsyncResult, Atom } from "effect/reactivity";
 import { expect, it, vi } from "vite-plus/test";
 import { page } from "vite-plus/test/browser";
+import "~/index.css";
 
 const SCRATCH_ROOT = "/home/user/.t3/scratch";
 
@@ -24,6 +31,11 @@ const state = vi.hoisted(() => ({
   pullRequests: [] as unknown[],
   configLoaded: true,
   checkpoints: [] as readonly ThreadCheckpointSummary[],
+  repositoryIdentity: null as RepositoryIdentity | null,
+  projection: null as ThreadStructure | null,
+  tasks: null as readonly AgentdTaskRow[] | null,
+  taskDetail: null as Pick<AgentdTask, "goal" | "started"> | null,
+  stopTask: vi.fn(),
 }));
 
 vi.mock(import("~/state/entities"), async (importOriginal) => ({
@@ -36,10 +48,13 @@ vi.mock(import("~/state/entities"), async (importOriginal) => ({
           environmentId: "environment",
           title: state.workspaceRoot === SCRATCH_ROOT ? "No project" : "plain",
           workspaceRoot: state.workspaceRoot,
+          repositoryIdentity: state.repositoryIdentity,
           scripts: [],
         }) as never,
   useProjects: (() => []) as never,
   useThreadCheckpointSummaries: () => state.checkpoints,
+  useQuietThreadProjection: ((ref: ScopedThreadRef | null) =>
+    ref === null || state.projection === null ? null : { projection: state.projection }) as never,
   useQuietThreadShell: ((ref: unknown) =>
     ref === null
       ? null
@@ -66,6 +81,30 @@ vi.mock(import("~/state/entities"), async (importOriginal) => ({
         : [],
     )) as never,
 }));
+
+vi.mock(import("~/lib/agentdState"), async (importOriginal) => {
+  const actual = await importOriginal();
+  const permitted = Atom.make(true);
+  return {
+    ...actual,
+    agentdEnvironment: {
+      ...actual.agentdEnvironment,
+      stopTask: { ...actual.agentdEnvironment.stopTask, permissionAtom: () => permitted },
+    },
+    useAgentdTasks: (() => ({
+      data: state.tasks,
+      failure: state.tasks === null ? new AgentdNotFoundError({ message: "missing" }) : null,
+    })) as typeof actual.useAgentdTasks,
+    useAgentdTask: ((id) => ({
+      data: id === "hof-000001" ? state.taskDetail : null,
+    })) as typeof actual.useAgentdTask,
+    useAgentdCommands: () => ({ ...actual.useAgentdCommands(), stopTask: state.stopTask }),
+  };
+});
+
+vi.mock(import("~/hooks/useNowSecond"), () => ({
+  useNowSecond: () => Date.parse("2026-11-18T10:01:33Z"),
+}));
 // Neither folder is a repository, which is what the server reports for both.
 vi.mock(import("~/state/vcs"), async (importOriginal) => {
   const actual = await importOriginal();
@@ -91,8 +130,11 @@ vi.mock(import("~/state/vcs"), async (importOriginal) => {
 });
 
 import { render } from "../../../test/render";
+import { setChatCodeMode, useChatCodeMode } from "../../chatCodeModeStore";
 import { selectThreadDiffPanelSelection, useDiffPanelStore } from "../../diffPanelStore";
 import { selectActiveRightPanel, useRightPanelStore } from "../../rightPanelStore";
+import { makeThreadProjectionFixture } from "../../test-fixtures";
+import { ConfirmDialogHost } from "../ConfirmDialogHost";
 import { PopoverCreateHandle } from "../ui/popover";
 import { ChatCanvasContext } from "./ChatCanvasContext";
 import { resolveChatCanvasLayout } from "./chatCanvasLayout";
@@ -122,12 +164,21 @@ function setup(input: {
   configLoaded?: boolean;
   checkpoints?: readonly ThreadCheckpointSummary[];
   contextWindow?: ContextWindowSnapshot | null;
+  repositoryIdentity?: RepositoryIdentity;
+  projection?: ThreadStructure;
+  tasks?: readonly AgentdTaskRow[];
+  taskDetail?: Pick<AgentdTask, "goal" | "started">;
 }) {
   state.configLoaded = input.configLoaded ?? true;
   state.workspaceRoot = input.workspaceRoot;
   state.folder = input.folder;
   state.pullRequests = input.pullRequests ?? [];
   state.checkpoints = input.checkpoints ?? [];
+  state.repositoryIdentity = input.repositoryIdentity ?? null;
+  state.projection = input.projection ?? null;
+  state.tasks = input.tasks ?? null;
+  state.taskDetail = input.taskDetail ?? null;
+  state.stopTask.mockReset();
   useRightPanelStore.setState({ byThreadKey: {}, threadPanelVisibilityByThreadKey: {} });
   useDiffPanelStore.setState({ byThreadKey: {} });
   const anchor = document.createElement("div");
@@ -222,8 +273,126 @@ it("shows a linked pull request in a folder that is not a git repository", async
   await expect.element(page.getByRole("heading", { name: "Context" })).toBeVisible();
   await expect.element(page.getByText("Not reported by this agent")).toBeVisible();
   await expect.element(page.getByRole("heading", { name: "Outputs" })).toBeVisible();
+  const tasks = page.getByRole("region", { name: "Background tasks" });
+  await expect.element(tasks.getByText("agentd was not found.")).toBeVisible();
+  await expect.element(tasks.getByText(/finished/)).not.toBeInTheDocument();
   await expect.element(page.getByText("#27513")).toBeVisible();
   await expect.element(page.getByRole("button", { name: "Initialize Git" })).toBeVisible();
+});
+
+function agentdRow(index: number, overrides: Partial<AgentdTaskRow> = {}): AgentdTaskRow {
+  return {
+    id: `hof-${String(index).padStart(6, "0")}`,
+    title: `Task ${index}`,
+    state: "claimed",
+    workerState: "running",
+    workerRunning: true,
+    workerTool: null,
+    runsOn: "local",
+    project: "Team/Repo",
+    issue: null,
+    started: null,
+    branch: null,
+    updated: null,
+    ...overrides,
+  };
+}
+
+it("limits background tasks to this project and session, confirms Stop, and opens the pane", async () => {
+  const projection = {
+    ...makeThreadProjectionFixture(),
+    providerThreads: [
+      {
+        id: "provider-thread",
+        pendingBackgroundTasks: [
+          { taskId: "server", kind: "command", description: "Start the preview server" },
+          { taskId: "watcher", kind: "monitor", description: "Watch checks" },
+        ],
+      },
+    ],
+    runs: [{ id: RunId.make("completed-run"), ordinal: 1, status: "completed" }],
+  } as unknown as ThreadStructure;
+  using fixture = setup({
+    workspaceRoot: "C:\\work\\repo",
+    folder: "C:\\work\\repo",
+    repositoryIdentity: {
+      canonicalKey: "github.com/team/repo",
+      locator: {
+        source: "git-remote",
+        remoteName: "origin",
+        remoteUrl: "git@github.com:team/repo",
+      },
+    },
+    projection,
+    taskDetail: { goal: "Build the project", started: "2026-11-18T10:00:00Z" },
+    tasks: [
+      agentdRow(98, { project: "other/repo", title: "Unrelated worker" }),
+      agentdRow(99, { project: null, title: "Worker without a project" }),
+      agentdRow(1),
+      agentdRow(2),
+      agentdRow(3),
+      agentdRow(4),
+      agentdRow(5),
+      agentdRow(6, { state: "done", workerRunning: false }),
+      agentdRow(7, { state: "cancelled", workerRunning: false }),
+      agentdRow(8, { state: "offered", workerRunning: false }),
+      agentdRow(9, { project: "other/repo", state: "done", workerRunning: false }),
+    ],
+  });
+  const threadKey = scopedThreadKey(threadRef);
+  setChatCodeMode(threadKey, "chat");
+  function ModeProbe() {
+    return <output aria-label="Session mode">{useChatCodeMode(threadKey)}</output>;
+  }
+  await using _screen = await render(
+    <>
+      <Panel fixture={fixture} />
+      <ModeProbe />
+      <ConfirmDialogHost />
+    </>,
+  );
+  const region = page.getByRole("region", { name: "Background tasks" });
+  const row = region.getByRole("button", { name: /Build the project/ }).first();
+  await expect.element(row.getByText("1m 33s", { exact: true })).toBeVisible();
+  await expect
+    .element(region.getByRole("button", { name: /Start the preview server/ }))
+    .toBeVisible();
+  await expect.element(region.getByRole("button", { name: /Task 4/ }).first()).toBeVisible();
+  await expect.element(region.getByText("Task 5")).not.toBeInTheDocument();
+  await expect.element(region.getByText("Watch checks")).not.toBeInTheDocument();
+  await expect.element(region.getByText("Unrelated worker")).not.toBeInTheDocument();
+  await expect.element(region.getByText("Worker without a project")).not.toBeInTheDocument();
+
+  const stop = region.getByRole("button", { name: "Stop Build the project" });
+  const confirmation = page.getByRole("alertdialog", { name: "Stop this background task?" });
+  await stop.click();
+  await expect.element(confirmation).toBeVisible();
+  expect(state.stopTask).not.toHaveBeenCalled();
+  await confirmation.getByRole("button", { name: "Cancel" }).click();
+  expect(state.stopTask).not.toHaveBeenCalled();
+  await stop.click();
+  await confirmation.getByRole("button", { name: "Confirm" }).click();
+  expect(state.stopTask).toHaveBeenCalledExactlyOnceWith({
+    environmentId: threadRef.environmentId,
+    input: { id: "hof-000001", reason: "Stopped from the session panel." },
+  });
+  expect(selectActiveRightPanel(useRightPanelStore.getState().byThreadKey, threadRef)).toBeNull();
+
+  for (const entry of [
+    row,
+    region.getByRole("button", { name: "Background tasks", exact: true }),
+    region.getByRole("button", { name: "2 finished" }),
+  ]) {
+    useRightPanelStore.getState().closeAllSurfaces(threadRef);
+    setChatCodeMode(threadKey, "chat");
+    await entry.click();
+    await expect
+      .element(page.getByRole("status", { name: "Session mode" }))
+      .toHaveTextContent("code");
+    expect(selectActiveRightPanel(useRightPanelStore.getState().byThreadKey, threadRef)).toBe(
+      "background-tasks",
+    );
+  }
 });
 
 it("offers no Initialize Git before the server config says where No project lives", async () => {
