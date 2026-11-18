@@ -47,6 +47,7 @@ import type { TimestampFormat } from "@t3tools/contracts/settings";
 import { GuestMessageName } from "./guestMessageStyle";
 import { TimelineRowTimestamp } from "./TimelineRowParts";
 import { FoldedMessageHeader, useScheduledTaskTitle } from "./TimelineUserMessageRow";
+import { productProfile } from "~/productProfile";
 import { buildExpandedImagePreview, type ExpandedImagePreview } from "./ExpandedImagePreview";
 
 export interface EditQueuedRunRequest {
@@ -589,7 +590,7 @@ function QueuedMessage(props: {
                 <T>Open thread</T>
               </InlineButton>
             ) : null}
-            {scheduledTaskId ? (
+            {productProfile.scheduledTasks && scheduledTaskId ? (
               <InlineButton
                 tone="muted"
                 render={

@@ -1,10 +1,11 @@
 import type { EnvironmentId, ProjectId } from "@t3tools/contracts";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import { type PullRequestListSort } from "../components/pullRequest/pullRequestListPreferences";
 import { SORT_OPTIONS } from "../components/pullRequest/pullRequestListOptions";
 import { type PullRequestsSearch } from "../components/pullRequest/usePullRequestListView";
 import { PullRequestsPage } from "../components/pullRequest/PullRequestsPage";
+import { productProfile } from "../productProfile";
 
 const MAX_SEARCH_LABEL_CANDIDATES = 100;
 
@@ -28,6 +29,9 @@ function pullRequestSearchLabels(raw: unknown): PullRequestsSearch["labels"] {
 }
 
 export const Route = createFileRoute("/_chat/pull-requests")({
+  beforeLoad: () => {
+    if (!productProfile.pullRequests) throw redirect({ to: "/", replace: true });
+  },
   validateSearch: (raw: Record<string, unknown>): PullRequestsSearch => ({
     ...(typeof raw.selectedUrl === "string" ? { selectedUrl: raw.selectedUrl.slice(0, 4096) } : {}),
     involvement:

@@ -132,13 +132,16 @@ import { useAtomQueryRunner } from "../state/use-atom-query-runner";
 import { useScratchProject } from "../hooks/useScratchProject";
 import { useStartTriage } from "../hooks/useStartTriage";
 import { pickTriageEnvironment } from "../lib/triageTarget";
+import { productProfile } from "../productProfile";
 import { useNewProject } from "../hooks/useNewProject";
 import { useOrderWhileOpen } from "../hooks/useOrderWhileOpen";
 import { reportProjectFailure, useProjectPin } from "../hooks/useProjectGroupUpdate";
 import {
   useEnvironmentProviders,
   useEnvironments,
+  useIssuesSupported,
   usePrimaryEnvironmentId,
+  usePullRequestsSupported,
 } from "../state/environments";
 import {
   useAnyEnvironmentHiding,
@@ -490,6 +493,8 @@ function OpenCommandPaletteDialog(props: {
     reportFailure: false,
   });
   const { environments } = useEnvironments();
+  const issuesSupported = useIssuesSupported();
+  const pullRequestsSupported = usePullRequestsSupported();
   const desktopLocalBootstraps = useDesktopLocalBootstraps();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const availableSettingsSearchItems = useAvailableSettingsSearchItems();
@@ -519,10 +524,13 @@ function OpenCommandPaletteDialog(props: {
           {
             threadRef: referenceThreadRef,
             title: activeThread?.title ?? "",
-            openPanelPullRequestUrl,
-            pullRequests: activeThread?.pullRequests,
-            linkedPullRequestUrl:
-              activeThread?.linkedPullRequest?.url ?? activeThread?.branchPullRequest?.url ?? null,
+            openPanelPullRequestUrl: productProfile.pullRequests ? openPanelPullRequestUrl : null,
+            pullRequests: productProfile.pullRequests ? activeThread?.pullRequests : undefined,
+            linkedPullRequestUrl: productProfile.pullRequests
+              ? (activeThread?.linkedPullRequest?.url ??
+                activeThread?.branchPullRequest?.url ??
+                null)
+              : null,
             hostedAppUrl: configuredHostedAppUrl(),
           },
           messages,
@@ -1381,7 +1389,7 @@ function OpenCommandPaletteDialog(props: {
     });
   }
 
-  if (triageEnvironmentId !== null && canTriage) {
+  if (productProfile.triage && triageEnvironmentId !== null && canTriage) {
     actionItems.push({
       kind: "action",
       value: "action:triage",
@@ -1491,6 +1499,7 @@ function OpenCommandPaletteDialog(props: {
   }
 
   if (
+    productProfile.pullRequests &&
     activeThread !== null &&
     threadPullRequestLinkMode(activeThreadServerConfig?.environment.capabilities) !== "unsupported"
   ) {
@@ -1518,7 +1527,7 @@ function OpenCommandPaletteDialog(props: {
     });
   }
 
-  if (activeThread !== null && canShareActiveThreadWithGuest) {
+  if (productProfile.sharingAndAccess && activeThread !== null && canShareActiveThreadWithGuest) {
     const threadRef = scopeThreadRef(activeThread.environmentId, activeThread.id);
     actionItems.push({
       kind: "action",
@@ -1660,7 +1669,7 @@ function OpenCommandPaletteDialog(props: {
 
   actionItems.push(themeEditorItem);
 
-  if (environments.some((environment) => environment.serverConfig !== null)) {
+  if (pullRequestsSupported) {
     actionItems.push({
       kind: "action",
       value: "action:pull-requests",
@@ -1688,11 +1697,7 @@ function OpenCommandPaletteDialog(props: {
     });
   }
 
-  if (
-    environments.some(
-      (environment) => environment.serverConfig?.environment.capabilities.issues === true,
-    )
-  ) {
+  if (issuesSupported) {
     actionItems.push({
       kind: "action",
       value: "action:issues",

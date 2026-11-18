@@ -42,6 +42,7 @@ import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from "rea
 
 import { TYPOGRAPHY_ADVANCED_STORAGE_KEY } from "../../appearanceFonts";
 import { MOBILE_APP_URL } from "../../branding";
+import { productProfile } from "~/productProfile";
 import { isElectron } from "../../env";
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { usePersistEnvironmentProviderInstanceMutation } from "../../hooks/useSettings";
@@ -303,7 +304,9 @@ export function WelcomePage({
                 projectImport={projectImport}
                 isImporting={isImporting}
               />
-              {showPhone ? <PhoneSection environmentId={environmentId} /> : null}
+              {productProfile.mobileApp && showPhone ? (
+                <PhoneSection environmentId={environmentId} />
+              ) : null}
             </div>
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
               {agentReady ? (
@@ -1004,9 +1007,11 @@ function PhoneSection({ environmentId }: { readonly environmentId: EnvironmentId
                   <T>Scan with your phone to get the app.</T>
                 </p>
               </PhoneStep>
-              <PhoneStep step={2}>
-                <PhoneConnectLink environmentId={environmentId} />
-              </PhoneStep>
+              {productProfile.sharingAndAccess && (
+                <PhoneStep step={2}>
+                  <PhoneConnectLink environmentId={environmentId} />
+                </PhoneStep>
+              )}
             </ol>
             {/* One code for both stores: the link opens the store that matches the phone. */}
             <div className="shrink-0 rounded-lg bg-white p-1.5">

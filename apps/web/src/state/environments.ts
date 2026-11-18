@@ -9,6 +9,7 @@ import type { EnvironmentId } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 
 import { environmentCatalog } from "../connection/catalog";
+import { productProfile } from "../productProfile";
 import { appAtomRegistry } from "../rpc/atomRegistry";
 import {
   environmentPresentations,
@@ -110,11 +111,13 @@ export function useEnvironmentIdentities() {
 }
 
 export function usePullRequestsSupported() {
-  return useAtomValue(environmentSummaries.pullRequestsSupportedAtom);
+  const supported = useAtomValue(environmentSummaries.pullRequestsSupportedAtom);
+  return productProfile.pullRequests && supported;
 }
 
 export function useIssuesSupported() {
-  return useAtomValue(environmentSummaries.issuesSupportedAtom);
+  const supported = useAtomValue(environmentSummaries.issuesSupportedAtom);
+  return productProfile.issues && supported;
 }
 
 export function useEnvironmentMachines() {

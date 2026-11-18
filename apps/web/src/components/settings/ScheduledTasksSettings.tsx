@@ -57,6 +57,7 @@ import { useEnvironmentSettings } from "../../hooks/useSettings";
 import { getCustomModelOptionsByInstance } from "../../modelSelection";
 import { providerInstanceEntriesFor } from "../../providerInstances";
 import { usePrimaryCloudLinkState } from "../../cloud/cloudLinkState";
+import { productProfile } from "~/productProfile";
 import { requestConfirmDialog } from "../../confirmDialog";
 import { webhookAddress } from "@t3tools/client-runtime/webhook-address";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -1239,9 +1240,11 @@ function WebhookDeliveryMode({ environmentId }: { readonly environmentId: Enviro
       {cloudLink.data.holdWebhooksWhileOffline
         ? gt("Held for up to 24 hours while this environment is offline. ")
         : gt("Forwarded live. Requests fail while this environment is offline. ")}
-      <Link to="/settings/access" className="underline underline-offset-2">
-        <T>Change in Sharing & access</T>
-      </Link>
+      {productProfile.sharingAndAccess && (
+        <Link to="/settings/access" className="underline underline-offset-2">
+          <T>Change in Sharing & access</T>
+        </Link>
+      )}
     </p>
   );
 }

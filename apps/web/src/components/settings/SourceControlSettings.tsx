@@ -37,6 +37,7 @@ import { m, type MessageResolver } from "../../i18n/messages";
 
 import { GitIcon, JujutsuIcon, type Icon } from "../Icons";
 import { IssueTrackerSettings } from "./IssueTrackerSettings";
+import { productProfile } from "~/productProfile";
 import { SourceControlHostSettings } from "./SourceControlHostSettings";
 import { SourceControlAccountSettings } from "./SourceControlAccountSettings";
 import { SourceControlAppSignInSettings } from "./SourceControlAppSignInSettings";
@@ -655,9 +656,9 @@ export function SourceControlSettingsPanel() {
           onScan={handleScan}
         />
       )}
-      {environmentId === null ? null : (
+      {productProfile.issues && environmentId !== null ? (
         <IssueTrackerSettings key={environmentId} environmentId={environmentId} />
-      )}
+      ) : null}
 
       <SourceControlWritingSettingsSection />
     </SettingsPageContainer>
