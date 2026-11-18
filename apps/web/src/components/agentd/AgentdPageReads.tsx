@@ -63,8 +63,11 @@ export function AgentdTimestamp({ value }: { value: string | null }) {
 export function AgentdStatusDetails({
   status,
   team,
+  onSetUp,
 }: {
   status: AgentdStatus;
+  /** Opens Set up AgentD; absent when this connection cannot set agentd up. */
+  onSetUp?: (() => void) | undefined;
   /** Shown under the team server once this environment is joined to one. */
   team?: ReactNode;
 }) {
@@ -86,6 +89,11 @@ export function AgentdStatusDetails({
             <T>
               Run <code>agentd init</code> on this environment.
             </T>
+            {onSetUp ? (
+              <Button className="mt-2" size="sm" variant="outline" onClick={onSetUp}>
+                <T>Set up AgentD</T>
+              </Button>
+            ) : null}
           </AlertDescription>
         </Alert>
       ) : null}

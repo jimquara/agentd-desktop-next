@@ -112,5 +112,20 @@ export function createAgentdEnvironmentAtoms<R, E>(
       tag: WS_METHODS.agentdTeamNodeForeground,
       scheduler,
     }),
+    eula: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:agentd:eula",
+      tag: WS_METHODS.agentdEula,
+      staleTimeMs: 300_000,
+    }),
+    setup: createEnvironmentRpcSubscriptionAtomFamily(runtime, {
+      label: "environment-data:agentd:setup",
+      tag: WS_METHODS.agentdSubscribeSetup,
+      idleTtlMs: 0,
+    }),
+    setupStart: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:agentd:setup-start",
+      tag: WS_METHODS.agentdSetupStart,
+      scheduler,
+    }),
   };
 }

@@ -15,6 +15,7 @@ import {
   type AgentdApproval,
   type AgentdCommandOutput,
   type AgentdConnectAgentInput,
+  type AgentdEula,
   type AgentdInboxItem,
   type AgentdJoinTeamInput,
   type AgentdPeople,
@@ -71,6 +72,7 @@ export class AgentdBridge extends Context.Service<
     readonly binary: Effect.Effect<string, AgentdError>;
     readonly enrolWorker: (server: string, ticket: string) => Effect.Effect<void, AgentdError>;
     readonly foreground: (minutes: number) => Effect.Effect<void, AgentdError>;
+    readonly eula: Effect.Effect<AgentdEula, AgentdError>;
   }
 >()("t3/agentd/AgentdBridge") {}
 
@@ -205,12 +207,29 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
     Effect.map((rows) => rows.map(AgentdJson.agentdTaskRow)),
   );
 
+  const eula: AgentdBridge["Service"]["eula"] = run(agentdArgs.eula()).pipe(
+    Effect.map((text) => ({ version: AgentdJson.eulaVersion(text), text })),
+    Effect.withSpan("AgentdBridge.eula"),
+  );
+
   const status: AgentdBridge["Service"]["status"] = Effect.gen(function* () {
     const [version, doctor] = yield* Effect.all(
       [run(agentdArgs.version()), run(agentdArgs.doctor(), { jsonOnFailure: true })],
       { concurrency: 2 },
+    ).pipe(
+      Effect.flatMap(([version, doctor]) =>
+        Effect.map(decodeDoctor(doctor), (d) => [version, d] as const),
+      ),
     );
-    const status = AgentdJson.agentdStatus(version, yield* decodeDoctor(doctor));
+    // Only a saved acceptance needs the carried version, to see whether agentd would ask again.
+    const carried =
+      typeof AgentdJson.acceptedEula(doctor) === "string"
+        ? yield* eula.pipe(
+            Effect.map((read) => read.version),
+            Effect.orElseSucceed(() => null),
+          )
+        : null;
+    const status = AgentdJson.agentdStatus(version, doctor, carried);
     const defaultWorker = status.setUp
       ? yield* run(agentdArgs.defaultWorker()).pipe(
           Effect.map((stdout) => {
@@ -412,6 +431,7 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
     foreground: Effect.fn("AgentdBridge.foreground")(function* (minutes) {
       yield* run(agentdArgs.foreground(minutes));
     }),
+    eula,
   });
 });
 

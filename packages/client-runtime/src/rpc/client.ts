@@ -80,6 +80,7 @@ export type EnvironmentSubscriptionRpcTag =
   | typeof WS_METHODS.agentdSubscribeTasks
   | typeof WS_METHODS.agentdSubscribeTaskOutput
   | typeof WS_METHODS.agentdSubscribeTeamNode
+  | typeof WS_METHODS.agentdSubscribeSetup
   | typeof WS_METHODS.pullRequestsSubscribeRefreshes
   | typeof WS_METHODS.pullRequestsSubscribeLinkedThreadRefreshes
   | typeof WS_METHODS.subscribeVcsStatus
