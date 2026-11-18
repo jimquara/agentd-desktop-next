@@ -8,6 +8,7 @@ import type { EnvironmentQueryView } from "../../state/query";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { AgentdInstallStatus } from "./AgentdInstallStatus";
 
 export function AgentdReadError({ error }: { error: string }) {
   return (
@@ -59,7 +60,14 @@ export function AgentdTimestamp({ value }: { value: string | null }) {
   );
 }
 
-export function AgentdStatusDetails({ status }: { status: AgentdStatus }) {
+export function AgentdStatusDetails({
+  status,
+  team,
+}: {
+  status: AgentdStatus;
+  /** Shown under the team server once this environment is joined to one. */
+  team?: ReactNode;
+}) {
   const checks = status.checks.filter((check) => check.status !== "pass");
   return (
     <div className="space-y-4">
@@ -99,13 +107,17 @@ export function AgentdStatusDetails({ status }: { status: AgentdStatus }) {
             </Button>
           </>
         ) : status.teamServer ? (
-          <span className="break-all text-muted-foreground">{status.teamServer}</span>
+          <>
+            <span className="break-all text-muted-foreground">{status.teamServer}</span>
+            {team}
+          </>
         ) : (
           <span className="text-muted-foreground">
             <T>Team connection not reported</T>
           </span>
         )}
       </div>
+      <AgentdInstallStatus status={status} />
       {checks.length > 0 ? (
         <ul className="divide-y divide-border border-t border-border">
           {checks.map((check) => (

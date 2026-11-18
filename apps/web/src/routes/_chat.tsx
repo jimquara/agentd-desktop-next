@@ -1,6 +1,7 @@
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
 
 import { ThreadRouteView } from "../components/ThreadRouteView";
+import { AgentdTeamNodeBusySignal } from "../components/agentd/AgentdTeamNodeSwitch";
 import { GlobalVoiceInputIndicator } from "../components/chat/GlobalVoiceInputIndicator";
 import { isAppModalPage } from "../components/sidebar/mainAppLocation";
 import { SidebarInset } from "../components/ui/sidebar";
@@ -26,6 +27,7 @@ function ChatRouteLayout() {
       )}
       {modalOpen ? <Outlet /> : null}
       <GlobalVoiceInputIndicator hidden={modalOpen} />
+      <AgentdTeamNodeBusySignal />
     </>
   );
 }

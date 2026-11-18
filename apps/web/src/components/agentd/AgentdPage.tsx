@@ -31,6 +31,7 @@ import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Button } from "../ui/button";
 import { AgentdNeedsYou, AgentdRead, AgentdSection, AgentdStatusDetails } from "./AgentdPageReads";
 import { AgentdPageWorkers } from "./AgentdPageWorkers";
+import { AgentdTeamNodeSwitch } from "./AgentdTeamNodeSwitch";
 
 const isHandoffId = Schema.is(AgentdHandoffId);
 const isAgentdNotFoundError = Schema.is(AgentdNotFoundError);
@@ -88,6 +89,14 @@ export function AgentdPage() {
       hash: `agentd-task-${row.id}`,
       replace: true,
     });
+  };
+
+  const openTaskId = (id: string) => {
+    const row = tasks.data?.find((candidate) => candidate.id === id);
+    if (row) openTask(row);
+    else if (activeEnvironmentId !== null && isHandoffId(id)) {
+      setSelectedTask({ id, environmentId: activeEnvironmentId });
+    }
   };
 
   return (
@@ -167,7 +176,19 @@ export function AgentdPage() {
                   </Alert>
                 ) : (
                   <AgentdRead query={status}>
-                    {(data) => <AgentdStatusDetails status={data} />}
+                    {(data) => (
+                      <AgentdStatusDetails
+                        status={data}
+                        team={
+                          activeEnvironmentId !== null ? (
+                            <AgentdTeamNodeSwitch
+                              environmentId={activeEnvironmentId}
+                              openTask={openTaskId}
+                            />
+                          ) : null
+                        }
+                      />
+                    )}
                   </AgentdRead>
                 )}
               </AgentdSection>

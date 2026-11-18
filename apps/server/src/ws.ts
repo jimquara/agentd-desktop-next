@@ -240,6 +240,7 @@ import { requiredScopeForDeviceList, rpcAuthorizationError } from "./auth/RpcAut
 import * as RpcAuthorization from "./auth/RpcAuthorization.ts";
 import { RpcInstrumentation, rpcInstrumentationLayer } from "./observability/RpcInstrumentation.ts";
 import * as AgentdBridge from "./agentd/AgentdBridge.ts";
+import * as AgentdTeamNode from "./agentd/AgentdTeamNode.ts";
 import * as ProcessDiagnostics from "./diagnostics/ProcessDiagnostics.ts";
 import * as ProcessResourceMonitor from "./diagnostics/ProcessResourceMonitor.ts";
 import * as ResourceTelemetry from "./resourceTelemetry/ResourceTelemetry.ts";
@@ -1592,6 +1593,7 @@ export const layerWsRpc = (
       const sessions = yield* SessionStore.SessionStore;
       const processDiagnostics = yield* ProcessDiagnostics.ProcessDiagnostics;
       const agentd = yield* AgentdBridge.AgentdBridge;
+      const teamNode = yield* AgentdTeamNode.AgentdTeamNode;
       const triage = yield* TriageService.TriageService;
       const hostResources = yield* HostResources.HostResources;
       const processResourceMonitor = yield* ProcessResourceMonitor.ProcessResourceMonitor;
@@ -3600,6 +3602,9 @@ export const layerWsRpc = (
         [WS_METHODS.agentdConnectAgent]: (input) => agentd.connectAgent(input),
         [WS_METHODS.agentdJoinTeam]: (input) => agentd.joinTeam(input),
         [WS_METHODS.agentdTaskOthers]: (input) => agentd.taskOthers(input),
+        [WS_METHODS.agentdSubscribeTeamNode]: (_input) => teamNode.subscribe,
+        [WS_METHODS.agentdSetTeamNode]: (input) => teamNode.set(input),
+        [WS_METHODS.agentdTeamNodeForeground]: (_input) => teamNode.foreground,
       });
       const splitHandlers: Pick<typeof handlers, SplitWsRpc["_tag"]> = handlers;
       const otherHandlers: Pick<typeof handlers, Exclude<ServerWsRpc, SplitWsRpc>["_tag"]> =

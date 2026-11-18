@@ -1,4 +1,5 @@
 !include "StrFunc.nsh"
+!include "${__FILEDIR__}\agentd-uninstall.nsh"
 !ifdef BUILD_UNINSTALLER
   ${UnStrRep}
   !define T3StrRep '${UnStrRep}'

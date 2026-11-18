@@ -4,6 +4,7 @@ import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
+import * as FileSystem from "effect/FileSystem";
 import * as Stream from "effect/Stream";
 import { ChildProcessSpawner } from "effect/process";
 import * as TestClock from "effect/testing/TestClock";
@@ -124,7 +125,15 @@ describe("AgentdBridge", () => {
   it.effect("serves agentd's status, task list and task through the contract schemas", () =>
     Effect.gen(function* () {
       const calls: Array<ReadonlyArray<string>> = [];
-      const bridge = yield* makeBridge({ AGENTD_BIN: process.execPath }, (input) => {
+      const fs = yield* FileSystem.FileSystem;
+      const recordPath = `${yield* fs.makeTempDirectoryScoped()}/agentd-install.json`;
+      yield* fs.writeFileString(
+        recordPath,
+        '{"action":"installed","path":"/home/les/.local/bin/agentd","directory":"/home/les/.local/bin",' +
+          '"onPath":false,"pathLine":"export PATH=\\"/home/les/.local/bin:$PATH\\"","skills":[]}\n',
+      );
+      const env = { AGENTD_BIN: process.execPath, AGENTD_DESKTOP_INSTALL_RECORD: recordPath };
+      const bridge = yield* makeBridge(env, (input) => {
         calls.push(input.args);
         const key = input.args.join(" ");
         if (key === "version") return Effect.succeed(output("agentd v0.1.13 0d0b360a58c0\n"));
@@ -160,6 +169,15 @@ describe("AgentdBridge", () => {
             fix: "join with a new ticket",
           },
         ],
+        binary: process.execPath,
+        install: {
+          action: "installed",
+          path: "/home/les/.local/bin/agentd",
+          directory: "/home/les/.local/bin",
+          onPath: false,
+          pathLine: 'export PATH="/home/les/.local/bin:$PATH"',
+          skills: [],
+        },
       });
 
       const first = yield* Stream.runHead(bridge.subscribeTasks);
@@ -227,7 +245,7 @@ describe("AgentdBridge", () => {
         started: "2026-11-18T06:24:58+00:00",
         updated: "2026-11-18T06:47:57+00:00",
       });
-    }),
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
   );
 
   it.effect("preserves requesters and node cards and names leased and cloud work", () =>

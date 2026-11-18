@@ -178,6 +178,19 @@ export const AgentdDoctorCheck = Schema.Struct({
 });
 export type AgentdDoctorCheck = typeof AgentdDoctorCheck.Type;
 
+/** The desktop app's last pass installing its agentd and Skills for the terminal and agents. */
+export const AgentdInstallRecord = Schema.Struct({
+  action: Schema.Literals(["installed", "replaced", "unchanged", "kept-newer", "kept-unknown"]),
+  /** The install.sh location; a kept agentd there is the person's own. */
+  path: Schema.String,
+  directory: Schema.String,
+  onPath: Schema.Boolean,
+  /** The line to add to a shell profile when the folder is not on PATH; the app never edits one. */
+  pathLine: Schema.NullOr(Schema.String),
+  skills: Schema.Array(Schema.String),
+});
+export type AgentdInstallRecord = typeof AgentdInstallRecord.Type;
+
 export const AgentdStatus = Schema.Struct({
   /** `agentd version` as it printed it, such as "agentd v0.1.13 0d0b360a58c0". */
   version: Schema.String,
@@ -186,6 +199,9 @@ export const AgentdStatus = Schema.Struct({
   defaultWorker: Schema.optionalKey(Schema.NullOr(AgentdWorkerTool)),
   teamServer: NullableString,
   checks: Schema.Array(AgentdDoctorCheck),
+  /** The agentd binary the app runs. */
+  binary: Schema.optionalKey(Schema.String),
+  install: Schema.optionalKey(Schema.NullOr(AgentdInstallRecord)),
 });
 export type AgentdStatus = typeof AgentdStatus.Type;
 
@@ -377,3 +393,29 @@ export const AgentdTaskOther = Schema.Struct({
   paths: Schema.Array(Schema.String),
 });
 export type AgentdTaskOther = typeof AgentdTaskOther.Type;
+/** This environment as a team node: `agentd worker --accept-server-work`, run by the server. */
+export const AgentdTeamNodeState = Schema.Literals(["off", "waiting", "working", "failed"]);
+export type AgentdTeamNodeState = typeof AgentdTeamNodeState.Type;
+
+export const AgentdTeamNodeStatus = Schema.Struct({
+  on: Schema.Boolean,
+  tool: Schema.NullOr(AgentdWorkerTool),
+  repo: Schema.NullOr(Schema.String),
+  state: AgentdTeamNodeState,
+  /** The task the node's worker leased, while working. */
+  task: Schema.NullOr(Schema.String),
+  /** What agentd said when the worker failed or ended. */
+  note: Schema.NullOr(Schema.String),
+  /** Installed agents among claude, codex and opencode. */
+  tools: Schema.Array(AgentdWorkerTool),
+});
+export type AgentdTeamNodeStatus = typeof AgentdTeamNodeStatus.Type;
+
+export const AgentdTeamNodeInput = Schema.Struct({
+  on: Schema.Boolean,
+  tool: AgentdWorkerTool,
+  repo: AbsolutePath,
+  /** A worker enrolment ticket, if agentd needs one; goes to agentd's stdin only. */
+  ticket: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(256))),
+});
+export type AgentdTeamNodeInput = typeof AgentdTeamNodeInput.Type;

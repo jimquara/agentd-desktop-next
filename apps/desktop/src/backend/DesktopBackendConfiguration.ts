@@ -21,6 +21,7 @@ import * as SynchronizedRef from "effect/SynchronizedRef";
 import serverPackageJson from "../../../server/package.json" with { type: "json" };
 
 import * as AgentdBinary from "./agentdBinary.ts";
+import * as AgentdInstall from "./agentdInstall.ts";
 import * as DesktopBackendManager from "./DesktopBackendManager.ts";
 import * as DesktopCliShim from "../app/DesktopCliShim.ts";
 import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
@@ -579,6 +580,7 @@ const resolvePrimaryStartConfig = Effect.fn("desktop.backendConfiguration.resolv
           onNone: () => ({}),
           onSome: (agentdBin) => ({ [AgentdBinary.AGENTD_BIN_ENV]: agentdBin }),
         }),
+        [AgentdInstall.AGENTD_INSTALL_RECORD_ENV]: AgentdInstall.installRecordPath(environment),
       },
       extendEnv: true,
       bootstrap,

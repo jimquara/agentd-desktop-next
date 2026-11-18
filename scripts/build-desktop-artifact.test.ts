@@ -800,11 +800,16 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       yield* fs.makeDirectory(distDir, { recursive: true });
       yield* fs.writeFileString(path.join(distDir, "agentd-windows-arm64.exe"), "win-arm64");
       yield* fs.writeFileString(path.join(distDir, "agentd-linux-amd64"), "linux-amd64");
+      yield* fs.writeFileString(path.join(distDir, "SKILL.md"), "setup skill");
+      yield* fs.writeFileString(path.join(distDir, "SKILL-agentd.md"), "agentd skill");
       const sha = (text: string) => NodeCrypto.createHash("sha256").update(text).digest("hex");
-      yield* fs.writeFileString(
-        path.join(distDir, "SHA256SUMS"),
-        `${sha("win-arm64")}  agentd-windows-arm64.exe\n${"0".repeat(64)}  agentd-linux-amd64\n`,
-      );
+      const sums = (skill: string) =>
+        fs.writeFileString(
+          path.join(distDir, "SHA256SUMS"),
+          `${sha("win-arm64")}  agentd-windows-arm64.exe\n${"0".repeat(64)}  agentd-linux-amd64\n` +
+            `${sha("setup skill")}  SKILL.md\n${sha(skill)}  SKILL-agentd.md\n`,
+        );
+      yield* sums("agentd skill");
       const stage = (env: Record<string, string>, platform: "win" | "linux") =>
         stageAgentdCli({
           stageResourcesDir,
@@ -821,10 +826,19 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         yield* fs.readFileString(path.join(stageResourcesDir, "agentd/agentd.exe")),
         "win-arm64",
       );
+      assert.equal(
+        yield* fs.readFileString(path.join(stageResourcesDir, "agentd/SKILL-agentd.md")),
+        "agentd skill",
+      );
 
       const error = yield* stage({ AGENTD_DIST_DIR: distDir }, "linux").pipe(Effect.flip);
       assert.instanceOf(error, AgentdCliStageError);
       assert.equal(error.asset, "agentd-linux-amd64");
+
+      yield* sums("another skill");
+      const skillError = yield* stage({ AGENTD_DIST_DIR: distDir }, "win").pipe(Effect.flip);
+      assert.instanceOf(skillError, AgentdCliStageError);
+      assert.equal(skillError.asset, "SKILL-agentd.md");
     }),
   );
 

@@ -6,6 +6,7 @@ import {
   AgentdHandoffListJson,
   AgentdHandoffShowJson,
   AgentdInboxListJson,
+  AgentdInstallRecord,
   AgentdNode,
   AgentdNotFoundError,
   AgentdUserListJson,
@@ -72,6 +73,10 @@ export class AgentdBridge extends Context.Service<
     readonly taskOthers: (
       input: AgentdTaskOthersInput,
     ) => Effect.Effect<ReadonlyArray<AgentdTaskOther>>;
+    /** agentd's path, for the team node's long-lived worker. */
+    readonly binary: Effect.Effect<string, AgentdError>;
+    readonly enrolWorker: (server: string, ticket: string) => Effect.Effect<void, AgentdError>;
+    readonly foreground: (minutes: number) => Effect.Effect<void, AgentdError>;
   }
 >()("t3/agentd/AgentdBridge") {}
 
@@ -118,6 +123,7 @@ const decodeUsers = decodeJson(AgentdUserListJson);
 const decodeNodes = decodeJson(Schema.Array(AgentdNode));
 const decodeWho = decodeJson(AgentdWhoJson);
 const isDefaultWorker = Schema.is(AgentdWorkerTool);
+const decodeInstallRecord = Schema.decodeEffect(Schema.fromJsonString(AgentdInstallRecord));
 
 const isArgumentError = Schema.is(AgentdArgumentError);
 
@@ -220,7 +226,15 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
           Effect.orElseSucceed(() => null),
         )
       : null;
-    return { ...status, defaultWorker };
+    // The desktop app's last pass installing agentd for the terminal and agents, when it ran one.
+    const recordPath = env.AGENTD_DESKTOP_INSTALL_RECORD?.trim();
+    const install = recordPath
+      ? yield* fs.readFileString(recordPath).pipe(
+          Effect.flatMap(decodeInstallRecord),
+          Effect.orElseSucceed(() => null),
+        )
+      : null;
+    return { ...status, defaultWorker, binary: yield* binary, install };
   }).pipe(Effect.withSpan("AgentdBridge.status"));
 
   // The first read fails the stream; a later failed read keeps the last list until agentd answers.
@@ -445,6 +459,15 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
       return { output: (yield* run(argv, { stdin: `${ticket[0]}\n` })).trim() };
     }),
     taskOthers,
+    binary,
+    enrolWorker: Effect.fn("AgentdBridge.enrolWorker")(function* (server, ticket) {
+      const argv = yield* args(() => agentdArgs.enrolWorker(server));
+      const checked = yield* args(() => [agentdTicket(ticket)]);
+      yield* run(argv, { stdin: `${checked[0]}\n` });
+    }),
+    foreground: Effect.fn("AgentdBridge.foreground")(function* (minutes) {
+      yield* run(agentdArgs.foreground(minutes));
+    }),
   });
 });
 
