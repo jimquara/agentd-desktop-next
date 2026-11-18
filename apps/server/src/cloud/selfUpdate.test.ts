@@ -2,6 +2,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { expect, it } from "@effect/vitest";
 import type { ManagedPolicyDocument } from "@t3tools/contracts";
 import * as HostProcess from "@t3tools/shared/HostProcess";
+import * as ConfigProvider from "effect/ConfigProvider";
 import * as Deferred from "effect/Deferred";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
@@ -35,6 +36,7 @@ interface HarnessOptions {
   readonly requestUpdate?: ServiceLauncherClient.ServiceLauncherClient["Service"]["requestUpdate"];
   readonly desktopAppUpdate?: DesktopAppUpdate.DesktopAppUpdate["Service"];
   readonly policy?: ManagedPolicyDocument;
+  readonly releaseBaseUrl?: string | null;
 }
 
 const archiveBytes = new TextEncoder().encode("not really a tarball");
@@ -167,9 +169,20 @@ const makeHarness = Effect.fn("test.make_self_update_harness")(function* (
     Effect.provideService(HostProcess.Platform, "linux"),
     Effect.provideService(HostProcess.Architecture, "x64"),
     Effect.provide(
-      Layer.merge(
+      Layer.mergeAll(
         ServerConfig.layer({ ...config, mode: options.mode ?? "web" }),
         ManagedPolicy.layerTest(options.policy),
+        ConfigProvider.layer(
+          ConfigProvider.fromEnv({
+            env:
+              options.releaseBaseUrl === null
+                ? {}
+                : {
+                    T3CODE_RELEASE_BASE_URL:
+                      options.releaseBaseUrl ?? "https://releases.example/download",
+                  },
+          }),
+        ),
       ),
     ),
   );
@@ -252,6 +265,16 @@ it.layer(NodeServices.layer)("server self update", (it) => {
         (yield* desktop.selfUpdate.update({ targetVersion: "1.1.0" }).pipe(Effect.flip)).reason,
       ).toContain("desktop app");
       expect([...web.order, ...desktop.order]).toEqual([]);
+    }),
+  );
+
+  it.effect("refuses before staging when this build has no release source", () =>
+    Effect.gen(function* () {
+      const { selfUpdate, order, urls } = yield* makeHarness({ releaseBaseUrl: null });
+      expect((yield* selfUpdate.update({ targetVersion: "1.1.0" }).pipe(Effect.flip)).reason).toBe(
+        "Updates are not configured for this build. Set T3CODE_RELEASE_BASE_URL to a release mirror to enable them.",
+      );
+      expect([...order, ...urls]).toEqual([]);
     }),
   );
 

@@ -98,6 +98,8 @@ function commandArgs(command: ChildProcess.Command): ReadonlyArray<string> {
 }
 
 const ARCHIVE = { archiveVersion: "1.2.3-preview.20260911.4" } as const;
+// Fake runtimes exec `node`, which may live outside sh's default PATH.
+const HOST_PATH = process.env.PATH ?? "";
 
 // Emulates `t3 serve`: it takes the home owner lock at startup, then binds
 // once a second server has tried the same home (or after 2s), so a concurrent
@@ -298,12 +300,32 @@ describe("ssh tunnel scripts", () => {
     );
   });
 
+  const MIRROR = "https://mirror.example/t3code";
   it.each([
-    { host: "Darwin x86_64", system: "Darwin", machine: "x86_64", downloads: false },
-    { host: "Darwin arm64", system: "Darwin", machine: "arm64", downloads: true },
+    {
+      host: "Darwin x86_64",
+      system: "Darwin",
+      machine: "x86_64",
+      releaseBaseUrl: MIRROR,
+      refusal: "has no t3 release archive.",
+    },
+    {
+      host: "Darwin arm64 without a release source",
+      system: "Darwin",
+      machine: "arm64",
+      releaseBaseUrl: null,
+      refusal: "This build has no t3 release source",
+    },
+    {
+      host: "Darwin arm64",
+      system: "Darwin",
+      machine: "arm64",
+      releaseBaseUrl: MIRROR,
+      refusal: undefined,
+    },
   ])(
     "only downloads a release archive the host can run: $host",
-    ({ system, machine, downloads }) => {
+    ({ system, machine, releaseBaseUrl, refusal }) => {
       const root = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "t3-ssh-runner-"));
       try {
         const bin = NodePath.join(root, "bin");
@@ -320,20 +342,23 @@ describe("ssh tunnel scripts", () => {
           { mode: 0o755 },
         );
         const runner = NodePath.join(root, "run-t3.sh");
-        NodeFS.writeFileSync(runner, SshTunnel.buildRemoteT3RunnerScript(ARCHIVE));
+        NodeFS.writeFileSync(
+          runner,
+          SshTunnel.buildRemoteT3RunnerScript({ ...ARCHIVE, releaseBaseUrl }),
+        );
         const result = NodeChildProcess.spawnSync("sh", [runner, "--version"], {
           encoding: "utf8",
           env: { HOME: NodePath.join(root, "home"), PATH: `${bin}:${process.env.PATH ?? ""}` },
         });
         assert.notEqual(result.status, 0);
-        if (downloads) {
+        if (refusal === undefined) {
           assert.include(result.stderr, "download attempt");
           // A bare curl error does not tell the user that t3 itself could not be downloaded.
           assert.include(result.stderr, ARCHIVE.archiveVersion);
-          assert.include(result.stderr, "https://github.com/pingdotgg/t3code/releases/download");
+          assert.include(result.stderr, MIRROR);
         } else {
           assert.notInclude(result.stderr, "download attempt");
-          assert.include(result.stderr, "has no t3 release archive.");
+          assert.include(result.stderr, refusal);
         }
       } finally {
         NodeFS.rmSync(root, { recursive: true, force: true });
@@ -393,7 +418,13 @@ describe("ssh tunnel scripts", () => {
         { mode: 0o755 },
       );
       const runner = NodePath.join(root, "run-t3.sh");
-      NodeFS.writeFileSync(runner, SshTunnel.buildRemoteT3RunnerScript(ARCHIVE));
+      NodeFS.writeFileSync(
+        runner,
+        SshTunnel.buildRemoteT3RunnerScript({
+          ...ARCHIVE,
+          releaseBaseUrl: "https://mirror.example",
+        }),
+      );
       const result = NodeChildProcess.spawnSync(NodePath.join(bin, "sh"), [runner, "--version"], {
         encoding: "utf8",
         env: { HOME: home, PATH: bin },
@@ -1506,7 +1537,8 @@ const canBind = (port) =>
   const runScript = (home: string, args: ReadonlyArray<string>) =>
     Effect.gen(function* () {
       const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-      const child = yield* spawner.spawn(ChildProcess.make("sh", args, { env: { HOME: home } }));
+      const env = { HOME: home, PATH: HOST_PATH };
+      const child = yield* spawner.spawn(ChildProcess.make("sh", args, { env }));
       const collect = (stream: Stream.Stream<Uint8Array, PlatformError.PlatformError>) =>
         stream.pipe(Stream.decodeText(), Stream.mkString);
       const [stdout, stderr, exitCode] = yield* Effect.all(

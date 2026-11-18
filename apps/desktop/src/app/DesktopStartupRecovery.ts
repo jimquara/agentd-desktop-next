@@ -20,7 +20,6 @@ import * as DesktopEnvironment from "./DesktopEnvironment.ts";
 import * as DesktopObservability from "./DesktopObservability.ts";
 import * as DesktopState from "./DesktopState.ts";
 
-const RELEASES_URL = "https://github.com/pingdotgg/t3code/releases";
 const LAST_STARTED_VERSION_FILE = "desktop-last-started-version";
 // Buttons are plain links to this host; will-navigate cancels them and runs the action.
 const ACTION_ORIGIN = "https://startup-recovery.invalid";
@@ -37,7 +36,7 @@ export type StartupRecoveryOffer =
   | { readonly _tag: "Releases" }
   | { readonly _tag: "ManagedPolicy" };
 
-const STARTUP_RECOVERY_ACTIONS = ["update", "reinstall", "releases", "copy", "quit"] as const;
+const STARTUP_RECOVERY_ACTIONS = ["update", "copy", "quit"] as const;
 type StartupRecoveryAction = (typeof STARTUP_RECOVERY_ACTIONS)[number];
 
 /** Prefer a newer build, then the last build that started on this machine, then the releases page. */
@@ -113,21 +112,15 @@ function describeOffer(offer: StartupRecoveryOffer): { text: string; action: str
     case "Reinstall":
       return {
         text: m(
-          msg(
-            "Version {version} started correctly on this computer. Download it and install it to go back.",
-          ),
+          msg("Version {version} started correctly on this computer. Reinstall it to go back."),
           { version: offer.version },
         ),
-        action: actionLink(
-          "reinstall",
-          m(msg("Download {version}"), { version: offer.version }),
-          true,
-        ),
+        action: "",
       };
     case "Releases":
       return {
-        text: m(msg("Get a different version from the releases page.")),
-        action: actionLink("releases", m(msg("Open releases")), true),
+        text: m(msg("Reinstall T3 Code from the copy you installed it from.")),
+        action: "",
       };
     case "ManagedPolicy":
       return {
@@ -255,14 +248,6 @@ export const listen: Effect.Effect<
         yield* updates.installPrepared(downloadedVersion);
         return;
       }
-      case "reinstall":
-        if (current._tag === "Reinstall") {
-          yield* electronShell.openExternal(`${RELEASES_URL}/tag/v${current.version}`);
-        }
-        return;
-      case "releases":
-        yield* electronShell.openExternal(RELEASES_URL);
-        return;
       case "copy": {
         const failure = yield* Ref.get(failureRef);
         if (Option.isNone(failure)) return;
