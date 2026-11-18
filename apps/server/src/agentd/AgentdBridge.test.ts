@@ -126,6 +126,8 @@ describe("AgentdBridge", () => {
         if (key === "version") return Effect.succeed(output("agentd v0.1.13 0d0b360a58c0\n"));
         // doctor exits 1 when a check fails and still prints its report.
         if (key === "doctor --json") return Effect.succeed(output(DOCTOR_JSON, 1));
+        if (key === "config get dispatch.default_tool")
+          return Effect.succeed(output("opencode\r\n"));
         if (key === "handoff list --json") return Effect.succeed(output(LIST_JSON));
         if (key === "handoff show hof-a6e5f4e329 --json") return Effect.succeed(output(SHOW_JSON));
         return Effect.die(`unexpected agentd ${key}`);
@@ -135,6 +137,7 @@ describe("AgentdBridge", () => {
         version: "agentd v0.1.13 0d0b360a58c0",
         ok: true,
         setUp: true,
+        defaultWorker: "opencode",
         checks: [
           { id: "binary", status: "pass", detail: "agentd v0.1.13 0d0b360a58c0", fix: null },
           {

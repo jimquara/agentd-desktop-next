@@ -171,6 +171,7 @@ export const AgentdStatus = Schema.Struct({
   version: Schema.String,
   ok: Schema.Boolean,
   setUp: Schema.Boolean,
+  defaultWorker: Schema.optionalKey(Schema.NullOr(AgentdWorkerTool)),
   checks: Schema.Array(AgentdDoctorCheck),
 });
 export type AgentdStatus = typeof AgentdStatus.Type;

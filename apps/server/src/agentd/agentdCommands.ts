@@ -61,6 +61,7 @@ export function agentdTicket(value: string): string {
 export const agentdArgs = {
   version: () => ["version"],
   doctor: () => ["doctor", "--json"],
+  defaultWorker: () => ["config", "get", "dispatch.default_tool"],
   list: () => ["handoff", "list", "--json"],
   show: (id: string) => ["handoff", "show", handoffId(id), "--json"],
   approvals: () => ["approval", "list", "--state", "pending", "--json"],
