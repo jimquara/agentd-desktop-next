@@ -27,6 +27,8 @@ export const AgentdError = Schema.Union([AgentdNotFoundError, AgentdCommandError
 export type AgentdError = typeof AgentdError.Type;
 
 const NullableString = Schema.optionalKey(Schema.NullOr(Schema.String));
+const NullableNumber = Schema.optionalKey(Schema.NullOr(Schema.Number));
+const AgentdCloudModelAccess = Schema.Literals(["libraos", "byok"]);
 
 export const AgentdDoctorJson = Schema.Struct({
   ok: Schema.optionalKey(Schema.Boolean),
@@ -57,6 +59,7 @@ export const AgentdHandoffListJsonRow = Schema.Struct({
   issue: NullableString,
   updated: NullableString,
   version: Schema.optionalKey(Schema.Number),
+  cloud_usd: NullableNumber,
 });
 export type AgentdHandoffListJsonRow = typeof AgentdHandoffListJsonRow.Type;
 
@@ -66,7 +69,9 @@ export const AgentdHandoffShowJson = Schema.Struct({
   id: Schema.String,
   state: Schema.String,
   title: NullableString,
-  body: Schema.optionalKey(Schema.NullOr(Schema.Struct({ goal: NullableString }))),
+  body: Schema.optionalKey(
+    Schema.NullOr(Schema.Struct({ goal: NullableString, model_access: NullableString })),
+  ),
   accept: Schema.optionalKey(Schema.NullOr(Schema.Array(Schema.String))),
   check_cmd: NullableString,
   verdict: Schema.optionalKey(
@@ -108,6 +113,18 @@ export const AgentdHandoffShowJson = Schema.Struct({
   project: NullableString,
   created: NullableString,
   updated: NullableString,
+  cloud: Schema.optionalKey(
+    Schema.NullOr(
+      Schema.Struct({
+        state: NullableString,
+        worker_usd: NullableNumber,
+        inference_usd: NullableNumber,
+        total_usd: NullableNumber,
+        note: NullableString,
+        result: NullableString,
+      }),
+    ),
+  ),
 });
 export type AgentdHandoffShowJson = typeof AgentdHandoffShowJson.Type;
 
@@ -156,10 +173,18 @@ export const AgentdWhoJson = Schema.Struct({
           path: NullableString,
           resource: NullableString,
           since: NullableString,
+          handoff: NullableString,
+          issue: NullableString,
+          activity: NullableString,
+          state: NullableString,
+          via: NullableString,
         }),
       ),
     ),
   ),
+  resource: NullableString,
+  server: NullableString,
+  server_note: NullableString,
 });
 
 export const AgentdDoctorCheck = Schema.Struct({
@@ -219,6 +244,8 @@ export const AgentdTaskRow = Schema.Struct({
   started: Schema.NullOr(Schema.String),
   branch: Schema.NullOr(Schema.String),
   updated: Schema.NullOr(Schema.String),
+  cloudState: NullableString,
+  cloudUsd: NullableNumber,
 });
 export type AgentdTaskRow = typeof AgentdTaskRow.Type;
 
@@ -251,6 +278,15 @@ export const AgentdTask = Schema.Struct({
   hasLog: Schema.Boolean,
   started: Schema.NullOr(Schema.String),
   updated: Schema.NullOr(Schema.String),
+  cloud: Schema.optionalKey(
+    Schema.Struct({
+      state: Schema.String,
+      modelAccess: Schema.NullOr(AgentdCloudModelAccess),
+      workerUsd: Schema.NullOr(Schema.Number),
+      inferenceUsd: Schema.NullOr(Schema.Number),
+      totalUsd: Schema.NullOr(Schema.Number),
+    }),
+  ),
 });
 export type AgentdTask = typeof AgentdTask.Type;
 
@@ -338,6 +374,7 @@ export const AgentdStartTaskInput = Schema.Struct({
   ),
   cwd: AbsolutePath,
   issue: Schema.NullOr(IssueRef),
+  cloud: Schema.optionalKey(Schema.Never),
 });
 export type AgentdStartTaskInput = typeof AgentdStartTaskInput.Type;
 
@@ -372,6 +409,52 @@ export type AgentdJoinTeamInput = typeof AgentdJoinTeamInput.Type;
 export const AgentdCommandOutput = Schema.Struct({ output: Schema.String });
 export type AgentdCommandOutput = typeof AgentdCommandOutput.Type;
 
+export const AgentdCloudKeyFile = AbsolutePath.check(Schema.isPattern(/^[^\0\r\n]{2,4096}$/));
+export const AgentdCloudBudget = Schema.String.check(
+  Schema.isPattern(/^(?:(?!0+m)[0-9]{1,4}m,)?\$(?!0+(?:\.0{1,2})?$)[0-9]{1,4}(?:\.[0-9]{1,2})?$/),
+);
+export const AgentdCloudTaskInput = Schema.Struct({
+  goal: AgentdStartTaskInput.fields.goal,
+  accept: AgentdStartTaskInput.fields.accept,
+  check: AgentdStartTaskInput.fields.check,
+  cwd: AbsolutePath,
+  cloud: Schema.Struct({
+    budget: AgentdCloudBudget,
+    modelAccess: AgentdCloudModelAccess,
+    anthropicKeyFile: Schema.optionalKey(AgentdCloudKeyFile),
+    openaiKeyFile: Schema.optionalKey(AgentdCloudKeyFile),
+  }),
+});
+export type AgentdCloudTaskInput = typeof AgentdCloudTaskInput.Type;
+
+export const AgentdCloudSetupInput = Schema.Struct({
+  cwd: AbsolutePath,
+  includeBalance: Schema.Boolean,
+});
+export type AgentdCloudSetupInput = typeof AgentdCloudSetupInput.Type;
+export const AgentdCloudSetup = Schema.Struct({
+  supported: Schema.Boolean,
+  project: Schema.NullOr(Schema.String),
+  balanceUsd: Schema.NullOr(Schema.Number),
+  balanceText: Schema.NullOr(Schema.String),
+  defaultBudget: Schema.NullOr(AgentdCloudBudget),
+  problem: Schema.NullOr(Schema.Literals(["setup", "credit", "repository", "balance"])),
+});
+export type AgentdCloudSetup = typeof AgentdCloudSetup.Type;
+
+export const AgentdTaskOthersInput = Schema.Struct({
+  cwd: AbsolutePath,
+  issue: Schema.NullOr(IssueRef),
+});
+export type AgentdTaskOthersInput = typeof AgentdTaskOthersInput.Type;
+
+export const AgentdTaskOther = Schema.Struct({
+  person: Schema.NullOr(Schema.String),
+  work: Schema.NullOr(Schema.String),
+  activity: Schema.NullOr(Schema.String),
+  paths: Schema.Array(Schema.String),
+});
+export type AgentdTaskOther = typeof AgentdTaskOther.Type;
 /** This environment as a team node: `agentd worker --accept-server-work`, run by the server. */
 export const AgentdTeamNodeState = Schema.Literals(["off", "waiting", "working", "failed"]);
 export type AgentdTeamNodeState = typeof AgentdTeamNodeState.Type;

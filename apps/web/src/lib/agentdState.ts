@@ -2,6 +2,7 @@ import { createAgentdEnvironmentAtoms } from "@t3tools/client-runtime/state/agen
 import {
   AuthOrchestrationReadScope,
   type AgentdHandoffId,
+  type AgentdTaskOthersInput,
   type EnvironmentId,
 } from "@t3tools/contracts";
 import { useMessages } from "gt-react";
@@ -120,4 +121,28 @@ export function useAgentdCommands() {
     joinTeam: useAtomCommand(agentdEnvironment.joinTeam),
     setTeamNode: useAtomCommand(agentdEnvironment.setTeamNode),
   };
+}
+
+export function useAgentdCloudSetup(
+  cwd: string | null,
+  target: EnvironmentId,
+  includeBalance: boolean,
+) {
+  const environmentId = useAgentdEnvironment(target);
+  return useEnvironmentQuery(
+    environmentId === null || cwd === null
+      ? null
+      : agentdEnvironment.cloudSetup({ environmentId, input: { cwd, includeBalance } }),
+    useMessages(),
+  );
+}
+
+export function useAgentdTaskOthers(input: AgentdTaskOthersInput | null, target: EnvironmentId) {
+  const environmentId = useAgentdEnvironment(target);
+  return useEnvironmentQuery(
+    environmentId === null || input === null
+      ? null
+      : agentdEnvironment.taskOthers({ environmentId, input }),
+    useMessages(),
+  );
 }

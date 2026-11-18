@@ -233,6 +233,8 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.agentdApprovals]: AuthOrchestrationReadScope,
   [WS_METHODS.agentdInbox]: AuthOrchestrationReadScope,
   [WS_METHODS.agentdPeople]: AuthOrchestrationReadScope,
+  [WS_METHODS.agentdCloudSetup]: AuthOrchestrationReadScope,
+  [WS_METHODS.agentdTaskOthers]: AuthOrchestrationReadScope,
   // Using the app declares the person busy, so the team server leases this node nothing.
   [WS_METHODS.agentdSubscribeTeamNode]: AuthOrchestrationReadScope,
   [WS_METHODS.agentdTeamNodeForeground]: AuthOrchestrationReadScope,

@@ -396,6 +396,11 @@ import {
   AgentdTaskRow,
   AgentdEula,
   AgentdSetupState,
+  AgentdCloudSetup,
+  AgentdCloudSetupInput,
+  AgentdCloudTaskInput,
+  AgentdTaskOther,
+  AgentdTaskOthersInput,
 } from "./agentd.ts";
 import {
   UsageLimitSourceError,
@@ -702,6 +707,8 @@ export const WS_METHODS = {
   agentdPeople: "agentd.people",
   agentdConnectAgent: "agentd.connectAgent",
   agentdJoinTeam: "agentd.joinTeam",
+  agentdCloudSetup: "agentd.cloudSetup",
+  agentdTaskOthers: "agentd.taskOthers",
   agentdSubscribeTeamNode: "agentd.subscribeTeamNode",
   agentdSetTeamNode: "agentd.setTeamNode",
   agentdTeamNodeForeground: "agentd.teamNodeForeground",
@@ -2315,7 +2322,7 @@ const WsAgentdStopTaskRpc = Rpc.make(WS_METHODS.agentdStopTask, {
 });
 
 const WsAgentdStartTaskRpc = Rpc.make(WS_METHODS.agentdStartTask, {
-  payload: AgentdStartTaskInput,
+  payload: Schema.Union([AgentdCloudTaskInput, AgentdStartTaskInput]),
   success: AgentdStartTaskResult,
   error: AgentdRpcError,
 });
@@ -2347,6 +2354,18 @@ const WsAgentdConnectAgentRpc = Rpc.make(WS_METHODS.agentdConnectAgent, {
 const WsAgentdJoinTeamRpc = Rpc.make(WS_METHODS.agentdJoinTeam, {
   payload: AgentdJoinTeamInput,
   success: AgentdCommandOutput,
+  error: AgentdRpcError,
+});
+
+const WsAgentdCloudSetupRpc = Rpc.make(WS_METHODS.agentdCloudSetup, {
+  payload: AgentdCloudSetupInput,
+  success: AgentdCloudSetup,
+  error: AgentdRpcError,
+});
+
+const WsAgentdTaskOthersRpc = Rpc.make(WS_METHODS.agentdTaskOthers, {
+  payload: AgentdTaskOthersInput,
+  success: Schema.Array(AgentdTaskOther),
   error: AgentdRpcError,
 });
 
@@ -2616,6 +2635,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsAgentdPeopleRpc,
   WsAgentdConnectAgentRpc,
   WsAgentdJoinTeamRpc,
+  WsAgentdCloudSetupRpc,
+  WsAgentdTaskOthersRpc,
   WsAgentdSubscribeTeamNodeRpc,
   WsAgentdSetTeamNodeRpc,
   WsAgentdTeamNodeForegroundRpc,

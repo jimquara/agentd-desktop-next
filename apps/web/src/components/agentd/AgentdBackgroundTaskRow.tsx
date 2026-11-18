@@ -8,6 +8,7 @@ import { requestConfirmDialog } from "../../confirmDialog";
 import { agentdEnvironment, useAgentdCommands, useAgentdTask } from "../../lib/agentdState";
 import { tickTextContent } from "../../lib/tickTextContent";
 import { formatEnvironmentQueryError } from "../../state/query";
+import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { AgentdTaskOutput } from "./AgentdTaskOutput";
@@ -112,7 +113,7 @@ function FinishedTaskDetails({ task }: { readonly task: AgentdTask }) {
   );
 }
 
-function StopTaskButton(props: {
+export function StopTaskButton(props: {
   readonly id: string;
   readonly title: string;
   readonly environmentId: EnvironmentId;
@@ -165,17 +166,17 @@ function StopTaskButton(props: {
   );
 }
 
-export function AgentdBackgroundTaskRow(props: {
-  readonly row: AgentdTaskRow;
-  readonly environmentId: EnvironmentId;
-  readonly finished: boolean;
-}) {
-  const { row, environmentId, finished } = props;
-  const gt = useGT();
-  const resolve = useMessages();
+export function useAgentdTaskDetails(row: AgentdTaskRow, environmentId: EnvironmentId | null) {
   const { data, error, refresh } = useAgentdTask(row.id, environmentId);
   const task = data?.state === row.state ? data : null;
-  const snapshot = JSON.stringify([row.state, row.updated, row.workerState, row.workerRunning]);
+  const snapshot = JSON.stringify([
+    row.state,
+    row.updated,
+    row.workerState,
+    row.workerRunning,
+    row.cloudState,
+    row.cloudUsd,
+  ]);
   const lastSnapshot = useRef(data !== null && task === null ? null : snapshot);
 
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- refresh bridge-only fields when the live list changes for this task
@@ -185,21 +186,134 @@ export function AgentdBackgroundTaskRow(props: {
     refresh();
   }, [refresh, snapshot]);
 
+  return { task, error };
+}
+
+function CloudState({ state }: { readonly state: string | null }) {
+  switch (state) {
+    case "submitting":
+      return <T>Submitting</T>;
+    case "queued":
+      return <T>Queued</T>;
+    case "running":
+      return <T>Running</T>;
+    case "settling":
+      return <T>Settling</T>;
+    case "completed":
+      return <T>Completed</T>;
+    case "failed":
+      return <T>Failed</T>;
+    case "failed_verification":
+      return <T>Failed verification</T>;
+    case "cancelled":
+      return <T>Stopped</T>;
+    case "budget_exceeded":
+      return <T>Budget exceeded</T>;
+    default:
+      return state ?? <T>Status unavailable</T>;
+  }
+}
+
+export function AgentdCloudTaskSummary({
+  row,
+  task,
+}: {
+  readonly row: AgentdTaskRow;
+  readonly task: AgentdTask | null;
+}) {
+  const locale = useLocale();
+  const format = new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 4,
+  });
+  const cloud = task?.cloud;
+  const state = row.cloudState ?? cloud?.state ?? row.workerState;
+  const total = row.cloudUsd ?? cloud?.totalUsd;
+  const branch = task?.branch ?? row.branch;
+  return (
+    <>
+      <Badge variant="secondary">
+        <AgentdTaskLocation location="cloud" />
+      </Badge>
+      <span className="font-medium text-foreground">
+        <CloudState state={state} />
+      </span>
+      {cloud?.modelAccess === "byok" ? (
+        <span>
+          <T>Your API key</T>
+        </span>
+      ) : cloud?.modelAccess === "libraos" ? (
+        <span>LibraOS</span>
+      ) : null}
+      {cloud?.workerUsd != null ? (
+        <span>
+          <T>
+            Worker cost: <Var>{format.format(cloud.workerUsd)}</Var>
+          </T>
+        </span>
+      ) : null}
+      {cloud?.modelAccess === "byok" ? (
+        <span>
+          <T>Inference: billed by your provider</T>
+        </span>
+      ) : cloud?.inferenceUsd != null ? (
+        <span>
+          <T>
+            Inference: <Var>{format.format(cloud.inferenceUsd)}</Var>
+          </T>
+        </span>
+      ) : null}
+      {total != null ? (
+        <span>
+          <T>
+            Total (LibraOS): <Var>{format.format(total)}</Var>
+          </T>
+        </span>
+      ) : null}
+      {branch ? (
+        <span className="min-w-0 wrap-anywhere">
+          <T>
+            Branch: <Var>{branch}</Var>
+          </T>
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+export function AgentdBackgroundTaskRow(props: {
+  readonly row: AgentdTaskRow;
+  readonly environmentId: EnvironmentId;
+  readonly finished: boolean;
+}) {
+  const { row, environmentId, finished } = props;
+  const gt = useGT();
+  const resolve = useMessages();
+  const { task, error } = useAgentdTaskDetails(row, environmentId);
+
   const title = task?.goal?.trim() || row.title || gt("Untitled task");
   const worker = workerName(task?.workerTool ?? row.workerTool);
   const location = task?.runsOn ?? (row.runsOn === "cloud" ? row.runsOn : null);
+  const cloud = location === "cloud";
   return (
     <BackgroundTaskCard
       title={title}
       summary={
         <>
-          <span className="font-medium text-foreground">
-            {finished
-              ? finishedAgentdTaskLabel(row.state, task?.verdict ?? null, resolve)
-              : runningAgentdTaskLabel(row, task?.budgetState ?? null, resolve)}
-          </span>
-          {!finished ? <span>{worker ?? <T>Agent unknown</T>}</span> : null}
-          {location === null ? null : (
+          {cloud ? (
+            <AgentdCloudTaskSummary row={row} task={task} />
+          ) : (
+            <span className="font-medium text-foreground">
+              {finished
+                ? finishedAgentdTaskLabel(row.state, task?.verdict ?? null, resolve)
+                : runningAgentdTaskLabel(row, task?.budgetState ?? null, resolve)}
+            </span>
+          )}
+          {!finished && (!cloud || worker !== null) ? (
+            <span>{worker ?? <T>Agent unknown</T>}</span>
+          ) : null}
+          {location === null || cloud ? null : (
             <span>
               <AgentdTaskLocation location={location} />
             </span>
@@ -211,7 +325,7 @@ export function AgentdBackgroundTaskRow(props: {
               live={!finished}
             />
           ) : null}
-          {finished && task ? (
+          {finished && task && !cloud ? (
             <>
               <span className="min-w-0 wrap-anywhere">
                 {task.branch ? (
@@ -226,6 +340,9 @@ export function AgentdBackgroundTaskRow(props: {
                 <TaskCost task={task} />
               </span>
             </>
+          ) : null}
+          {cloud && task?.note ? (
+            <span className="basis-full wrap-anywhere text-destructive">{task.note}</span>
           ) : null}
         </>
       }

@@ -38,6 +38,8 @@ import { Label } from "../ui/label";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { Textarea } from "../ui/textarea";
 import { toastManager } from "../ui/toast";
+import { CloudWorkersSetupLink, StartTaskCloud, useStartTaskCloud } from "./StartTaskCloud";
+import { StartTaskOthers } from "./StartTaskOthers";
 import {
   conversationTaskDraft,
   EMPTY_TASK_FIELDS,
@@ -113,6 +115,7 @@ function StartTaskDialog({
   const thread = useQuietThreadShell(threadRef);
   const project = useProject(thread ? scopeProjectRef(environmentId, thread.projectId) : null);
   const cwd = thread?.worktreePath ?? project?.workspaceRoot ?? null;
+  const cloud = useStartTaskCloud(cwd, environmentId);
   const canStart = useCanStartTask(environmentId);
   const status = useAgentdStatus(environmentId);
   const git = useEnvironmentQuery(
@@ -167,7 +170,7 @@ function StartTaskDialog({
         ? gt("Enter a goal that does not begin with a dash or contain a NUL character.")
         : null;
   const checkReason =
-    validation.check === "required"
+    validation.check === "required" && !cloud.enabled
       ? gt("Enter a check command.")
       : validation.check === "invalid"
         ? gt("Enter a check command that does not begin with a dash or contain a NUL character.")
@@ -190,13 +193,15 @@ function StartTaskDialog({
     drafting ||
     offeredId !== null ||
     !canStart ||
-    directoryReason !== null ||
-    worker === null ||
+    (cloud.enabled
+      ? cloud.input === null
+      : directoryReason !== null ||
+        worker === null ||
+        budgetReason !== null ||
+        issueReason !== null) ||
     goalReason !== null ||
     checkReason !== null ||
-    budgetReason !== null ||
-    acceptReason !== null ||
-    issueReason !== null;
+    acceptReason !== null;
   const draftDisabled =
     thread === null ||
     threadRuntimeIsActive(thread.runtime) ||
@@ -238,26 +243,33 @@ function StartTaskDialog({
     }
   }
 
-  async function startCheckedTask(cwd: string, worker: AgentdWorkerTool) {
+  async function startCheckedTask(cwd: string, worker: AgentdWorkerTool | null) {
     const panelRef = rightPanelHostRef(threadRef);
-    const current = await refreshBranch({ environmentId, input: { cwd, localOnly: true } });
-    if (current._tag === "Failure") {
-      setStartError(
-        showFailure(
-          squashAtomCommandFailure(current),
-          gt("Could not check the working directory’s Git branch."),
-        ),
-      );
-      return;
+    if (!cloud.enabled) {
+      const current = await refreshBranch({ environmentId, input: { cwd, localOnly: true } });
+      if (current._tag === "Failure") {
+        setStartError(
+          showFailure(
+            squashAtomCommandFailure(current),
+            gt("Could not check the working directory’s Git branch."),
+          ),
+        );
+        return;
+      }
+      const reason = branchReason(taskBranchProblem(current.value), current.value.refName);
+      if (reason !== null) {
+        setStartError(reason);
+        return;
+      }
     }
-    const reason = branchReason(taskBranchProblem(current.value), current.value.refName);
-    if (reason !== null) {
-      setStartError(reason);
-      return;
-    }
+    const { goal, accept, check } = validation.input;
+    const input = cloud.enabled
+      ? cloud.input && { goal, accept, check: check || null, cwd, cloud: cloud.input }
+      : worker !== null && { ...validation.input, cwd, worker };
+    if (!input) return;
     const result = await startTask({
       environmentId,
-      input: { ...validation.input, cwd, worker },
+      input,
     });
     if (result._tag === "Failure") {
       setStartError(
@@ -281,7 +293,7 @@ function StartTaskDialog({
   }
 
   function submit() {
-    if (disabled || startingRef.current || cwd === null || worker === null) return;
+    if (disabled || startingRef.current || cwd === null) return;
     startingRef.current = true;
     setStarting(true);
     setStartError(null);
@@ -372,7 +384,16 @@ function StartTaskDialog({
               onChange={(event) => updateField("accept", event.target.value)}
             />
           </TaskField>
-          <TaskField label={gt("Check command")} id={checkProps.id} reason={checkReason}>
+          <TaskField
+            label={cloud.enabled ? gt("Check command (optional)") : gt("Check command")}
+            id={checkProps.id}
+            reason={
+              checkReason ??
+              (cloud.enabled && !validation.input.check
+                ? gt("Without a check command, you’ll need to accept the result yourself.")
+                : null)
+            }
+          >
             <Input
               {...checkProps}
               maxLength={TASK_TEXT_LIMIT}
@@ -380,56 +401,68 @@ function StartTaskDialog({
               onChange={(event) => updateField("check", event.target.value)}
             />
           </TaskField>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <TaskField label={gt("Worker")} id={workerProps.id} reason={workerReason}>
-              <Select
-                value={worker}
-                items={TASK_WORKERS}
-                disabled={workerProps.disabled}
-                onValueChange={(value) => updateField("worker", value)}
-              >
-                <SelectTrigger
-                  id={workerProps.id}
-                  aria-describedby={workerProps["aria-describedby"]}
+          <StartTaskCloud
+            cloud={cloud}
+            disabled={starting || drafting || offeredId !== null || !canStart}
+          />
+          {!cloud.enabled ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <TaskField label={gt("Worker")} id={workerProps.id} reason={workerReason}>
+                <Select
+                  value={worker}
+                  items={TASK_WORKERS}
+                  disabled={workerProps.disabled}
+                  onValueChange={(value) => updateField("worker", value)}
                 >
-                  <SelectValue placeholder={gt("Choose a worker")} />
-                </SelectTrigger>
-                <SelectPopup>
-                  {Object.entries(TASK_WORKERS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectPopup>
-              </Select>
-            </TaskField>
-            <TaskField label={gt("Budget")} id={budgetProps.id} reason={budgetReason}>
-              <Input
-                {...budgetProps}
-                maxLength={TASK_BUDGET_LIMIT}
-                placeholder="30m,$2"
-                value={fields.budget}
-                onChange={(event) => updateField("budget", event.target.value)}
-              />
-            </TaskField>
-          </div>
-          <TaskField label={gt("Working directory")} id={`${id}-cwd`} reason={directoryReason}>
+                  <SelectTrigger
+                    id={workerProps.id}
+                    aria-describedby={workerProps["aria-describedby"]}
+                  >
+                    <SelectValue placeholder={gt("Choose a worker")} />
+                  </SelectTrigger>
+                  <SelectPopup>
+                    {Object.entries(TASK_WORKERS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectPopup>
+                </Select>
+              </TaskField>
+              <TaskField label={gt("Budget")} id={budgetProps.id} reason={budgetReason}>
+                <Input
+                  {...budgetProps}
+                  maxLength={TASK_BUDGET_LIMIT}
+                  placeholder="30m,$2"
+                  value={fields.budget}
+                  onChange={(event) => updateField("budget", event.target.value)}
+                />
+              </TaskField>
+            </div>
+          ) : null}
+          <TaskField
+            label={gt("Working directory")}
+            id={`${id}-cwd`}
+            reason={cloud.enabled ? null : directoryReason}
+          >
             <Input
               id={`${id}-cwd`}
-              aria-describedby={directoryReason ? `${id}-cwd-reason` : undefined}
+              aria-describedby={!cloud.enabled && directoryReason ? `${id}-cwd-reason` : undefined}
               readOnly
               value={cwd ?? ""}
             />
           </TaskField>
-          <TaskField label={gt("Issue (optional)")} id={issueProps.id} reason={issueReason}>
-            <Input
-              {...issueProps}
-              maxLength={TASK_ISSUE_LIMIT}
-              placeholder="owner/repo#123"
-              value={fields.issue}
-              onChange={(event) => updateField("issue", event.target.value)}
-            />
-          </TaskField>
+          {!cloud.enabled ? (
+            <TaskField label={gt("Issue (optional)")} id={issueProps.id} reason={issueReason}>
+              <Input
+                {...issueProps}
+                maxLength={TASK_ISSUE_LIMIT}
+                placeholder="owner/repo#123"
+                value={fields.issue}
+                onChange={(event) => updateField("issue", event.target.value)}
+              />
+            </TaskField>
+          ) : null}
           {!canStart && (
             <p className="text-muted-foreground text-sm">
               <T>This connection cannot start AgentD tasks.</T>
@@ -441,12 +474,32 @@ function StartTaskDialog({
               className="space-y-1 rounded-lg border border-destructive/30 p-3 text-sm"
             >
               {offeredId !== null && (
-                <p>{gt("Task {taskId} was offered but did not start.", { taskId: offeredId })}</p>
+                <p>
+                  {cloud.enabled
+                    ? gt(
+                        "AgentD saved task {taskId}, but it didn’t start in Cloud Workers. Check Background tasks for updates before trying again.",
+                        { taskId: offeredId },
+                      )
+                    : gt("Task {taskId} was offered but did not start.", { taskId: offeredId })}
+                </p>
               )}
               <pre className="wrap-anywhere whitespace-pre-wrap">{startError}</pre>
+              {cloud.enabled &&
+              cloud.setup?.problem !== "setup" &&
+              /cloud configuration and account key file/.test(startError) ? (
+                <CloudWorkersSetupLink />
+              ) : null}
             </div>
           )}
         </DialogPanel>
+        <StartTaskOthers
+          environmentId={environmentId}
+          input={
+            cwd !== null && canStart && !drafting && issueReason === null && offeredId === null
+              ? { cwd, issue: validation.input.issue }
+              : null
+          }
+        />
         <DialogFooter>
           <Button type="button" variant="outline" disabled={starting} onClick={onClose}>
             {offeredId === null ? <T>Cancel</T> : <T>Close</T>}

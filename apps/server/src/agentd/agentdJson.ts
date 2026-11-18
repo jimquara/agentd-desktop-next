@@ -16,6 +16,8 @@ import type {
   AgentdWhoJson,
 } from "@t3tools/contracts";
 
+import { cloudJobNote } from "./agentdCloud.ts";
+
 const WORKER_TOOLS = new Set(["claude", "codex", "opencode"]);
 
 // agentd names a session after its tool: "codex-615065aa16".
@@ -96,6 +98,7 @@ export function agentdTaskRow(row: AgentdHandoffListJsonRow): AgentdTaskRow {
     started: null,
     branch: null,
     updated: nonEmpty(row.updated),
+    ...(cloudState === null ? {} : { cloudState, cloudUsd: row.cloud_usd ?? null }),
   };
 }
 
@@ -108,6 +111,8 @@ export function agentdTask(show: AgentdHandoffShowJson): AgentdTask {
   const goal = show.body?.goal ?? "";
   const verdict = show.verdict ?? null;
   const total = show.cost?.total ?? null;
+  const cloudState = nonEmpty(show.cloud?.state) ?? nonEmpty(show.cloud_state);
+  const modelAccess = nonEmpty(show.body?.model_access);
   return {
     id: show.id,
     title: nonEmpty(show.title) ?? goal,
@@ -132,11 +137,31 @@ export function agentdTask(show: AgentdHandoffShowJson): AgentdTask {
     budget: nonEmpty(show.budget),
     budgetState: nonEmpty(show.budget_state),
     branch: nonEmpty(show.worker_branch) ?? nonEmpty(show.lease_branch),
-    note: nonEmpty(show.worker_note) ?? nonEmpty(show.close_reason),
+    note:
+      cloudJobNote(show.cloud?.note) ??
+      cloudJobNote(show.cloud?.result) ??
+      nonEmpty(show.worker_note) ??
+      nonEmpty(show.close_reason),
     project: nonEmpty(show.project),
     hasLog: nonEmpty(show.worker_log) !== null,
     started: nonEmpty(show.created),
     updated: nonEmpty(show.updated),
+    ...(cloudState === null
+      ? {}
+      : {
+          cloud: {
+            state: cloudState,
+            modelAccess:
+              modelAccess === "byok"
+                ? "byok"
+                : modelAccess === null || modelAccess === "libraos"
+                  ? "libraos"
+                  : null,
+            workerUsd: show.cloud?.worker_usd ?? null,
+            inferenceUsd: show.cloud?.inference_usd ?? null,
+            totalUsd: show.cloud?.total_usd ?? null,
+          },
+        }),
   };
 }
 

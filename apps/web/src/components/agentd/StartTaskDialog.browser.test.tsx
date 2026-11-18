@@ -1,7 +1,13 @@
 import "~/index.css";
 
 import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environment";
-import { AgentdCommandError, type AgentdStartTaskResult, ThreadId } from "@t3tools/contracts";
+import {
+  AgentdCommandError,
+  type AgentdCloudSetup,
+  type AgentdStartTaskResult,
+  type AgentdTaskOther,
+  ThreadId,
+} from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
 import { AsyncResult } from "effect/reactivity";
 import { expect, it, vi } from "vite-plus/test";
@@ -19,6 +25,8 @@ const state = vi.hoisted(() => ({
   start: vi.fn(),
   refresh: vi.fn(),
   branch: "feature/export",
+  cloud: null as AgentdCloudSetup | null,
+  others: [] as AgentdTaskOther[],
 }));
 
 vi.mock("~/lib/agentdState", async () => {
@@ -27,6 +35,8 @@ vi.mock("~/lib/agentdState", async () => {
   return {
     agentdEnvironment: { startTask: { permissionAtom: () => allowed } },
     useAgentdStatus: () => ({ data: { defaultWorker: "opencode" } }),
+    useAgentdCloudSetup: (cwd: string | null) => ({ data: cwd ? state.cloud : null, error: null }),
+    useAgentdTaskOthers: () => ({ data: state.others, isPending: false, isSuccess: true }),
   };
 });
 vi.mock("~/state/entities", () => ({
@@ -52,6 +62,8 @@ const parentKey = scopedThreadKey(parentRef);
 
 function setup(branch: string) {
   state.branch = branch;
+  state.cloud = null;
+  state.others = [];
   state.start.mockReset();
   state.refresh
     .mockReset()
@@ -84,6 +96,7 @@ async function fillTask() {
 
 it("shows what is missing, displays a refusal in full, and opens the tasks pane on success", async () => {
   setup("feature/export");
+  state.others = [{ person: "Bob", work: "acme/app#42", activity: null, paths: ["src/export.ts"] }];
   const refusal = "Task refused: worker is not connected.\n  Run setup and try again.";
   state.start
     .mockResolvedValueOnce(
@@ -102,6 +115,9 @@ it("shows what is missing, displays a refusal in full, and opens the tasks pane 
   using _host = { [Symbol.dispose]: hostRightPanel(threadRef, parentRef) };
   const start = page.getByRole("button", { name: "Start", exact: true });
   await expect.element(start).toBeDisabled();
+  await expect
+    .element(page.getByRole("checkbox", { name: "Run in the cloud" }))
+    .not.toBeInTheDocument();
   await expect.element(page.getByText("Enter a goal.")).toBeVisible();
   await expect.element(page.getByText("Enter a check command.")).toBeVisible();
   await expect.element(page.getByText("Enter a budget.")).toBeVisible();
@@ -113,6 +129,9 @@ it("shows what is missing, displays a refusal in full, and opens the tasks pane 
     .toHaveValue("/repo/worktrees/export");
 
   await fillTask();
+  const notice = page.getByRole("status").filter({ hasText: "Others are working here" });
+  await expect.element(notice.getByText("Bob: acme/app#42")).toBeVisible();
+  await expect.element(notice.getByText("src/export.ts")).toBeVisible();
   await start.click();
   await expect.element(page.getByRole("alert")).toBeVisible();
   expect(page.getByRole("alert").element().textContent).toBe(refusal);
@@ -138,6 +157,72 @@ it("shows what is missing, displays a refusal in full, and opens the tasks pane 
       issue: null,
     },
   });
+});
+
+it("starts a cloud task with a dollar cap and a provider key path, without the local branch gate", async () => {
+  setup("main");
+  state.cloud = {
+    supported: true,
+    project: "fork-owner/export",
+    balanceUsd: 20,
+    balanceText: null,
+    defaultBudget: null,
+    problem: null,
+  };
+  state.start.mockResolvedValue(
+    AsyncResult.success({ id: "hof-123abc", started: true, note: null }),
+  );
+  await using _screen = await renderDialog();
+  const option = page.getByRole("checkbox", { name: "Run in the cloud" });
+  const start = page.getByRole("button", { name: "Start", exact: true });
+  await expect.element(option).not.toBeChecked();
+  await option.click();
+  await userEvent.fill(page.getByLabelText("Goal"), "Fix export");
+  await expect.element(page.getByText("Available LibraOS credit: $20.00")).toBeVisible();
+  await expect
+    .element(page.getByText("Worker time and inference are both billed to LibraOS credits."))
+    .toBeVisible();
+  await expect.element(start).toBeDisabled();
+  await userEvent.fill(page.getByLabelText("Dollar cap (USD)"), "2.50");
+  await expect.element(start).toBeEnabled();
+
+  await page.getByRole("combobox", { name: "Model access" }).click();
+  await page.getByRole("option", { name: "Your API key" }).click();
+  const keyPath = page.getByLabelText("Anthropic key file path");
+  await userEvent.fill(keyPath, "sk-example-not-a-path");
+  await expect.element(start).toBeDisabled();
+  await userEvent.fill(keyPath, "/private/key file");
+  await expect.element(page.getByText(/Your provider bills inference separately/)).toBeVisible();
+  await start.click();
+  await expect.element(page.getByText("Started task hof-123abc.")).toBeVisible();
+  expect(state.refresh).not.toHaveBeenCalled();
+  expect(state.start).toHaveBeenCalledExactlyOnceWith({
+    environmentId: thread.environmentId,
+    input: {
+      cwd: "/repo/worktrees/export",
+      goal: "Fix export",
+      accept: [],
+      check: null,
+      cloud: { budget: "$2.50", modelAccess: "byok", anthropicKeyFile: "/private/key file" },
+    },
+  });
+});
+
+it("turns off cloud start if the checkout’s origin is not a GitHub repository", async () => {
+  setup("feature/export");
+  state.cloud = {
+    supported: true,
+    project: null,
+    balanceUsd: null,
+    balanceText: null,
+    defaultBudget: null,
+    problem: null,
+  };
+  await using _screen = await renderDialog();
+  await expect.element(page.getByRole("checkbox", { name: "Run in the cloud" })).toBeDisabled();
+  await expect
+    .element(page.getByText("Cloud Workers require a GitHub repository as the checkout’s origin."))
+    .toBeVisible();
 });
 
 it("does not contact the worker bridge when the branch changes to main before Start", async () => {
