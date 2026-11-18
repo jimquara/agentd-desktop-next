@@ -21,6 +21,9 @@ last task, as the task rules say.
   differently; changing it needs a check against a real ChatGPT account, not a rename.
 - `apps/server/src/provider/CodexChatGptAuth.ts` `agent_name_hint: "T3 Code"`: part of OpenAI's dynamic agent
   client registration, same reason.
+- `apps/server/src/vcs/GitVcsDriver.ts` `GIT_AUTHOR_NAME`/`GIT_COMMITTER_NAME`: author of checkpoint commits on hidden
+  refs, which no one reads; left as is so this change does not touch the git driver (its test file has 27 failures on
+  this host on `main` too, git-environment related).
 - `apps/server/src/triage/triagePrompt.ts` `TRIAGE_PLAYBOOK`: must stay byte-identical to
   `.github/triage/PLAYBOOK.md` (upstream's triage playbook, which files issues in its repository).
 - `apps/desktop/src/app/DesktopUserData.ts`, `DesktopLegacyLocalStorage.ts`: earlier installs' folder names, #66's files.
@@ -41,6 +44,8 @@ Only text changed, plus the name `resolveCommandPath` looks up on PATH, which al
 Not run on Windows.
 
 ## Files
+
+- `apps/server/src/provider/agentContextBudget.json`: the MCP tool list grew by 21 bytes with the longer name.
 
 - `apps/desktop/src/backend/DesktopHomeOwner.ts`: commands shown to the user read `agentd-desktop …` instead of `t3 …`.
 - `apps/desktop/src/wsl/DesktopWslBackend.ts`: commands shown to the user read `agentd-desktop …` instead of `t3 …`.
@@ -137,7 +142,6 @@ Not run on Windows.
 - `apps/server/src/startupAccess.ts`: user-visible messages and errors name AgentD Desktop.
 - `apps/server/src/textGeneration/textGeneratorDrivers.ts`: user-visible messages and errors name AgentD Desktop.
 - `apps/server/src/triage/triagePrompt.ts`: the triage session context names AgentD Desktop and `agentd-desktop triage`; the playbook is kept (see below).
-- `apps/server/src/vcs/GitVcsDriver.ts`: author/committer name of checkpoint commits is AgentD Desktop (email unchanged, see patch 24).
 - `apps/server/src/ws.ts`: user-visible messages and errors name AgentD Desktop.
 - `apps/web/src/components/cloud/ConnectCliAuthSurface.tsx`: commands shown to the user read `agentd-desktop …` instead of `t3 …`.
 - `apps/web/src/components/HostedEmptyState.tsx`: commands shown to the user read `agentd-desktop …` instead of `t3 …`.
@@ -147,3 +151,26 @@ Not run on Windows.
 - `apps/web/src/components/sidebar/updateEverything.logic.ts`: commands shown to the user read `agentd-desktop …` instead of `t3 …`.
 - `apps/web/src/lib/bootError.ts`: commands shown to the user read `agentd-desktop …` instead of `t3 …`.
 - `packages/client-runtime/src/connection/diagnosis.ts`: commands shown to the user read `agentd-desktop …` instead of `t3 …`.
+- `apps/server/src/cli/app.test.ts`: expected text follows the renamed sentences and commands.
+- `apps/server/src/cli/browser.test.ts`: expected text follows the renamed sentences and commands.
+- `apps/server/src/cli/config.test.ts`: expected text follows the renamed sentences and commands.
+- `apps/server/src/cli/doctor.test.ts`: expected text follows the renamed sentences and commands.
+- `apps/server/src/cli/invocation.test.ts`: expected hints say `agentd-desktop`, and the fake command on PATH is named `agentd-desktop`.
+- `apps/server/src/cli/pair.test.ts`: expected text follows the renamed sentences and commands.
+- `apps/server/src/cli/policy.test.ts`: expected text follows the renamed sentences and commands.
+- `apps/server/src/cli/update.test.ts`: expected text follows the renamed sentences and commands.
+- `apps/server/src/cli/up.test.ts`: expected text follows the renamed sentences and commands.
+- `apps/server/src/cloud/CliTokenManager.test.ts`: expected text follows the renamed sentences and commands.
+- `apps/server/src/cloud/selfUpdate.test.ts`: expected text follows the renamed sentences and commands.
+- `apps/server/src/cloud/servicePreflight.test.ts`: expected text follows the renamed sentences and commands.
+- `apps/server/src/device/DeviceService.test.ts`: expected text follows the renamed sentences and commands.
+- `apps/server/src/orchestration-v2/Adapters/CodexAdapterV2.test.ts`: expected text follows the renamed sentences and commands.
+- `apps/server/src/orchestration-v2/ProviderTurnStartService.test.ts`: expected text follows the renamed sentences and commands.
+- `apps/server/src/peer/PeerLinks.test.ts`: expected text follows the renamed sentences and commands.
+- `apps/server/src/preview/PreviewBrowserHost.test.ts`: expected text follows the renamed sentences and commands.
+- `apps/server/src/provider/providerMaintenanceRunner.test.ts`: expected text follows the renamed sentences and commands.
+- `apps/server/src/serviceLauncher.test.ts`: expected text follows the renamed sentences and commands.
+- `apps/server/src/triage/triagePrompt.test.ts`: expected text follows the renamed sentences and commands.
+- `apps/web/src/components/sidebar/updateEverything.logic.test.ts`: expected text follows the renamed sentences and commands.
+- `apps/web/src/lib/bootError.test.ts`: expected text follows the renamed sentences and commands.
+- `packages/client-runtime/src/connection/diagnosis.test.ts`: expected text follows the renamed sentences and commands.
