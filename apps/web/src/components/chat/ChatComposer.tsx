@@ -118,6 +118,7 @@ import { ComposerStashBadge } from "./ComposerStashBadge";
 import { ComposerStashMenu } from "./ComposerStashMenu";
 import { useComposerTriggerState } from "./useComposerTriggerState";
 import { useComposerMenuItems } from "./useComposerMenuItems";
+import { openStartTaskDialog, useCanStartTask } from "../agentd/StartTaskDialog";
 import { useComposerMultilinePrompt } from "./useComposerMultilinePrompt";
 import {
   reconcileAttachmentContextReferences,
@@ -1139,6 +1140,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     composerPreviewAnnotations.length === 0 &&
     composerReviewComments.length === 0;
   const linkedEnvironments = useLinkedEnvironments(environmentId);
+  const canStartTask = useCanStartTask(activeThreadId === null ? null : environmentId);
   const {
     items: composerMenuItems,
     isLoading: isComposerMenuLoading,
@@ -1156,6 +1158,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     sideChatDisabledReason: props.sideChatDisabledReason ?? null,
     freshSessionAvailable: props.onFreshSession !== undefined,
     compactSlashCommandAvailable,
+    handToWorkerAvailable: activeThreadId !== null && canStartTask,
     selectedProvider,
     selectedProviderSkills,
     selectedProviderSlashCommands,
@@ -1973,6 +1976,18 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       return;
     }
     if (item.type === "slash-command") {
+      if (item.command === "hand-to-worker") {
+        if (activeThreadId === null || !canStartTask) return;
+        const applied = applyPromptReplacement(trigger.rangeStart, trigger.rangeEnd, "", {
+          expectedText: snapshot.value.slice(trigger.rangeStart, trigger.rangeEnd),
+          focusEditorAfterReplace: false,
+        });
+        if (applied) {
+          setComposerHighlightedItemId(null);
+          openStartTaskDialog(scopeThreadRef(environmentId, activeThreadId));
+        }
+        return;
+      }
       if (item.command === "model") {
         const applied = applyPromptReplacement(trigger.rangeStart, trigger.rangeEnd, "", {
           expectedText: snapshot.value.slice(trigger.rangeStart, trigger.rangeEnd),

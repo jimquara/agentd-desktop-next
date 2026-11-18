@@ -75,6 +75,7 @@ export function useComposerMenuItems({
   sideChatAvailable,
   sideChatDisabledReason,
   freshSessionAvailable,
+  handToWorkerAvailable,
   compactSlashCommandAvailable,
   selectedProvider,
   selectedProviderSkills,
@@ -95,6 +96,7 @@ export function useComposerMenuItems({
   readonly sideChatAvailable: boolean;
   readonly sideChatDisabledReason: string | null;
   readonly freshSessionAvailable: boolean;
+  readonly handToWorkerAvailable: boolean;
   readonly compactSlashCommandAvailable: boolean;
   readonly selectedProvider: ProviderDriverKind;
   readonly selectedProviderSkills: ServerProvider["skills"];
@@ -259,6 +261,17 @@ export function useComposerMenuItems({
           label: "/model",
           description: gt("Switch response model for this thread"),
         },
+        ...(handToWorkerAvailable
+          ? ([
+              {
+                id: "slash:hand-to-worker",
+                type: "slash-command",
+                command: "hand-to-worker",
+                label: gt("Hand to a worker"),
+                description: gt("Start a background task for this project"),
+              },
+            ] as const)
+          : []),
         ...(sideChatAvailable
           ? ([
               {

@@ -62,6 +62,7 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeftIcon,
   BugIcon,
+  ActivityIcon,
   ChartNoAxesColumnIcon,
   CheckIcon,
   ChevronRightIcon,
@@ -85,6 +86,11 @@ import {
   UserPlusIcon,
 } from "lucide-react";
 import { openThreadFind } from "./chat/threadFindStore";
+import {
+  openStartTaskDialog,
+  StartTaskDialogHost,
+  useCanStartTask,
+} from "./agentd/StartTaskDialog";
 import { dispatchPreviewAction } from "./preview/previewActionBus";
 import { previewBridge } from "./preview/previewBridge";
 import {
@@ -356,6 +362,7 @@ export function CommandPalette({ children }: { children: ReactNode }) {
           initialContext={state.restoredSearch}
         />
       </CommandDialog>
+      <StartTaskDialogHost />
     </ComposerHandleContext>
   );
 }
@@ -500,6 +507,7 @@ function OpenCommandPaletteDialog(props: {
   const availableSettingsSearchItems = useAvailableSettingsSearchItems();
   const { activeDraftThread, activeThread, defaultProjectRef, handleNewThread } =
     useHandleNewThread();
+  const canStartTask = useCanStartTask(activeThread?.environmentId ?? null);
   const paletteRouteTarget = useThreadRouteTarget();
   const projects = useProjects();
   const referenceThreadRef =
@@ -1415,6 +1423,18 @@ function OpenCommandPaletteDialog(props: {
     });
   }
 
+  if (activeThread !== null && canStartTask) {
+    const threadRef = scopeThreadRef(activeThread.environmentId, activeThread.id);
+    actionItems.push({
+      kind: "action",
+      value: "action:hand-to-worker",
+      title: gt("Hand to a worker"),
+      searchTerms: ["agentd", "delegate", "task", "worker", "background"],
+      icon: <UserPlusIcon className={ITEM_ICON_CLASS} />,
+      run: async () => openStartTaskDialog(threadRef),
+    });
+  }
+
   if (activeThreadPreviewOpen && previewBridge) {
     actionItems.push({
       kind: "action",
@@ -1747,6 +1767,17 @@ function OpenCommandPaletteDialog(props: {
     shortcutCommand: "usage.open",
     run: async () => {
       await navigate({ to: "/usage" });
+    },
+  });
+
+  actionItems.push({
+    kind: "action",
+    value: "action:agentd",
+    searchTerms: ["agentd", "status", "workers", "team", "nodes", "approvals", "inbox"],
+    title: gt("Open AgentD"),
+    icon: <ActivityIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      await navigate({ to: "/agentd" });
     },
   });
 

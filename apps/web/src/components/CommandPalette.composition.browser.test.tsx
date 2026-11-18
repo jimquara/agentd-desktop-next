@@ -55,6 +55,11 @@ vi.mock("../hooks/useSettings", async (original) => ({
 vi.mock("../hooks/useScratchProject", () => ({
   useScratchProject: () => ({ scratchEnvironmentId: () => null }),
 }));
+vi.mock("./agentd/StartTaskDialog", () => ({
+  openStartTaskDialog: () => undefined,
+  StartTaskDialogHost: () => null,
+  useCanStartTask: () => false,
+}));
 vi.mock("../hooks/useNewProject", () => ({ useNewProject: () => async () => undefined }));
 vi.mock("../hooks/useHandleNewThread", () => ({
   useHandleNewThread: () => ({

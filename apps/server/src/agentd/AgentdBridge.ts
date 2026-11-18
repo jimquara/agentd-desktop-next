@@ -6,9 +6,11 @@ import {
   AgentdHandoffListJson,
   AgentdHandoffShowJson,
   AgentdInboxListJson,
+  AgentdNode,
   AgentdNotFoundError,
   AgentdUserListJson,
   AgentdWhoJson,
+  AgentdWorkerTool,
   type AgentdApproval,
   type AgentdCommandOutput,
   type AgentdConnectAgentInput,
@@ -107,7 +109,9 @@ const decodeShow = decodeJson(AgentdHandoffShowJson);
 const decodeApprovals = decodeJson(AgentdApprovalListJson);
 const decodeInbox = decodeJson(AgentdInboxListJson);
 const decodeUsers = decodeJson(AgentdUserListJson);
+const decodeNodes = decodeJson(Schema.Array(AgentdNode));
 const decodeWho = decodeJson(AgentdWhoJson);
+const isDefaultWorker = Schema.is(AgentdWorkerTool);
 
 const isArgumentError = Schema.is(AgentdArgumentError);
 
@@ -200,7 +204,17 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
       [run(agentdArgs.version()), run(agentdArgs.doctor(), { jsonOnFailure: true })],
       { concurrency: 2 },
     );
-    return AgentdJson.agentdStatus(version, yield* decodeDoctor(doctor));
+    const status = AgentdJson.agentdStatus(version, yield* decodeDoctor(doctor));
+    const defaultWorker = status.setUp
+      ? yield* run(agentdArgs.defaultWorker()).pipe(
+          Effect.map((stdout) => {
+            const worker = stdout.trim();
+            return isDefaultWorker(worker) ? worker : null;
+          }),
+          Effect.orElseSucceed(() => null),
+        )
+      : null;
+    return { ...status, defaultWorker };
   }).pipe(Effect.withSpan("AgentdBridge.status"));
 
   // The first read fails the stream; a later failed read keeps the last list until agentd answers.
@@ -333,7 +347,14 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
         : AgentdJson.agentdHolders(
             yield* run(yield* args(() => agentdArgs.who(target))).pipe(Effect.flatMap(decodeWho)),
           );
-    return { people: AgentdJson.agentdPeople(users), holders };
+    const nodes = input.includeNodes
+      ? yield* run(agentdArgs.nodes()).pipe(Effect.flatMap(decodeNodes))
+      : undefined;
+    return {
+      people: AgentdJson.agentdPeople(users),
+      holders,
+      ...(nodes === undefined ? {} : { nodes }),
+    };
   });
 
   return AgentdBridge.of({
