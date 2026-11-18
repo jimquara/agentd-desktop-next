@@ -86,9 +86,11 @@ export function AgentdStatusDetails({
             <T>AgentD is not set up</T>
           </AlertTitle>
           <AlertDescription>
-            <T>
-              Run <code>agentd init</code> on this environment.
-            </T>
+            <p>
+              <T>
+                Run <code>agentd init</code> on this environment.
+              </T>
+            </p>
             {onSetUp ? (
               <Button className="mt-2" size="sm" variant="outline" onClick={onSetUp}>
                 <T>Set up AgentD</T>
