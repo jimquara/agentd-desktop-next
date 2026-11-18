@@ -6,6 +6,7 @@ import {
   AgentdHandoffListJson,
   AgentdHandoffShowJson,
   AgentdInboxListJson,
+  AgentdInstallRecord,
   AgentdNode,
   AgentdNotFoundError,
   AgentdUserListJson,
@@ -116,6 +117,7 @@ const decodeUsers = decodeJson(AgentdUserListJson);
 const decodeNodes = decodeJson(Schema.Array(AgentdNode));
 const decodeWho = decodeJson(AgentdWhoJson);
 const isDefaultWorker = Schema.is(AgentdWorkerTool);
+const decodeInstallRecord = Schema.decodeEffect(Schema.fromJsonString(AgentdInstallRecord));
 
 const isArgumentError = Schema.is(AgentdArgumentError);
 
@@ -218,7 +220,15 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
           Effect.orElseSucceed(() => null),
         )
       : null;
-    return { ...status, defaultWorker };
+    // The desktop app's last pass installing agentd for the terminal and agents, when it ran one.
+    const recordPath = env.AGENTD_DESKTOP_INSTALL_RECORD?.trim();
+    const install = recordPath
+      ? yield* fs.readFileString(recordPath).pipe(
+          Effect.flatMap(decodeInstallRecord),
+          Effect.orElseSucceed(() => null),
+        )
+      : null;
+    return { ...status, defaultWorker, binary: yield* binary, install };
   }).pipe(Effect.withSpan("AgentdBridge.status"));
 
   // The first read fails the stream; a later failed read keeps the last list until agentd answers.

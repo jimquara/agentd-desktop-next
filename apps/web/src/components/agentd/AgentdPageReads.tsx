@@ -8,6 +8,7 @@ import type { EnvironmentQueryView } from "../../state/query";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { AgentdInstallStatus } from "./AgentdInstallStatus";
 
 export function AgentdReadError({ error }: { error: string }) {
   return (
@@ -116,6 +117,7 @@ export function AgentdStatusDetails({
           </span>
         )}
       </div>
+      <AgentdInstallStatus status={status} />
       {checks.length > 0 ? (
         <ul className="divide-y divide-border border-t border-border">
           {checks.map((check) => (
