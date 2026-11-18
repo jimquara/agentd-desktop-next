@@ -38,9 +38,30 @@ and make no network request.
 - `apps/web/src/legalLinks.ts`: points at this repository's `docs/user/telemetry.md`; the
   consumers (WelcomePage, SettingsPanels) belong to tasks 11 and 05.
 
+- `packages/shared/src/connectAuth.ts`: `DEFAULT_HOSTED_APP_URL` is `undefined`; this build has
+  no hosted app.
+- `packages/shared/src/providerAuthReturnUrl.ts`: only a loopback web client is a return target.
+- `packages/shared/src/threadLinks.ts`: copied thread links are `<t3-thread://v2/…>` (they open
+  in T3 Code and paste back as a chip); hosted links are written and read only with a hosted
+  origin, and upstream's hosted links are left as plain text.
+- `packages/shared/src/promptLinks.ts`: new-thread links use `t3code://new`; no https link maps
+  to an app path without a hosted app.
+- `apps/web/src/hostedPairing.ts`: no hosted pairing link (Connections falls back to the direct
+  `/pair` link); `isHostedStaticApp` is false unless the build sets `VITE_HOSTED_APP_URL`.
+- `packages/client-runtime/src/threadReference.ts`, `apps/mobile/src/App.tsx`: accept an unset
+  hosted URL.
+- `apps/server/src/cloud/publicConfig.ts` (also task 03's): `T3CODE_HOSTED_APP_URL` has no
+  default and the nightly hosted URL is gone. `auth/McpOAuth.ts` then gives outside MCP clients
+  t3-thread links, and `auth/mcpOAuthHttp.ts` approves agent sign-ins on the server's own
+  `/connect-agent` page.
+- Not owned by any task, one line each: `policy/policyTemplates.ts` (label),
+  `project/ManagedProjectFolders.ts` (README footer link), `settings/MultipleAccountsNote.tsx`
+  (FAQ now links this repository's docs).
+
 Tests updated to the new behaviour: update, selfUpdate, npmRelease, pinnedRuntime,
 servicePreflight, SSH tunnel, install scripts, mobile environment maintenance, desktop
-startup recovery, desktopUpdate.logic. `packages/ssh/src/tunnel.test.ts` also passes PATH to
+startup recovery, desktopUpdate.logic, thread and prompt links, composer references, Codex
+handoff, thread reference, hosted pairing, McpOAuth, mobile app config. `packages/ssh/src/tunnel.test.ts` also passes PATH to
 the archive-launch scripts: they exec `node`, which is not on sh's default PATH here, and
 two of those tests failed on base for that reason.
 
@@ -58,7 +79,7 @@ mirror is configured.
 
 ## Windows
 
-No paths, shells or commands were added to product code. `install.ps1` got the same change as
+No paths, shells or commands were added to product code; URLs are built with `URL`. `install.ps1` got the same change as
 `install.sh`; its tests run only on Windows and were not run here.
 
 ## URLs left in other tasks' files
@@ -67,5 +88,9 @@ No paths, shells or commands were added to product code. `install.ps1` got the s
 - `apps/server/src/provider/ModelManifest.ts`, `telemetry/AnalyticsService.ts`,
   `triage/*`, `cloud/publicConfig.ts`, `web/.../GitHubStarPrompt.tsx` (task 03).
 - `docs/user/telemetry.md` names `ingest.t3.codes` (task 03).
+- `packages/contracts/src/environmentHttp.ts:526` links upstream's T3 Connect troubleshooting
+  doc (outside the Accept grep; T3 Connect only).
+- `apps/mobile/app.config.ts` still lists `app.t3.codes` for associated domains; its test pins
+  that host by name.
 - `apps/web/src/components/cloud/TunnelUsage.tsx`: `t3.chat` subscription link, shown only
   for T3 Connect (needs cloud config built in); not a t3.codes URL, left as is.
