@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+# Internal test build of AgentD Desktop with agentd inside. Usage: agentd/scripts/build-desktop.sh linux|win
+#
+# Writes release/AgentD-Desktop-<upstream>-agentd.<N>-x64.{AppImage,exe}. Nothing is published.
+# By default it runs the upstream packager (scripts/build-desktop-artifact.ts) inside a container
+# made from electron-builder's Wine image, pinned by digest, plus Rust, MinGW and ImageMagick, so
+# the host needs only Docker, git, gh and the repository's Node and dependencies.
+#
+#   AGENTD_BUILD_N=1          N in <upstream>-agentd.N
+#   AGENTD_DIST_DIR=DIR       agentd release assets and their SHA256SUMS; unset: downloaded with gh
+#   AGENTD_RELEASE=vX.Y.Z     the agentd release to download (default: the latest of libraos/agentd)
+#   AGENTD_BUILD_ON_HOST=1    run the packager here, not in the container (the host then needs
+#                             cargo, cc, make, libsecret-1-dev and ImageMagick; win: Windows)
+set -euo pipefail
+
+platform=${1:-}
+case "$platform" in
+  linux) target=AppImage ;;
+  win) target=nsis ;;
+  *) echo "usage: $0 linux|win" >&2; exit 2 ;;
+esac
+
+repo=$(git -C "$(dirname -- "$0")" rev-parse --show-toplevel)
+cd "$repo"
+
+builder_image=electronuserland/builder@sha256:f3a8d451994c881d0972e7b1846ee4d4fdc15eb41fc6b1f350b38cbf99ca90fe
+rust_toolchain=1.100.0
+win_rust_target=x86_64-pc-windows-gnu
+home_dir=$repo/release/.agentd-build-home
+
+upstream=$(node -p 'require("./apps/desktop/package.json").version')
+version=$upstream-agentd.${AGENTD_BUILD_N:-1}
+case "$version" in
+  [0-9]*.[0-9]*.[0-9]*-agentd.[0-9]*) ;;
+  *) echo "bad version: $version" >&2; exit 2 ;;
+esac
+
+if [ "${AGENTD_BUILD_INSIDE:-}" != 1 ]; then
+  if [ -z "${AGENTD_DIST_DIR:-}" ]; then
+    release=${AGENTD_RELEASE:-$(gh release view -R libraos/agentd --json tagName -q .tagName)}
+    AGENTD_DIST_DIR=$repo/release/agentd-dist/$release
+    if [ ! -s "$AGENTD_DIST_DIR/SHA256SUMS" ]; then
+      mkdir -p "$AGENTD_DIST_DIR"
+      gh release download "$release" -R libraos/agentd -D "$AGENTD_DIST_DIR" --clobber \
+        -p SHA256SUMS -p agentd-linux-amd64 -p agentd-windows-amd64.exe
+    fi
+  fi
+  AGENTD_DIST_DIR=$(cd "$AGENTD_DIST_DIR" && pwd)
+  export AGENTD_DIST_DIR
+
+  if [ "${AGENTD_BUILD_ON_HOST:-}" != 1 ]; then
+    # Electron's runtime libraries: the packager runs the packaged app to fill the compile cache.
+    dockerfile="FROM $builder_image
+RUN apt-get update && apt-get install -y --no-install-recommends imagemagick mingw-w64 \\
+      libatk1.0-0 libatk-bridge2.0-0 libgtk-3-0 libnss3 libgbm1 libasound2 libxss1 libxshmfence1 libcups2 libdrm2 libxkbcommon0 \\
+ && rm -rf /var/lib/apt/lists/*
+ENV RUSTUP_HOME=/opt/rustup CARGO_HOME=/opt/cargo PATH=/opt/cargo/bin:\$PATH
+RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain $rust_toolchain \\
+      --target x86_64-unknown-linux-gnu --target $win_rust_target \\
+ && chmod -R a+rX /opt/rustup /opt/cargo"
+    image=agentd-desktop-builder:$(printf '%s' "$dockerfile" | sha256sum | cut -c1-16)
+    if ! docker image inspect "$image" >/dev/null 2>&1; then
+      printf '%s\n' "$dockerfile" | docker build -t "$image" -
+    fi
+    mkdir -p "$home_dir"
+    node_dir=$(dirname -- "$(command -v node)")
+    git_common=$(cd "$(git rev-parse --git-common-dir)" && pwd)
+    # The repository is mounted at /w: electron-builder's bundled makensis (3.0.4.1) dies with
+    # "stack smashing detected" on include paths near 300 characters, which pnpm's patched
+    # app-builder-lib directory reaches under a deep checkout.
+    mounts=(-v "$repo:/w" -v "$node_dir:$node_dir:ro" -v "$git_common:$git_common:ro"
+      -v "$AGENTD_DIST_DIR:/agentd-dist:ro")
+    if [ -n "${npm_config_store_dir:-}" ]; then
+      mounts+=(-v "$npm_config_store_dir:$npm_config_store_dir")
+    fi
+    exec docker run --rm --init -u "$(id -u):$(id -g)" "${mounts[@]}" -w /w \
+      -e HOME=/w/release/.agentd-build-home -e CARGO_HOME=/w/release/.agentd-build-home/cargo \
+      -e RUSTUP_HOME=/opt/rustup \
+      -e PATH="$node_dir:/w/node_modules/.bin:/opt/cargo/bin:/usr/local/bin:/usr/bin:/bin" \
+      -e AGENTD_BUILD_INSIDE=1 -e AGENTD_DIST_DIR=/agentd-dist -e AGENTD_BUILD_N \
+      -e npm_config_store_dir -e T3CODE_DESKTOP_VERBOSE -e T3CODE_DESKTOP_SKIP_BUILD \
+      "$image" bash agentd/scripts/build-desktop.sh "$platform"
+  fi
+fi
+
+export T3CODE_DESKTOP_VERSION=$version
+# No update feed: our builds must not pick up a GitHub repository from the environment.
+unset T3CODE_DESKTOP_UPDATE_REPOSITORY GITHUB_REPOSITORY
+
+if [ "$platform" = win ] && [ "${AGENTD_BUILD_INSIDE:-}" = 1 ]; then
+  # Off Windows there is no MSVC: build the resource monitor with MinGW and hand it to the
+  # packager as a reused build at the MSVC target path it reads.
+  cargo build --locked --release --manifest-path native/resource-monitor/Cargo.toml \
+    --target "$win_rust_target"
+  msvc_out=native/resource-monitor/target/x86_64-pc-windows-msvc/release
+  mkdir -p "$msvc_out"
+  cp "native/resource-monitor/target/$win_rust_target/release/t3-resource-monitor.exe" "$msvc_out/"
+  export T3CODE_DESKTOP_REUSE_RESOURCE_MONITOR=1
+fi
+
+echo "[agentd] building $platform/$target $version with agentd from $AGENTD_DIST_DIR"
+node scripts/build-desktop-artifact.ts --platform "$platform" --target "$target" --arch x64
+if [ "$platform" = linux ]; then
+  # electron-builder names an AppImage after its own arch (x86_64); ours carry x64 as on Windows.
+  mv -f "release/AgentD-Desktop-$version-x86_64.AppImage" "release/AgentD-Desktop-$version-x64.AppImage"
+fi
+ls -l "release/AgentD-Desktop-$version-x64".*
