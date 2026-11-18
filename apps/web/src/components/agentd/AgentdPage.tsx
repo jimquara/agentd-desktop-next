@@ -149,18 +149,20 @@ export function AgentdPage() {
                     </AlertTitle>
                     <AlertDescription>
                       <p>{notFound.message}</p>
-                      <T>
-                        Follow the{" "}
-                        <a
-                          className="underline"
-                          href="https://github.com/libraos/agentd-core/blob/main/docs/install.md"
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          AgentD install guide
-                        </a>
-                        , then make sure the binary is on <code>PATH</code> on this environment.
-                      </T>
+                      <p>
+                        <T>
+                          Follow the{" "}
+                          <a
+                            className="underline"
+                            href="https://github.com/libraos/agentd-core/blob/main/docs/install.md"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            AgentD install guide
+                          </a>
+                          , then make sure the binary is on <code>PATH</code> on this environment.
+                        </T>
+                      </p>
                     </AlertDescription>
                   </Alert>
                 ) : (

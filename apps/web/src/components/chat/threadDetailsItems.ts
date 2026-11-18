@@ -1,6 +1,7 @@
 import type { ClientSettings } from "@t3tools/contracts";
 import { msg } from "gt-react";
 
+import { ThreadDetailsAgentdWorkers } from "./ThreadDetailsAgentdWorkers";
 import { ThreadDetailsBackgroundTasks } from "./ThreadDetailsBackgroundTasks";
 import { ThreadDetailsOutputs } from "./ThreadDetailsOutputs";
 import { ThreadDetailsContext } from "./ThreadDetailsUsage";
@@ -42,6 +43,12 @@ export const THREAD_DETAILS_ITEMS = [
     label: msg("Background tasks"),
     defaultVisible: true,
     Section: ThreadDetailsBackgroundTasks,
+  },
+  {
+    id: "agentdWorkers",
+    label: msg("AgentD workers"),
+    defaultVisible: true,
+    Section: ThreadDetailsAgentdWorkers,
   },
 ] as const;
 
