@@ -33,6 +33,13 @@ import { describe, expect, it, onTestFinished, vi } from "vite-plus/test";
 
 import "~/index.css";
 
+// These tests cover upstream behaviour with the features the AgentD profile hides turned on.
+vi.mock(import("~/productProfile"), async (importOriginal) => ({
+  productProfile: Object.fromEntries(
+    Object.keys((await importOriginal()).productProfile).map((key) => [key, true]),
+  ) as Awaited<ReturnType<typeof importOriginal>>["productProfile"],
+}));
+
 import { environmentThreadDetails } from "../../state/threads";
 import { act, fakeTimers, render, stubGlobal } from "../../../test/render";
 import { ChangedFilesCard } from "./ChangedFilesTree";
