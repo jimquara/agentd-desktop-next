@@ -8,6 +8,10 @@ export const APP_LINK_SCHEME = "agentd-desktop";
 export const APP_LINK_PROTOCOL = /^agentd-desktop(?:-[a-z]+)?:$/;
 /** The command the app puts on PATH (`.cmd` on Windows). */
 export const CLI_COMMAND_NAME = "agentd-desktop";
+/** Background service, Windows task, systemd slices and per-user folders; T3 Code's are `t3code`. */
+export const OS_NAME = "agentd-desktop";
+/** `.service` keeps it apart from the app's bundle id, `ai.libraos.agentd-desktop`. */
+export const LAUNCHD_SERVICE_LABEL = "ai.libraos.agentd-desktop.service";
 
 export const DESKTOP_HOME_DIRECTORY_NAME = ".agentd-desktop";
 export const DESKTOP_HOME_ENV = "AGENTD_DESKTOP_HOME";
