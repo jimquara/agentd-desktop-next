@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "@effect/vitest";
 import * as Duration from "effect/Duration";
 
 import { restartDelay, taskAfterLine } from "./AgentdTeamNode.ts";
