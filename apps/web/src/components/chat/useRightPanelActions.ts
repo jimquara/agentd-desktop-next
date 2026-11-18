@@ -65,6 +65,10 @@ interface RightPanelActionsInput {
   readonly closeRightPanelSurface: (surface: RightPanelSurface) => void;
 }
 
+export function openBackgroundTasks(threadRef: ScopedThreadRef) {
+  useRightPanelStore.getState().open(threadRef, "background-tasks");
+}
+
 /**
  * Opening, closing, and arranging the right panel's surfaces: browser, diff, files, pull
  * requests, device, and terminal tabs.
@@ -201,6 +205,10 @@ export function useRightPanelActions(input: RightPanelActionsInput) {
   const togglePreviewPanelStable = useStableCallback(togglePreviewPanel);
   const activateRightPanelSurface = (surface: RightPanelSurface) => {
     if (!activeThreadRef) return;
+    if (surface.kind === "background-tasks") {
+      openBackgroundTasks(activeThreadRef);
+      return;
+    }
     useRightPanelStore.getState().activateSurface(activeThreadRef, surface.id);
     if (surface.kind === "preview" && surface.resourceId) {
       setActivePreviewTab(activeThreadRef, surface.resourceId);

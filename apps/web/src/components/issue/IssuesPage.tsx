@@ -769,6 +769,7 @@ export function IssuesPage() {
             pullRequestAvailable={false}
             pullRequestsAvailable={false}
             deviceAvailable={false}
+            backgroundTasksAvailable={false}
           >
             {renderedSurface.kind === "issue" ? (
               <IssueDetailPanel

@@ -47,6 +47,7 @@ import {
   FileDiff,
   Files,
   Globe2,
+  ListTodo,
   MessagesSquare,
   Plus,
   TerminalSquare,
@@ -151,6 +152,7 @@ export interface RightPanelTabsProps {
   onAddDevice: () => void;
   /** Absent where side chats are not offered. */
   onAddSideChat?: (() => void) | undefined;
+  onAddBackgroundTasks?: (() => void) | undefined;
   browserAvailable: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
@@ -158,6 +160,7 @@ export interface RightPanelTabsProps {
   pullRequestAvailable: boolean;
   pullRequestsAvailable: boolean;
   deviceAvailable: boolean;
+  backgroundTasksAvailable?: boolean;
   sideChatAvailable?: boolean;
   /** Overrides the default reason while side chats are available but cannot start. */
   sideChatDisabledReason?: string | null;
@@ -187,6 +190,7 @@ const SURFACE_DISABLED_REASONS = {
   pullRequest: msg("This thread's branch has no pull request yet."),
   pullRequests: msg("No linked pull requests are available for this thread."),
   device: msg("Devices are only available from a thread."),
+  backgroundTasks: msg("Background tasks are only available from a thread."),
   sideChat: msg("Side chats start after the first message."),
 } as const;
 
@@ -212,6 +216,7 @@ const SURFACE_UNAVAILABLE_HINTS = {
   pullRequest: msg("No pull request on this branch yet."),
   pullRequests: msg("No linked pull requests available."),
   device: msg("Available from a thread."),
+  backgroundTasks: msg("Available from a thread."),
   sideChat: msg("Available after the first message."),
 } as const;
 
@@ -272,13 +277,13 @@ type SurfaceShortcutEvent = Pick<
   Partial<Pick<KeyboardEvent, "code" | "getModifierState">>;
 
 export function surfaceShortcutActionForKey<
-  const Action extends { available: boolean; shortcut: string },
+  const Action extends { available: boolean; shortcut?: string | undefined },
 >(actions: readonly Action[], event: SurfaceShortcutEvent): Action | null {
   if (event.defaultPrevented || event.isComposing) return null;
   if (event.metaKey || event.ctrlKey || event.altKey) return null;
   const key = surfaceShortcutKey(event);
   return (
-    actions.find((action) => action.available && action.shortcut.toLowerCase() === key) ?? null
+    actions.find((action) => action.available && action.shortcut?.toLowerCase() === key) ?? null
   );
 }
 
@@ -304,7 +309,7 @@ function DisabledReasonTooltip(props: { reason: string; trigger: ReactElement })
 function SurfaceMenuItem(props: {
   available: boolean;
   disabledReason?: string;
-  shortcut: string;
+  shortcut: string | undefined;
   onClick: () => void;
   children: ReactNode;
 }) {
@@ -316,7 +321,7 @@ function SurfaceMenuItem(props: {
       aria-keyshortcuts={props.shortcut}
     >
       {props.children}
-      <MenuShortcut>{props.shortcut}</MenuShortcut>
+      {props.shortcut ? <MenuShortcut>{props.shortcut}</MenuShortcut> : null}
     </MenuItem>
   );
   if (props.available || !props.disabledReason) return item;
@@ -335,6 +340,7 @@ function RightPanelEmptyState(props: {
   onAddDevice: () => void;
   /** Absent where side chats are not offered. */
   onAddSideChat?: (() => void) | undefined;
+  onAddBackgroundTasks?: (() => void) | undefined;
   browserAvailable: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
@@ -342,6 +348,7 @@ function RightPanelEmptyState(props: {
   pullRequestAvailable: boolean;
   pullRequestsAvailable: boolean;
   deviceAvailable: boolean;
+  backgroundTasksAvailable: boolean;
   sideChatAvailable: boolean;
   sideChatDisabledReason: string | null;
 }) {
@@ -418,6 +425,18 @@ function RightPanelEmptyState(props: {
             disabledReason:
               props.sideChatDisabledReason ?? messages(SURFACE_UNAVAILABLE_HINTS.sideChat),
             onClick: props.onAddSideChat,
+          },
+        ]
+      : []),
+    ...(props.onAddBackgroundTasks
+      ? [
+          {
+            label: msg("Background tasks"),
+            icon: ListTodo,
+            shortcut: undefined,
+            available: props.backgroundTasksAvailable,
+            disabledReason: messages(SURFACE_UNAVAILABLE_HINTS.backgroundTasks),
+            onClick: props.onAddBackgroundTasks,
           },
         ]
       : []),
@@ -530,7 +549,7 @@ function RightPanelEmptyState(props: {
                   >
                     {messages(action.label)}
                   </span>
-                  <Kbd>{action.shortcut}</Kbd>
+                  {action.shortcut ? <Kbd>{action.shortcut}</Kbd> : null}
                 </button>
                 {action.label === "Browser" && props.browserProfiles.length > 1 ? (
                   <Menu>
@@ -571,7 +590,7 @@ function RightPanelEmptyState(props: {
                   >
                     {actionIcon(action, "size-4")}
                     <span className="min-w-0 flex-1 truncate">{messages(action.label)}</span>
-                    <Kbd>{action.shortcut}</Kbd>
+                    {action.shortcut ? <Kbd>{action.shortcut}</Kbd> : null}
                   </div>
                 }
               />
@@ -614,6 +633,8 @@ function surfaceTitle(
       return surface.title ?? surface.target?.name ?? resolve(msg("Device"));
     case "side-chat":
       return resolve(msg("Side chat"));
+    case "background-tasks":
+      return resolve(msg("Background tasks"));
     case "preview": {
       const snapshot = surface.resourceId ? sessions[surface.resourceId] : null;
       if (!snapshot || snapshot.navStatus._tag === "Idle") return resolve(msg("Browser"));
@@ -706,6 +727,8 @@ function SurfaceIcon({
       return <IssueSurfaceIcon surface={surface} environmentId={environmentId} />;
     case "side-chat":
       return <SideChatTabIcon environmentId={environmentId} threadId={surface.threadId} />;
+    case "background-tasks":
+      return <ListTodo className="size-3 shrink-0" />;
     case "device":
       return surface.target?.platform === "ios" ? (
         <AppleIcon className="size-3 shrink-0" />
@@ -1238,6 +1261,18 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
           },
         ]
       : []),
+    ...(props.onAddBackgroundTasks
+      ? [
+          {
+            label: msg("Background tasks"),
+            icon: ListTodo,
+            shortcut: undefined,
+            available: props.backgroundTasksAvailable === true,
+            disabledReason: messages(SURFACE_DISABLED_REASONS.backgroundTasks),
+            onClick: props.onAddBackgroundTasks,
+          },
+        ]
+      : []),
   ] as const;
 
   const handleAddSurfaceMenuKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -1643,6 +1678,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             onAddPullRequests={props.onAddPullRequests}
             onAddDevice={props.onAddDevice}
             onAddSideChat={props.onAddSideChat}
+            onAddBackgroundTasks={props.onAddBackgroundTasks}
             browserAvailable={props.browserAvailable}
             terminalAvailable={props.terminalAvailable}
             diffAvailable={props.diffAvailable}
@@ -1650,6 +1686,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             pullRequestAvailable={props.pullRequestAvailable}
             pullRequestsAvailable={props.pullRequestsAvailable}
             deviceAvailable={props.deviceAvailable}
+            backgroundTasksAvailable={props.backgroundTasksAvailable === true}
             sideChatAvailable={props.sideChatAvailable === true}
             sideChatDisabledReason={props.sideChatDisabledReason ?? null}
           />
