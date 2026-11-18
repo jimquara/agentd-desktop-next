@@ -1,0 +1,11 @@
+# What the agents provide to the session panel
+
+| Agent       | Context                                                                                                                                                                                                         | Outputs                                        |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Claude Code | Reports context during a turn from SDK message usage and compaction reports. The adapter supplies the selected model's context limit when known.                                                                | Yes, from the session's ready Git checkpoints. |
+| Codex       | Reports context during a turn through `thread/tokenUsage/updated`. The adapter uses the latest request's total (not the session total) and the reported model context window, if available.                     | Yes, from the session's ready Git checkpoints. |
+| opencode    | Reports context at turn completion when the adapter has token counts from the last step. The limit comes from the model catalog when available. A turn without step usage does not supply a new context report. | Yes, from the session's ready Git checkpoints. |
+
+[Context derivation](../../packages/client-runtime/src/state/contextWindow.ts) reads the active provider thread's latest turn measurement, then its saved context usage or an applicable compaction count. If none is available, the panel says **Not reported by this agent**. A count without a known limit is still shown, without a percentage.
+
+[Checkpoint capture](../../apps/server/src/orchestration-v2/CheckpointCaptureService.ts) is shared across providers; it does not infer files from agent tool calls. Outputs requires a ready checkpoint with recorded changes, so edits in progress or workspaces without usable Git checkpoints may not appear. Each path opens the most recent turn that changed it. **Show all** opens the latest turn with recorded changes in the diff panel, where earlier turns are also selectable.

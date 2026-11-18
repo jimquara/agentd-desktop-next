@@ -3,10 +3,10 @@ import * as Schema from "effect/Schema";
 
 import { compareSemverVersions } from "./semver.ts";
 
-const CLI_RELEASE_REPOSITORY = "pingdotgg/t3code";
-export const CLI_RELEASES_PAGE_URL = `https://github.com/${CLI_RELEASE_REPOSITORY}/releases`;
 export const CLI_RELEASE_CHECKSUMS_FILE = "SHA256SUMS";
 export const CLI_RELEASE_BASE_URL_ENV = "T3CODE_RELEASE_BASE_URL";
+/** This build has no default release source; updates need a configured mirror. */
+export const UPDATES_NOT_CONFIGURED_REASON = `Updates are not configured for this build. Set ${CLI_RELEASE_BASE_URL_ENV} to a release mirror to enable them.`;
 
 // Keep archive keys aligned with the Linux matrix, Windows ARM64 build, and cli_archive rows in release.yml,
 // and with the SSH runner's host check in packages/ssh/src/tunnel.ts.
@@ -42,13 +42,9 @@ export function cliArchiveFileName(version: string, platformKey: CliArchivePlatf
   return `t3-${version}-${platformKey}.${platformKey.startsWith("win32") ? "zip" : "tar.gz"}`;
 }
 
-const CLI_RELEASE_DEFAULT_BASE_URL = `https://github.com/${CLI_RELEASE_REPOSITORY}/releases/download`;
-
-export function cliReleaseDownloadBaseUrl(
-  version: string,
-  baseUrl: string | undefined = CLI_RELEASE_DEFAULT_BASE_URL,
-): string {
-  return `${(baseUrl?.trim() || CLI_RELEASE_DEFAULT_BASE_URL).replace(/\/+$/, "")}/v${version}`;
+/** The release mirror's root without a trailing slash, or "" when none is configured. */
+export function cliReleaseBaseUrl(baseUrl: string | null | undefined): string {
+  return baseUrl?.trim().replace(/\/+$/, "") ?? "";
 }
 
 /** `segments` added to `baseUrl`'s path, keeping its query, such as a signed mirror URL's token. */
@@ -59,12 +55,8 @@ export function releaseAssetUrl(baseUrl: string, ...segments: ReadonlyArray<stri
 }
 
 /** A file of release `version`, from `baseUrl` laid out as GitHub's release downloads. */
-export function cliReleaseAssetUrl(
-  version: string,
-  fileName: string,
-  baseUrl: string | undefined = CLI_RELEASE_DEFAULT_BASE_URL,
-): string {
-  return releaseAssetUrl(baseUrl?.trim() || CLI_RELEASE_DEFAULT_BASE_URL, `v${version}`, fileName);
+export function cliReleaseAssetUrl(version: string, fileName: string, baseUrl: string): string {
+  return releaseAssetUrl(baseUrl.trim(), `v${version}`, fileName);
 }
 
 export function parseChecksums(text: string): ReadonlyMap<string, string> {
@@ -129,11 +121,6 @@ export function acceptsTrackSwitchRelease(
     cliReleaseChannelOf(found) === (channel === "nightly" ? "nightly" : "stable") &&
     compareSemverVersions(found, checked) >= 0
   );
-}
-
-/** Page until the channel matches; nightlies can push preview/stable releases past the first page. */
-export function cliReleaseIndexPageUrl(page: number): string {
-  return `https://api.github.com/repos/${CLI_RELEASE_REPOSITORY}/releases?per_page=100&page=${page}`;
 }
 
 /** Draft assets are not downloadable. */

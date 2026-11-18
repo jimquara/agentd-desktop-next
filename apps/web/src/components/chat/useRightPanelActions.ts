@@ -15,6 +15,7 @@ import {
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
 import { useDiffPanelStore } from "../../diffPanelStore";
+import { revealCodeMode } from "../../chatCodeModeStore";
 import { type ThreadPanelPresentation } from "../../rightPanelLayout";
 import {
   selectThreadPanelOpen,
@@ -62,6 +63,10 @@ interface RightPanelActionsInput {
   readonly activeProjectCwd: string | null;
   readonly onDiffPanelOpen: (() => void) | undefined;
   readonly closeRightPanelSurface: (surface: RightPanelSurface) => void;
+}
+
+export function openBackgroundTasks(threadRef: ScopedThreadRef) {
+  useRightPanelStore.getState().open(threadRef, "background-tasks");
 }
 
 /**
@@ -200,6 +205,10 @@ export function useRightPanelActions(input: RightPanelActionsInput) {
   const togglePreviewPanelStable = useStableCallback(togglePreviewPanel);
   const activateRightPanelSurface = (surface: RightPanelSurface) => {
     if (!activeThreadRef) return;
+    if (surface.kind === "background-tasks") {
+      openBackgroundTasks(activeThreadRef);
+      return;
+    }
     useRightPanelStore.getState().activateSurface(activeThreadRef, surface.id);
     if (surface.kind === "preview" && surface.resourceId) {
       setActivePreviewTab(activeThreadRef, surface.resourceId);
@@ -312,8 +321,17 @@ export function useRightPanelActions(input: RightPanelActionsInput) {
     [embedded, togglePreviewPanelStable],
   );
 
+  const toggleRightPanelFromShortcut = useStableCallback(() => {
+    if (!activeThreadRef) return false;
+    if (revealCodeMode(scopedThreadKey(activeThreadRef)) && rightPanelOpen) {
+      focusActivePanelTerminal(activeThreadRef);
+      return;
+    }
+    toggleRightPanel();
+  });
+
   const shortcuts = {
-    "rightPanel.toggle": () => toggleRightPanel(),
+    "rightPanel.toggle": toggleRightPanelFromShortcut,
     "rightPanel.toggleMaximized": ({ event }) => {
       if (!event.repeat) toggleRightPanelMaximized();
     },
@@ -322,7 +340,14 @@ export function useRightPanelActions(input: RightPanelActionsInput) {
       if (!activeRightPanelSurface) return false;
       if (!event.repeat) closeRightPanelSurface(activeRightPanelSurface);
     },
-    "diff.toggle": () => onToggleDiff(),
+    "diff.toggle": () => {
+      if (!isServerThread || !activeThreadRef) return false;
+      if (revealCodeMode(scopedThreadKey(activeThreadRef)) && diffOpen) {
+        useRightPanelStore.getState().open(activeThreadRef, "diff");
+        return;
+      }
+      onToggleDiff();
+    },
   } satisfies ChatShortcutCommands;
 
   return {
@@ -345,6 +370,7 @@ export function useRightPanelActions(input: RightPanelActionsInput) {
     openFileSurfaceStable,
     toggleRightPanelMaximizedStable,
     toggleRightPanelStable,
+    toggleRightPanelFromShortcut,
     toggleThreadPanelStable,
   };
 }

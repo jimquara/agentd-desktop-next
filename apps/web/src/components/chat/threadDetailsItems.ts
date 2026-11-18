@@ -1,6 +1,9 @@
 import type { ClientSettings } from "@t3tools/contracts";
 import { msg } from "gt-react";
 
+import { ThreadDetailsOutputs } from "./ThreadDetailsOutputs";
+import { ThreadDetailsContext } from "./ThreadDetailsUsage";
+
 // Ids are stored in client settings, so never rename one.
 export const THREAD_DETAILS_ITEMS = [
   { id: "environment", label: msg("Environment and worktree"), defaultVisible: true },
@@ -26,7 +29,13 @@ export const THREAD_DETAILS_ITEMS = [
   },
   { id: "sideChats", label: msg("Side chats"), defaultVisible: true },
   { id: "usage", label: msg("Usage limits"), defaultVisible: false },
-  { id: "context", label: msg("Context window"), defaultVisible: false },
+  {
+    id: "context",
+    label: msg("Context window"),
+    defaultVisible: true,
+    Section: ThreadDetailsContext,
+  },
+  { id: "outputs", label: msg("Outputs"), defaultVisible: true, Section: ThreadDetailsOutputs },
 ] as const;
 
 export type ThreadDetailsItemId = (typeof THREAD_DETAILS_ITEMS)[number]["id"];
@@ -38,11 +47,9 @@ type ThreadDetailsItemSettings = Pick<
   "threadDetailsItems" | "threadDetailsUsageEnabled"
 >;
 
-// People who turned on the retired Labs toggle keep Usage and Context until they change them here.
+// People who turned on the retired Labs toggle keep Usage until they change it here.
 function defaultVisible(item: ThreadDetailsItem, settings: ThreadDetailsItemSettings) {
-  return item.id === "usage" || item.id === "context"
-    ? settings.threadDetailsUsageEnabled
-    : item.defaultVisible;
+  return item.id === "usage" ? settings.threadDetailsUsageEnabled : item.defaultVisible;
 }
 
 export function resolveThreadDetailsVisibility(
@@ -70,7 +77,7 @@ export function isDefaultThreadDetailsVisibility(visibility: ThreadDetailsVisibi
   return THREAD_DETAILS_ITEMS.every((item) => visibility[item.id] === item.defaultVisible);
 }
 
-/** Also clears the retired Labs flag, so Usage and Context return to off. */
+/** Also clears the retired Labs flag, so Usage returns to off. */
 export const RESET_THREAD_DETAILS_ITEMS = {
   threadDetailsItems: {},
   threadDetailsUsageEnabled: false,

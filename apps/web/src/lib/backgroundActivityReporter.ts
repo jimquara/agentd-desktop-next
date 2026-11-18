@@ -112,7 +112,11 @@ function createActivityReport(
 function scopeForSubscription(
   observation: EnvironmentRpcSubscriptionObservation,
 ): BackgroundScope | null {
-  if (observation.method === WS_METHODS.subscribeResourceTelemetry) {
+  // The server re-reads agentd's task list only while a client showing it is active.
+  if (
+    observation.method === WS_METHODS.subscribeResourceTelemetry ||
+    observation.method === WS_METHODS.agentdSubscribeTasks
+  ) {
     return { type: "diagnostics" };
   }
   if (observation.method !== WS_METHODS.subscribeVcsStatus) {

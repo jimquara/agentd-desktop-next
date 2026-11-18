@@ -19,6 +19,8 @@ export interface McpCredentialRequest {
   /** False omits the preview capability wherever the token is honored. Defaults to full access. */
   readonly browserToolsAvailable?: boolean;
   readonly capabilities?: ReadonlySet<McpInvocationContext.McpCapability>;
+  /** AgentD: false grants only `capabilities`, without the orchestration, worktree, PR and issue base. */
+  readonly taskTools?: boolean;
   readonly subagent?: boolean;
 }
 
@@ -136,10 +138,9 @@ const makeWithOptions = Effect.fn("McpSessionRegistry.make")(function* (
         },
         client: undefined,
         capabilities: new Set<McpInvocationContext.McpCapability>([
-          "orchestration",
-          "worktree",
-          "pull-requests",
-          "issues",
+          ...(request.taskTools === false
+            ? []
+            : (["orchestration", "worktree", "pull-requests", "issues"] as const)),
           ...(request.capabilities ?? (browserToolsAvailable ? (["preview"] as const) : [])),
         ]),
         issuedAt: issuedAlive.wallMs,

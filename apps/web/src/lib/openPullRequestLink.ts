@@ -18,6 +18,7 @@ import { useOpenLink } from "../browser/useOpenLink";
 import { useClientSettings } from "../hooks/useSettings";
 import { stackedThreadToast, toastManager } from "../components/ui/toast";
 import { m } from "../i18n/messages";
+import { productProfile } from "../productProfile";
 import { useRightPanelStore } from "../rightPanelStore";
 import {
   selectThreadBranchBaseRef,
@@ -100,6 +101,7 @@ export function useOpenChangeRequestLink(
     const resolvedThreadRef = targetThreadRef ?? threadRef;
     const resolvedPanelRef = panelRef ?? resolvedThreadRef;
     const openPullRequest = () => {
+      if (!resolvedThreadRef && !productProfile.pullRequests) return false;
       const target = pullRequestLinkPanelTarget({
         url: targetUrl,
         environmentId: resolvedThreadRef?.environmentId ?? targetEnvironmentId,

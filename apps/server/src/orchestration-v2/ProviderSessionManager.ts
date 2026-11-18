@@ -53,6 +53,7 @@ import * as ProjectService from "../project/ProjectService.ts";
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
 import * as ServerSettings from "../serverSettings.ts";
 import * as McpSessionRegistry from "../mcp/McpSessionRegistry.ts";
+import type { McpCapability } from "../mcp/McpInvocationContext.ts";
 import * as EventSink from "./EventSink.ts";
 import * as CommandOutputHub from "./CommandOutputHub.ts";
 import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
@@ -332,6 +333,18 @@ export interface ProviderSessionManagerV2LayerOptions {
   readonly configureMcp?: boolean;
 }
 
+/** Empty means the session gets no t3-code MCP server at all. */
+const agentMcpCapabilities = (input: {
+  readonly taskTools: boolean;
+  readonly browser: boolean;
+  readonly device: boolean;
+}): ReadonlySet<McpCapability> =>
+  new Set<McpCapability>([
+    ...(input.taskTools ? (["orchestration", "worktree", "pull-requests", "issues"] as const) : []),
+    ...(input.browser ? (["preview"] as const) : []),
+    ...(input.device ? (["device"] as const) : []),
+  ]);
+
 function releaseStatusFor(
   reason: ProviderSessionReleaseReason,
 ): OrchestrationV2ProviderSession["status"] {
@@ -447,6 +460,13 @@ export const layerWithOptions = (
         ? Effect.succeed(false)
         : serverSettings.value.getSettings.pipe(
             Effect.map((settings) => settings.promptSuggestionsEnabled),
+            Effect.orElseSucceed(() => false),
+          );
+      // AgentD: agents bring their own task tools; unreadable settings keep ours off.
+      const orchestrationToolsEnabled = Option.isNone(serverSettings)
+        ? Effect.succeed(false)
+        : serverSettings.value.getSettings.pipe(
+            Effect.map((settings) => settings.enableAgentOrchestrationTools),
             Effect.orElseSucceed(() => false),
           );
       const agentAccessSettings = Effect.fn("ProviderSessionManagerV2.agentAccessSettings")(
@@ -565,11 +585,17 @@ export const layerWithOptions = (
                 // Live providers build MCP clients once; reuse credentials across workspace handoffs.
                 const { browser: browserToolsAvailable, device: deviceToolsAvailable } =
                   yield* agentAccessSettings(threadId);
-                const capabilities = new Set<
-                  import("../mcp/McpInvocationContext.ts").McpCapability
-                >(["orchestration", "worktree", "pull-requests", "issues"]);
-                if (browserToolsAvailable) capabilities.add("preview");
-                if (deviceToolsAvailable) capabilities.add("device");
+                const taskTools = yield* orchestrationToolsEnabled;
+                const capabilities = agentMcpCapabilities({
+                  taskTools,
+                  browser: browserToolsAvailable,
+                  device: deviceToolsAvailable,
+                });
+                if (capabilities.size === 0) {
+                  yield* mcpSessionRegistry.revokeThread(threadId);
+                  yield* mcpSessions.clear(threadId);
+                  return { mcpCredentialId: undefined, issued: false };
+                }
                 const subagent = yield* projectionStore.getThread(threadId).pipe(
                   Effect.map((thread) => thread.lineage.relationshipToParent === "subagent"),
                   Effect.orElseSucceed(() => false),
@@ -595,6 +621,7 @@ export const layerWithOptions = (
                     resolved.thread.providerInstanceId === providerInstanceId &&
                     resolved.capabilities.has("preview") === browserToolsAvailable &&
                     resolved.capabilities.has("device") === deviceToolsAvailable &&
+                    resolved.capabilities.has("orchestration") === taskTools &&
                     // A credential issued while the lineage read failed is replaced once it works.
                     (resolved.thread.subagent === true) === subagent
                   ) {
@@ -608,6 +635,7 @@ export const layerWithOptions = (
                   providerInstanceId,
                   browserToolsAvailable,
                   capabilities,
+                  taskTools,
                   subagent,
                 });
                 yield* mcpSessions.set({

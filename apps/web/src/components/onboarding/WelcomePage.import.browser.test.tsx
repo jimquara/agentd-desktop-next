@@ -19,6 +19,7 @@ import { AsyncResult, Atom } from "effect/reactivity";
 import { expect, it, vi } from "vite-plus/test";
 
 import "~/index.css";
+import { productProfile } from "~/productProfile";
 import { act, render } from "../../../test/render";
 
 type SessionResult = AsyncResult.AsyncResult<AuthSessionState, Error>;
@@ -764,6 +765,16 @@ it("says the phone is set up only once this computer is shared with the signed-i
     ),
   );
   state.linkError = "Could not read T3 Connect link state.";
+  await using hidden = await mountWelcome();
+  expect(pageText()).not.toContain("Use T3 Code on your phone");
+  await hidden.unmount();
+
+  const originalProfile = { ...productProfile };
+  using _profile = {
+    [Symbol.dispose]: () => Object.assign(productProfile, originalProfile),
+  };
+  productProfile.mobileApp = true;
+  productProfile.sharingAndAccess = true;
   await using _screen = await mountWelcome();
   await click("Set up");
   // A failed read says so instead of asking to share the computer again.

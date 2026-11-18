@@ -527,7 +527,7 @@ export const ClientSettingsSchema = Schema.Struct({
   ),
   proactivePanelsEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   showSkillsInSlashMenu: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
-  boringSidebarEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
+  boringSidebarEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   boringSidebarMultilineRows: Schema.Boolean.pipe(
     Schema.withDecodingDefault(Effect.succeed(false)),
   ),
@@ -1396,6 +1396,10 @@ export const ServerSettings = Schema.Struct({
   ),
 
   enableAgentBrowserAccess: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
+  /** AgentD: off withholds the t3-code orchestration, worktree, pull-request and issue tools. */
+  enableAgentOrchestrationTools: Schema.Boolean.pipe(
+    Schema.withDecodingDefault(Effect.succeed(false)),
+  ),
   cloudSpeechCredentials: CloudSpeechCredentials.pipe(
     Schema.withDecodingDefault(Effect.succeed({ openai: "", xai: "", openrouter: "" })),
   ),

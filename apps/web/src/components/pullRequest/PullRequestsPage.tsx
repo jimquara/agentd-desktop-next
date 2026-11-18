@@ -1634,6 +1634,7 @@ export function PullRequestsPage() {
             pullRequestAvailable={false}
             pullRequestsAvailable={false}
             deviceAvailable={false}
+            backgroundTasksAvailable={false}
             pullRequestStatusSeeds={listedPullRequestTabStatuses}
           >
             <PullRequestDetailPanel

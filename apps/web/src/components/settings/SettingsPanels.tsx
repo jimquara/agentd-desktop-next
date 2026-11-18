@@ -51,6 +51,7 @@ import {
 import { ProviderModelPicker } from "../chat/ProviderModelPicker";
 import { TraitsPicker } from "../chat/TraitsPicker";
 import { isElectron } from "../../env";
+import { productProfile } from "~/productProfile";
 import { buildHostedChannelSelectionUrl, type HostedAppChannel } from "../../hostedPairing";
 import {
   readAppearanceModePreference,
@@ -564,7 +565,8 @@ export function useSettingsRestore(onRestored?: () => void) {
       ? [gt("Diff whitespace changes")]
       : []),
     ...(settings.diffLayout !== DEFAULT_UNIFIED_SETTINGS.diffLayout ? [gt("Diff layout")] : []),
-    ...(settings.proactivePanelsEnabled !== DEFAULT_UNIFIED_SETTINGS.proactivePanelsEnabled
+    ...(productProfile.pullRequests &&
+    settings.proactivePanelsEnabled !== DEFAULT_UNIFIED_SETTINGS.proactivePanelsEnabled
       ? [gt("Open pull requests and changes panels proactively")]
       : []),
     ...(settings.showSkillsInSlashMenu !== DEFAULT_UNIFIED_SETTINGS.showSkillsInSlashMenu
@@ -1693,9 +1695,13 @@ export function DiffsSettingsPanel() {
         />
         <SettingsRow
           {...setting("default-diff-file-state")}
-          description={gt(
-            "Start with files expanded or collapsed when opening diffs or a pull request's Code tab.",
-          )}
+          description={
+            productProfile.pullRequests
+              ? gt(
+                  "Start with files expanded or collapsed when opening diffs or a pull request's Code tab.",
+                )
+              : undefined
+          }
           resetAction={
             settings.diffFilesCollapsed !== DEFAULT_UNIFIED_SETTINGS.diffFilesCollapsed ? (
               <SettingResetButton
@@ -1740,36 +1746,39 @@ export function DiffsSettingsPanel() {
         <DiffColorsSettingsRow />
       </SettingsSection>
 
-      <SettingsSection id="pull-requests" title={gt("Pull requests")}>
-        <SettingsRow
-          {...setting("proactive-panels")}
-          description={gt(
-            "Open linked pull requests first. Otherwise, open Changes for edits to at least 3 files or 50 lines.",
-          )}
-          resetAction={
-            settings.proactivePanelsEnabled !== DEFAULT_UNIFIED_SETTINGS.proactivePanelsEnabled ? (
-              <SettingResetButton
-                ariaLabel={gt("Reset proactive panels to default")}
-                onClick={() =>
-                  updateSettings({
-                    proactivePanelsEnabled: DEFAULT_UNIFIED_SETTINGS.proactivePanelsEnabled,
-                  })
+      {productProfile.pullRequests && (
+        <SettingsSection id="pull-requests" title={gt("Pull requests")}>
+          <SettingsRow
+            {...setting("proactive-panels")}
+            description={gt(
+              "Open linked pull requests first. Otherwise, open Changes for edits to at least 3 files or 50 lines.",
+            )}
+            resetAction={
+              settings.proactivePanelsEnabled !==
+              DEFAULT_UNIFIED_SETTINGS.proactivePanelsEnabled ? (
+                <SettingResetButton
+                  ariaLabel={gt("Reset proactive panels to default")}
+                  onClick={() =>
+                    updateSettings({
+                      proactivePanelsEnabled: DEFAULT_UNIFIED_SETTINGS.proactivePanelsEnabled,
+                    })
+                  }
+                />
+              ) : null
+            }
+            control={
+              <Switch
+                checked={settings.proactivePanelsEnabled}
+                onCheckedChange={(checked) =>
+                  updateSettings({ proactivePanelsEnabled: Boolean(checked) })
                 }
+                aria-label={gt("Open pull requests and changes panels proactively")}
               />
-            ) : null
-          }
-          control={
-            <Switch
-              checked={settings.proactivePanelsEnabled}
-              onCheckedChange={(checked) =>
-                updateSettings({ proactivePanelsEnabled: Boolean(checked) })
-              }
-              aria-label={gt("Open pull requests and changes panels proactively")}
-            />
-          }
-        />
-        <PullRequestLinksOpenInAppSetting />
-      </SettingsSection>
+            }
+          />
+          <PullRequestLinksOpenInAppSetting />
+        </SettingsSection>
+      )}
     </SettingsPageContainer>
   );
 }
@@ -2490,7 +2499,7 @@ export function AboutSettingsPanel() {
             />
           </>
         )}
-        <MobileAppSettingsRow />
+        {productProfile.mobileApp ? <MobileAppSettingsRow /> : null}
         {primaryEnvironmentId === null ? null : (
           <SettingsRow
             {...setting("welcome-page")}

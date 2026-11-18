@@ -1,1 +1,3 @@
-export const PRIVACY_POLICY_URL = "https://t3.codes/privacy-policy";
+/** This build's own telemetry notice; it has no hosted privacy policy page. */
+export const PRIVACY_POLICY_URL =
+  "https://github.com/libraos/agentd-desktop-next/blob/main/docs/user/telemetry.md";

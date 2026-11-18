@@ -27,11 +27,7 @@ import { ThreadDetailsSection } from "./ThreadDetailsSection";
 import { ThreadAutomationsPanel } from "./ThreadAutomationsPanel";
 import { ThreadRelationshipsPanel } from "./ThreadRelationshipsControl";
 import { ThreadServersPanel } from "./ThreadServersPanel";
-import {
-  ThreadDetailsContext,
-  ThreadDetailsUsage,
-  type ThreadDetailsUsageInput,
-} from "./ThreadDetailsUsage";
+import { ThreadDetailsUsage, type ThreadDetailsUsageInput } from "./ThreadDetailsUsage";
 import { ThreadDetailsItemsMenuItems } from "./ThreadDetailsItemsMenu";
 import { resolveThreadDetailsVisibility, THREAD_DETAILS_ITEMS } from "./threadDetailsItems";
 import { useClientSettings } from "../../hooks/useSettings";
@@ -140,7 +136,7 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
 
   return (
     <ThreadDetailsCard
-      threadRef={{ environmentId: props.environmentId, threadId: props.threadId }}
+      threadRef={activeThreadRef}
       anchor={props.anchor}
       handle={props.handle}
       contentKey={THREAD_DETAILS_ITEMS.filter((item) => visible[item.id])
@@ -168,7 +164,7 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
       {(density) => {
         // Section flags follow the rows that will render, so no empty section steals the divider rule.
         const show = {
-          environment: density === "full" && visible.environment,
+          environment: visible.environment,
           openIn: density !== "essential" && visible.openIn && props.showOpenInPicker,
           scripts: visible.scripts && props.activeProjectScripts !== undefined,
           branch: offersGit && props.isGitRepo && visible.branch,
@@ -182,12 +178,11 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
         return (
           <>
             <div className="group/details-items">
-              {show.environment || show.openIn || show.scripts ? (
+              {Object.values(show).some(Boolean) ? (
                 <ThreadDetailsSection
-                  headingId="thread-details-workspace-heading"
-                  title={gt("Workspace")}
+                  headingId="thread-details-environment-heading"
+                  title={gt("Environment")}
                   separated={false}
-                  showHeading={false}
                 >
                   <div className="flex flex-col">
                     {show.environment ? (
@@ -228,18 +223,6 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
                         onDeleteScript={props.onDeleteProjectScript}
                       />
                     ) : null}
-                  </div>
-                </ThreadDetailsSection>
-              ) : null}
-
-              {show.branch || show.pullRequests || show.git ? (
-                <ThreadDetailsSection
-                  headingId="thread-details-version-control-heading"
-                  title={gt("Version Control")}
-                  showHeading={false}
-                  separated={density === "full"}
-                >
-                  <div className="flex flex-col">
                     {show.branch ? (
                       <BranchToolbar layout="panel" panelSection="branch" {...branchToolbarProps} />
                     ) : null}
@@ -266,6 +249,16 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
                 </ThreadDetailsSection>
               ) : null}
 
+              {THREAD_DETAILS_ITEMS.map((item) =>
+                "Section" in item && visible[item.id] ? (
+                  <item.Section
+                    key={item.id}
+                    threadRef={activeThreadRef}
+                    usage={props.usage.contextWindow}
+                  />
+                ) : null,
+              )}
+
               {density === "full" && !props.draftId && visible.servers ? (
                 <ThreadServersPanel environmentId={props.environmentId} threadId={props.threadId} />
               ) : null}
@@ -287,10 +280,6 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
               ) : null}
 
               {visible.usage ? <ThreadDetailsUsage {...props.usage} /> : null}
-
-              {visible.context && props.usage.contextWindow ? (
-                <ThreadDetailsContext usage={props.usage.contextWindow} />
-              ) : null}
 
               {/* Shown only when no section above has content, so an emptied card can be refilled. */}
               <div className="p-2 group-has-[>section>:last-child:not(:empty)]/details-items:hidden">

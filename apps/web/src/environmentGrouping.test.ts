@@ -158,6 +158,20 @@ describe("environment grouping", () => {
       primary.id,
       remote.id,
     ]);
+    expect(snapshots[0]?.environmentPresence).toBe("mixed");
+    expect(snapshots[0]?.remoteEnvironmentLabels).toEqual(["remote"]);
+  });
+
+  it("keeps the connected machine's label when there is no primary environment", () => {
+    const [snapshot] = buildSidebarProjectSnapshots({
+      projects: [makeProject({ environmentId: remoteEnvironmentId })],
+      settings: defaultGroupingSettings,
+      primaryEnvironmentId: null,
+      resolveEnvironmentLabel: () => "Build server",
+    });
+
+    expect(snapshot?.environmentPresence).toBe("remote-only");
+    expect(snapshot?.remoteEnvironmentLabels).toEqual(["Build server"]);
   });
 
   it("dedupes stale project rows before logical grouping", () => {

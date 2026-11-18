@@ -17,6 +17,7 @@ import {
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { resolveUserMessagePresentation } from "@t3tools/client-runtime/user-message";
 import { Link } from "@tanstack/react-router";
+import { productProfile } from "~/productProfile";
 import { useQuietThreadShell } from "../../state/entities";
 import { useEnvironment } from "../../state/environments";
 import { useEnvironmentQuery } from "../../state/query";
@@ -356,7 +357,7 @@ function AutomationMessageRow({ row }: { row: Extract<TimelineRow, { kind: "mess
       {expanded ? (
         <div className="flex w-full max-w-[80%] items-center justify-end pe-1 text-xs tabular-nums opacity-0 transition-opacity duration-200 pointer-coarse:opacity-100 focus-within:opacity-100 group-hover:opacity-100">
           <div className="flex shrink-0 items-center gap-2">
-            {scheduledTaskId ? (
+            {productProfile.scheduledTasks && scheduledTaskId ? (
               <Link
                 to="/settings/scheduled-tasks"
                 search={{ environmentId: ctx.activeThreadEnvironmentId, taskId: scheduledTaskId }}

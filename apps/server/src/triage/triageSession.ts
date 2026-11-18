@@ -16,6 +16,7 @@ import { isProcessAlive, readPersistedServerRuntimeState } from "../serverRuntim
 import {
   buildTriageContext,
   buildTriageSeedPrompt,
+  triageRepository,
   type TriageEntry,
   type TriageSourceClone,
 } from "./triagePrompt.ts";
@@ -74,6 +75,7 @@ export const writeTriageSession = Effect.fn("triage.writeTriageSession")(functio
       nodeVersion: process.version,
       server: input.server,
       sourceClone: input.sourceClone,
+      repository: yield* triageRepository,
       paths: {
         stateDir: paths.stateDir,
         dbPath: paths.dbPath,

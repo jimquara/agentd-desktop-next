@@ -51,6 +51,7 @@ import { LinkedEnvironmentsSettings } from "./LinkedEnvironmentsSettings";
 import { usePeerLinkHosts } from "~/state/peerLinks";
 import { LoadBalancingSettings } from "./LoadBalancingSettings";
 import { PullRequestRoutingSettings } from "./PullRequestRoutingSettings";
+import { productProfile } from "~/productProfile";
 import { Input } from "../ui/input";
 import {
   Dialog,
@@ -1837,7 +1838,9 @@ function ConnectionsSettingsContent({
         />
       ))}
       <LoadBalancingSettings environments={loadBalancingEnvironments} />
-      <PullRequestRoutingSettings environments={loadBalancingEnvironments} />
+      {productProfile.pullRequests ? (
+        <PullRequestRoutingSettings environments={loadBalancingEnvironments} />
+      ) : null}
     </SettingsPageContainer>
   );
 }

@@ -28,12 +28,7 @@ import {
 } from "../cloud/pinnedRuntime.ts";
 import * as ManagedPolicy from "../policy/ManagedPolicy.ts";
 import * as ProcessRunner from "../processRunner.ts";
-import {
-  repointLauncher,
-  resolveMirrorVersion,
-  resolveNewestVersion,
-  runUpdate,
-} from "./update.ts";
+import { repointLauncher, resolveMirrorVersion, runUpdate } from "./update.ts";
 
 // lsof listing one process, so prune sees a process list in which no runtime is running.
 const unrelatedLsof = ProcessRunner.ProcessRunner.of({
@@ -51,29 +46,6 @@ const unrelatedLsof = ProcessRunner.ProcessRunner.of({
 });
 
 afterEach(() => vi.restoreAllMocks());
-
-it.effect("authenticates each release page until the requested channel is found", () =>
-  Effect.gen(function* () {
-    const pages: string[] = [];
-    const httpClient = HttpClient.make((request) => {
-      const url = new URL(request.url);
-      assert.equal(url.origin, "https://api.github.com");
-      assert.equal(url.pathname, "/repos/pingdotgg/t3code/releases");
-      assert.equal(request.headers.accept, "application/vnd.github+json");
-      assert.equal(request.headers.authorization, "Bearer gh-token");
-      const page = url.searchParams.get("page") ?? "";
-      pages.push(page);
-      const tag_name = page === "1" ? "v1.2.4-preview.20260101.1" : "v1.2.3";
-      return Effect.succeed(HttpClientResponse.fromWeb(request, Response.json([{ tag_name }])));
-    });
-    const version = yield* resolveNewestVersion("stable").pipe(
-      Effect.provideService(HostProcess.Environment, { GH_TOKEN: "gh-token" }),
-      Effect.provideService(HttpClient.HttpClient, httpClient),
-    );
-    assert.equal(version, "1.2.3");
-    assert.deepStrictEqual(pages, ["1", "2"]);
-  }),
-);
 
 it.effect("reads the newest version from the update feed file a mirror publishes", () =>
   Effect.gen(function* () {
@@ -153,6 +125,7 @@ it.layer(NodeServices.layer)("t3 update under a managed policy", (it) => {
           Layer.succeed(HttpClient.HttpClient, httpClient),
         ),
       ),
+      Effect.provideService(HostProcess.Environment, {}),
     );
 
   it.effect("refuses to update when updates are off", () =>
@@ -178,6 +151,16 @@ it.layer(NodeServices.layer)("t3 update under a managed policy", (it) => {
           "Example Corp manages T3 Code updates. Only stable releases can be installed.",
         );
       }
+    }),
+  );
+
+  it.effect("refuses without a network request when no release source is configured", () =>
+    Effect.gen(function* () {
+      const error = yield* runWithPolicy({ mode: "auto" }, { channel: "stable" });
+      assert.equal(
+        error.message,
+        "Updates are not configured for this build. Set T3CODE_RELEASE_BASE_URL to a release mirror to enable them.",
+      );
     }),
   );
 
@@ -353,7 +336,10 @@ it.layer(NodeServices.layer)("t3 update launcher", (it) => {
       const removed = yield* prunePinnedRuntimes({ baseDir: root, keep: [] }).pipe(
         Effect.provideService(ProcessRunner.ProcessRunner, unrelatedLsof),
         Effect.provideService(HostProcess.Platform, "darwin"),
-        Effect.provideService(HostProcess.Environment, { PATH: "" }),
+        Effect.provideService(HostProcess.Environment, {
+          PATH: "",
+          T3CODE_RELEASE_BASE_URL: "https://updates.example.com/t3code",
+        }),
         Effect.provideService(HostProcess.HomeDirectory, root),
       );
 
@@ -502,7 +488,10 @@ it.layer(NodeServices.layer)("t3 update launcher", (it) => {
       );
       const relative = yield* resolveLauncherPath.pipe(
         Effect.provideService(HostProcess.InvokedAs, "./bin/t3"),
-        Effect.provideService(HostProcess.Environment, { PATH: "" }),
+        Effect.provideService(HostProcess.Environment, {
+          PATH: "",
+          T3CODE_RELEASE_BASE_URL: "https://updates.example.com/t3code",
+        }),
         Effect.provideService(HostProcess.WorkingDirectory, root),
       );
       const absent = yield* resolveLauncherPath.pipe(
@@ -613,7 +602,10 @@ it.layer(NodeServices.layer)("t3 update with a background service", (it) => {
       );
     }).pipe(
       Effect.provideService(HostProcess.Platform, "linux"),
-      Effect.provideService(HostProcess.Environment, { PATH: "" }),
+      Effect.provideService(HostProcess.Environment, {
+        PATH: "",
+        T3CODE_RELEASE_BASE_URL: "https://updates.example.com/t3code",
+      }),
     ),
   );
 });
@@ -716,6 +708,9 @@ it.layer(NodeServices.layer)("t3 update checks the database before switching", (
         assumeYes: true,
       }).pipe(
         Effect.exit,
+        Effect.provideService(HostProcess.Environment, {
+          T3CODE_RELEASE_BASE_URL: "https://updates.example.com/t3code",
+        }),
         Effect.provide(
           Layer.mergeAll(
             service,
@@ -744,7 +739,10 @@ it.layer(NodeServices.layer)("t3 update checks the database before switching", (
       ]);
     }).pipe(
       Effect.provideService(HostProcess.Platform, "linux"),
-      Effect.provideService(HostProcess.Environment, { PATH: "" }),
+      Effect.provideService(HostProcess.Environment, {
+        PATH: "",
+        T3CODE_RELEASE_BASE_URL: "https://updates.example.com/t3code",
+      }),
     ),
   );
 });
