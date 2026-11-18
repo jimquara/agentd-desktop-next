@@ -174,6 +174,7 @@ export const AgentdStatus = Schema.Struct({
   version: Schema.String,
   ok: Schema.Boolean,
   setUp: Schema.Boolean,
+  defaultWorker: Schema.optionalKey(Schema.NullOr(AgentdWorkerTool)),
   teamServer: NullableString,
   checks: Schema.Array(AgentdDoctorCheck),
 });
