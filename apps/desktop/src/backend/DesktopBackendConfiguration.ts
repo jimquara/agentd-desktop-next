@@ -15,10 +15,12 @@ import * as Option from "effect/Option";
 import * as PlatformError from "effect/PlatformError";
 import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
+import { ChildProcessSpawner } from "effect/process";
 import * as SynchronizedRef from "effect/SynchronizedRef";
 
 import serverPackageJson from "../../../server/package.json" with { type: "json" };
 
+import * as AgentdBinary from "./agentdBinary.ts";
 import * as DesktopBackendManager from "./DesktopBackendManager.ts";
 import * as DesktopCliShim from "../app/DesktopCliShim.ts";
 import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
@@ -519,6 +521,7 @@ const resolvePrimaryStartConfig = Effect.fn("desktop.backendConfiguration.resolv
     input: SharedBootstrapInput & {
       readonly resourceMonitorPath: Option.Option<string>;
       readonly cliPath: Option.Option<string>;
+      readonly agentdBin: Option.Option<string>;
       readonly shellEnvironmentPrepared: boolean;
       readonly desktopAppUpdate: boolean;
     },
@@ -571,6 +574,11 @@ const resolvePrimaryStartConfig = Effect.fn("desktop.backendConfiguration.resolv
         T3CODE_DESKTOP_SHELL_DISCOVERY_PENDING: "1",
         T3CODE_CLI_PATH: Option.getOrUndefined(input.cliPath),
         [DESKTOP_HOST_SCOPE_ENV]: input.hostScope,
+        // Only set when bundled: an undefined value would unset the user's own AGENTD_BIN.
+        ...Option.match(input.agentdBin, {
+          onNone: () => ({}),
+          onSome: (agentdBin) => ({ [AgentdBinary.AGENTD_BIN_ENV]: agentdBin }),
+        }),
       },
       extendEnv: true,
       bootstrap,
@@ -766,6 +774,7 @@ export const make = Effect.gen(function* () {
   const settings = yield* DesktopAppSettings.DesktopAppSettings;
   const desktopState = yield* DesktopState.DesktopState;
   const mac = yield* Mac.Mac;
+  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
   const random = yield* SecureRandom.SecureRandom;
   // Random generation yields; serialize it so concurrent backends cannot capture distinct bootstrap secrets.
   const secretRef = yield* SynchronizedRef.make(Option.none<string>());
@@ -835,10 +844,17 @@ export const make = Effect.gen(function* () {
       Effect.provideService(DesktopEnvironment.DesktopEnvironment, environment),
     );
     const shellEnvironmentPrepared = yield* shellEnvironment.installIntoProcess;
+    // After installIntoProcess, so the user's agentd is looked up on their login-shell PATH.
+    const agentdBin = yield* AgentdBinary.resolveAgentdBin().pipe(
+      Effect.provideService(FileSystem.FileSystem, fileSystem),
+      Effect.provideService(DesktopEnvironment.DesktopEnvironment, environment),
+      Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner),
+    );
     return yield* resolvePrimaryStartConfig({
       ...shared,
       resourceMonitorPath,
       cliPath,
+      agentdBin,
       shellEnvironmentPrepared,
       desktopAppUpdate: yield* Ref.get(desktopState.canInstallUpdates),
     }).pipe(
