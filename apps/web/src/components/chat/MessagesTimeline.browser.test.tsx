@@ -33,6 +33,13 @@ import { describe, expect, it, onTestFinished, vi } from "vite-plus/test";
 
 import "~/index.css";
 
+// These tests cover upstream behaviour with the features the AgentD profile hides turned on.
+vi.mock(import("~/productProfile"), async (importOriginal) => ({
+  productProfile: Object.fromEntries(
+    Object.keys((await importOriginal()).productProfile).map((key) => [key, true]),
+  ) as Awaited<ReturnType<typeof importOriginal>>["productProfile"],
+}));
+
 import { environmentThreadDetails } from "../../state/threads";
 import { act, fakeTimers, render, stubGlobal } from "../../../test/render";
 import { ChangedFilesCard } from "./ChangedFilesTree";
@@ -1492,7 +1499,7 @@ describe("MessagesTimeline agent messages", () => {
     expect(screen.buttons("Open thread")).toHaveLength(0);
   });
 
-  it("leaves messages sent by T3 Code as full bubbles", async () => {
+  it("leaves messages sent by AgentD Desktop as full bubbles", async () => {
     setup();
     await using screen = await renderTimeline([
       message(AGENT_MESSAGE, { createdBy: "agent", creationSource: "server" }),

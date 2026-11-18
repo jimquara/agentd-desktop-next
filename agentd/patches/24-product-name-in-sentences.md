@@ -1,0 +1,280 @@
+# 24: The product name in sentences
+
+Every `T3 Code` in `apps/web/src`, `apps/desktop/src` and `packages/` became `AgentD Desktop`, as are
+"the T3 server", "T3 home", "T3 process" and "T3 thread" where users see them. Literal names in web code use
+`APP_BASE_NAME`; translated sentences carry plain "AgentD Desktop". Done with one scripted pass plus hand edits
+(articles: "an AgentD" became "an AgentD").
+
+## Kept on purpose
+
+- `apps/desktop/src/app/DesktopUserData.ts`, `DesktopLegacyLocalStorage.ts`: `T3 Code (Alpha)` and `T3 Code (Dev)` are
+  the folder names of earlier installs that the app migrates from.
+- `packages/source-control-github/src/shared/definition.ts`: `T3 Code for GitHub` is the real name of upstream's
+  GitHub app, whose client id this build still carries. Turning that sign-in off belongs to the hosted-services work.
+- `packages/provider-acp-registry/src/server/adapter.ts`: a comment naming upstream's `T3 Code (Beta).exe` path.
+- `T3 Connect` and `T3 Chat` (upstream's hosted services, hidden by the product profile), comments using the
+  glossary terms "T3 home" and "T3's", and the agent-facing "T3 tools" (the tools are named `t3_*`).
+- Test data that only looks like the name (thread titles, speech hints, `T3 Code Mobile`, which `apps/mobile` sends).
+
+## Separate decisions, not made here
+
+- The `t3` command, `T3CODE_*` variables, `t3code.*` storage keys and telemetry attributes, the `t3code://` and
+  `t3-thread://` link schemes, the `t3-code` theme id and the `hermes mcp login t3code` server name are unchanged.
+- `T3_PROJECT_FILE_SCHEMA_URL` (`https://t3.codes/schema/t3.json`) is an id written into users' t3.json files.
+- The rebase committer email `noreply@t3.codes`.
+
+## Windows
+
+Only text changed. No paths, commands or processes.
+
+## Files
+
+- `apps/desktop/src/app/DesktopApp.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/app/DesktopAppActivation.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/app/DesktopAppActivationBroker.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/app/DesktopAppIdentity.test.ts`: expected product names follow the renamed app name; the legacy `T3 Code (Dev)` profile path stays.
+- `apps/desktop/src/app/DesktopCliCommand.test.ts`: assertions follow the renamed sentences.
+- `apps/desktop/src/app/DesktopCliCommand.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/app/DesktopCliShim.test.ts`: assertions follow the renamed sentences.
+- `apps/desktop/src/app/DesktopCliShim.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/app/DesktopEnvironment.test.ts`: assertions follow the renamed sentences.
+- `apps/desktop/src/app/DesktopExitChildren.test.ts`: assertions follow the renamed sentences.
+- `apps/desktop/src/app/DesktopLifecycle.test.ts`: assertions follow the renamed sentences.
+- `apps/desktop/src/app/DesktopLinuxUrlHandler.test.ts`: assertions follow the renamed sentences.
+- `apps/desktop/src/app/DesktopPreReadyPlatform.test.ts`: assertions follow the renamed sentences.
+- `apps/desktop/src/app/DesktopStartupRecovery.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/backend/DesktopBackendPool.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/backend/DesktopHomeOwner.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/backend/DesktopLocalEnvironmentAuth.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/electron/ElectronShell.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/electron/ElectronUpdater.test.ts`: assertions follow the renamed sentences.
+- `apps/desktop/src/electron/WindowsForeground.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/preview/BrowserImport/BrowserImport.test.ts`: assertions follow the renamed sentences.
+- `apps/desktop/src/preview/BrowserSession.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/snapShot/DesktopSnapShot.test.ts`: assertions follow the renamed sentences.
+- `apps/desktop/src/snapShot/DesktopSnapShot.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/snapShot/GnomeCaptureSetup.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/snapShot/HyprlandSnapShot.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/snapShot/KdeSnapShot.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/snapShot/LinuxSnapShot.test.ts`: assertions follow the renamed sentences.
+- `apps/desktop/src/snapShot/LinuxSnapShot.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/snapShot/NiriCaptureShortcut.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/snapShot/NiriSnapShot.test.ts`: assertions follow the renamed sentences.
+- `apps/desktop/src/snapShot/NiriSnapShot.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/snapShot/PortalCaptureShortcut.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/snapShot/SnapShotTransition.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/ssh/DesktopSshEnvironment.test.ts`: assertions follow the renamed sentences.
+- `apps/desktop/src/ssh/DesktopSshEnvironment.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/ssh/DesktopSshPasswordPrompts.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/telemetry/DesktopTelemetryPublisher.test.ts`: assertions follow the renamed sentences.
+- `apps/desktop/src/updates/DesktopUpdatePolicy.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/updates/DesktopUpdates.test.ts`: assertions follow the renamed sentences.
+- `apps/desktop/src/updates/DesktopUpdates.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/window/DesktopApplicationMenu.test.ts`: assertions follow the renamed sentences.
+- `apps/desktop/src/window/DesktopApplicationMenu.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/window/DesktopWindow.test.ts`: assertions follow the renamed sentences.
+- `apps/desktop/src/wsl/DesktopWslBackend.test.ts`: assertions follow the renamed sentences.
+- `apps/desktop/src/wsl/DesktopWslBackend.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/desktop/src/wsl/DesktopWslEnvironment.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/authBootstrap.test.ts`: assertions follow the renamed sentences.
+- `apps/web/src/cloud/linkEnvironment.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/BranchToolbarBranchSelector.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/ChatView.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/CommandPalette.logic.test.ts`: assertions follow the renamed sentences.
+- `apps/web/src/components/CommandPalette.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/DiffPanel.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/EnvironmentContextChip.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/HostedEmptyState.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/RightPanelTabs.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/ServerUpdateAction.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/auth/ConnectAgentSurface.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/chat/MessagesTimeline.browser.test.tsx`: assertions follow the renamed sentences.
+- `apps/web/src/components/chat/MessagesTimeline.logic.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/chat/QueuedRunsControl.browser.test.tsx`: assertions follow the renamed sentences.
+- `apps/web/src/components/chat/QueuedRunsControl.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/chat/RightPanelSurfaceContent.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/chat/ThreadActivityAnnouncer.browser.test.tsx`: assertions follow the renamed sentences.
+- `apps/web/src/components/chat/TimelineAssistantRows.tsx`: agent message author heading uses `APP_BASE_NAME`.
+- `apps/web/src/components/chat/TimelineUserMessageRow.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/chat/TriageDraftHero.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/chat/composerPromptHistory.test.ts`: assertions follow the renamed sentences.
+- `apps/web/src/components/chat/guestMessageStyle.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/chat/turnDetailAnnouncement.test.ts`: assertions follow the renamed sentences.
+- `apps/web/src/components/chat/turnDetailAnnouncement.ts`: screen-reader message author uses `APP_BASE_NAME`.
+- `apps/web/src/components/chat/useSystemComposerBanners.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/clerk/MobileClientsUserProfilePage.logic.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/clerk/MobileClientsUserProfilePage.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/cloud/RelayClientInstallDialog.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/desktop/DesktopWebLinkCoordinator.browser.test.tsx`: assertions follow the renamed sentences.
+- `apps/web/src/components/desktop/SshPasswordPromptDialog.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/desktopUpdate.logic.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/issue/IssuesPage.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/mcp/UseInAnotherAppDialog.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/mcp/mcpApps.test.ts`: assertions follow the renamed sentences.
+- `apps/web/src/components/mcp/mcpApps.ts`: connector name prefilled in Poke and Claude links is AgentD Desktop.
+- `apps/web/src/components/mcp/mcpGate.test.ts`: assertions follow the renamed sentences.
+- `apps/web/src/components/onboarding/FirstRunGate.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/onboarding/WelcomePage.import.browser.test.tsx`: assertions follow the renamed sentences.
+- `apps/web/src/components/onboarding/WelcomePage.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/preview/PreviewPanel.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/preview/PreviewView.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/promptLinks/HostedPromptLinkLanding.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/promptLinks/NewThreadLinkView.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/promptLinks/linkedPrompt.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/pullRequest/PullRequestsPage.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/AcpRegistrySearchStep.browser.test.tsx`: assertions follow the renamed sentences.
+- `apps/web/src/components/settings/AcpSessionManagementSection.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/BrowserImportWizard.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/CaptureShortcutConfig.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/ChatGptWelcomeCoordinator.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/CliCommandSettingsRow.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/CodexSetupSection.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/ConnectionsSettings.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/DatabaseStorageNotice.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/DiagnosticsSettings.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/IntegrationsSettings.tsx`: link-target label uses `APP_BASE_NAME`; sentences renamed.
+- `apps/web/src/components/settings/KeybindingsSettings.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/LabsSettingsPanel.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/LinkedEnvironmentsSettings.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/LocalEnvironmentSetting.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/MultipleAccountsNote.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/NotificationSettings.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/ProjectSettingsPanel.logic.test.ts`: assertions follow the renamed sentences.
+- `apps/web/src/components/settings/ProviderSettingsForm.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/ResourceTelemetryDiagnostics.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/SavedEnvironmentRows.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/ScheduledTasksSettings.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/SecretsSettings.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/SettingsPanels.logic.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/SettingsPanels.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/SnapShotSettings.logic.test.ts`: assertions follow the renamed sentences.
+- `apps/web/src/components/settings/SnapShotSettings.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/SnapShotSetupDialog.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/StorageSettings.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/ThemeImportDialog.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/ThemePreviewCircles.tsx`: stock theme card label uses `APP_BASE_NAME` (theme id `t3-code` unchanged).
+- `apps/web/src/components/settings/UpdateTrackSwitchDialog.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/providerStatus.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/scheduledTasksSettings.logic.test.ts`: assertions follow the renamed sentences.
+- `apps/web/src/components/settings/scopedSettings.test.ts`: assertions follow the renamed sentences.
+- `apps/web/src/components/settings/scopedSettings.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/settings/settingsScope.test.ts`: assertions follow the renamed sentences.
+- `apps/web/src/components/settings/settingsScopeNavigation.test.ts`: assertions follow the renamed sentences.
+- `apps/web/src/components/settings/settingsSearch.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/sidebar/SidebarFolderDrop.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/components/sidebar/SidebarUpdatePill.browser.test.tsx`: assertions follow the renamed sentences.
+- `apps/web/src/components/sidebar/UpdateEverythingDialog.tsx`: app name in the update dialog uses `APP_BASE_NAME`.
+- `apps/web/src/components/sidebar/updateEverything.logic.test.ts`: assertions follow the renamed sentences.
+- `apps/web/src/components/sidebar/updateEverythingRun.tsx`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/connection/clientMetadata.ts`: client labels stored on the server: "AgentD Desktop" and "AgentD Desktop Web".
+- `apps/web/src/connection/platform.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/desktopAppActivation.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/hooks/useOpenLocalWorkspace.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/hooks/useStartTriage.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/lib/assistantTextSelection.test.ts`: assertions follow the renamed sentences.
+- `apps/web/src/lib/bootError.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/onboarding/welcomePage.logic.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/shortcuts/chatRouteCommands.ts`: product name in sentences (messages, errors, labels or comments).
+- `apps/web/src/versionSkew.test.ts`: assertions follow the renamed sentences.
+- `apps/web/src/versionSkew.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/client-runtime/src/authorization/layer.test.ts`: assertions follow the renamed sentences.
+- `packages/client-runtime/src/connection/compatibility.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/client-runtime/src/connection/diagnosis.test.ts`: assertions follow the renamed sentences.
+- `packages/client-runtime/src/connection/diagnosis.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/client-runtime/src/connection/errors.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/client-runtime/src/connection/hostFreeze.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/client-runtime/src/connection/model.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/client-runtime/src/connection/onboarding.test.ts`: assertions follow the renamed sentences.
+- `packages/client-runtime/src/connection/outdatedHostUpdate.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/client-runtime/src/connection/resolver.test.ts`: assertions follow the renamed sentences.
+- `packages/client-runtime/src/contractLabels.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/client-runtime/src/relay/errorPresentation.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/client-runtime/src/state/device.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/client-runtime/src/state/peerPairingCode.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/client-runtime/src/state/projectGrouping.test.ts`: assertions follow the renamed sentences.
+- `packages/client-runtime/src/state/projectRemoval.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/client-runtime/src/state/pullRequestDiffHttp.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/client-runtime/src/state/threadRequests.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/client-runtime/src/userMessage.test.ts`: assertions follow the renamed sentences.
+- `packages/client-runtime/src/userMessage.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/client-runtime/src/work-log/t3ToolSentences.ts`: same labels as keys and sentences, kept in step with t3McpToolPresentation.ts.
+- `packages/contracts/src/auth.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/contracts/src/browserImport.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/contracts/src/composerContext.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/contracts/src/device.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/contracts/src/managedPolicy.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/contracts/src/orchestrationV2.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/contracts/src/preview.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/contracts/src/pullRequest.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/contracts/src/relay.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/contracts/src/speech.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/contracts/src/t3ProjectFile.ts`: t3.json schema descriptions; the documentation link points at this repository (the `$schema` URL id is unchanged).
+- `packages/effect-codex-app-server/scripts/generate.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-acp-registry/src/server/driver.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-acp/src/server/adapter.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-acp/src/server/mcpOverAcpBridge.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-core/src/server/ProviderAdapter.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-core/src/server/failure.test.ts`: assertions follow the renamed sentences.
+- `packages/provider-core/src/server/maintenance.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-core/src/server/maintenanceResolver.test.ts`: assertions follow the renamed sentences.
+- `packages/provider-core/src/server/maintenanceResolver.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-core/src/server/orchestrationInstructions.test.ts`: assertions follow the renamed sentences.
+- `packages/provider-core/src/server/orchestrationInstructions.ts`: agent-facing section headings name AgentD Desktop ("T3 tools", the `t3_*` tool names, kept).
+- `packages/provider-core/src/server/runtimeInstructions.ts`: the agent is told it runs in AgentD Desktop.
+- `packages/provider-core/src/server/textGenerationPrompts.ts`: title prompts name AgentD Desktop threads.
+- `packages/provider-cursor/src/server/adapter.test.ts`: assertions follow the renamed sentences.
+- `packages/provider-cursor/src/server/adapter.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-cursor/src/server/auth.test.ts`: assertions follow the renamed sentences.
+- `packages/provider-cursor/src/server/auth.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-cursor/src/server/driver.test.ts`: assertions follow the renamed sentences.
+- `packages/provider-cursor/src/server/status.test.ts`: assertions follow the renamed sentences.
+- `packages/provider-cursor/src/server/status.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-cursor/src/server/textGeneration.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-fx/src/server/status.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-grok/src/server/status.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-kiro/src/server/status.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-muse/src/server/adapter.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-muse/src/server/sdk.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-muse/src/server/status.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-muse/src/server/textGeneration.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-opencode/src/server/OpenCodeRuntime.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-opencode/src/server/OpenCodeServerLedger.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-opencode/src/server/status.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-opencode/src/server/textGeneration.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-opencode/src/server/v2/OpenCode2Service.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-opencode/src/server/v2/adapter.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-opencode/src/server/v2/textGeneration.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-opencode/src/server/versionProbe.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-opencode/src/settings.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-pi/src/server/adapter.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-pi/src/server/mcpExtensionSource.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-pi/src/server/mcpInjection.test.ts`: assertions follow the renamed sentences.
+- `packages/provider-pi/src/server/mcpInjection.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-pi/src/server/status.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/provider-testing/src/replayWorkspace.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/shared/src/codexAuthCallback.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/shared/src/codexAuthHandoff.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/shared/src/managedPolicyFile.test.ts`: assertions follow the renamed sentences.
+- `packages/shared/src/managedPolicyFile.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/shared/src/markdownPipeline.test.ts`: assertions follow the renamed sentences.
+- `packages/shared/src/nodeRuntime.test.ts`: assertions follow the renamed sentences.
+- `packages/shared/src/otelEnvironment.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/shared/src/promptLinks.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/shared/src/promptLinksCopy.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/shared/src/relayClient.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/shared/src/t3McpToolPresentation.ts`: work-log labels "T3 thread" become "AgentD Desktop thread".
+- `packages/shared/src/t3McpToolPresentationCopy.ts`: same labels as keys and messages, kept in step with t3McpToolPresentation.ts.
+- `packages/shared/src/themeCss.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/shared/src/threadLinks.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/shared/src/usageLimits.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/source-control-forgejo/src/server/ForgejoPullRequestProvider.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/source-control-gitcafe/src/server/GitCafePullRequestProvider.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/source-control-github/src/server/GitHubAppSignIn.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/source-control-github/src/server/githubStackRebase.ts`: rebase committer name is AgentD Desktop (email `noreply@t3.codes` kept, see below).
+- `packages/source-control-github/src/shared/definition.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/ssh/src/auth.ts`: product name in sentences (messages, errors, labels or comments).
+- `packages/ssh/src/tunnel.ts`: remote launch script messages say AgentD Desktop server.
+- `packages/tailscale/src/tailscale.ts`: product name in sentences (messages, errors, labels or comments).
+
+- `apps/{web,desktop,mobile}/src/i18n/translations/*.json`: regenerated with `vp run i18n:generate`; every new `zh` key has Chinese text (old translations reused with the new name, the rest translated by hand).
+- Left as "T3": legacy profile names (migration), the upstream GitHub app name, `T3 Connect` (upstream's relay service), and the `t3` CLI command in messages.

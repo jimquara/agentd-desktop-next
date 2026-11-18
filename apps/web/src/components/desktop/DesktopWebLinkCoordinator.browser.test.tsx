@@ -20,6 +20,13 @@ const state = vi.hoisted(() => ({
 
 // One connected primary environment that can read pull requests. Its project list and
 // discovery flag start empty so a test can deliver links before they arrive.
+// These tests cover upstream behaviour with the features the AgentD profile hides turned on.
+vi.mock(import("~/productProfile"), async (importOriginal) => ({
+  productProfile: Object.fromEntries(
+    Object.keys((await importOriginal()).productProfile).map((key) => [key, true]),
+  ) as Awaited<ReturnType<typeof importOriginal>>["productProfile"],
+}));
+
 vi.mock(import("@tanstack/react-router"), async (original) => ({
   ...(await original()),
   useNavigate: (() => state.navigate) as never,
@@ -271,7 +278,7 @@ it("opens a plain commit the workspace lacks like any other delivered link", asy
   const plainCommitUrl = `https://github.com/Effect-TS/effect/commit/${sha}`;
   await using _coordinator = await mount(plainCommitUrl);
   await vi.waitFor(() => expect(state.openScratchProject).toHaveBeenCalledOnce());
-  // Handing it to the OS browser would loop when T3 Code is the default browser.
+  // Handing it to the OS browser would loop when AgentD Desktop is the default browser.
   expect(state.openLink).not.toHaveBeenCalled();
   expect(useDiffPanelStore.getState().byThreadKey).toEqual({});
   expect(useRightPanelStore.getState().byThreadKey).toEqual({});

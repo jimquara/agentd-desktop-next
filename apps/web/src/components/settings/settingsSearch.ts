@@ -1180,7 +1180,7 @@ export const SETTINGS_SEARCH_ITEMS = [
   },
   {
     id: "pull-request-links-open-in-app",
-    title: msg("Open pull requests in T3 Code"),
+    title: msg("Open pull requests in AgentD Desktop"),
     to: "/settings/diffs",
     productFeature: "pullRequests",
     searchTerms: [
