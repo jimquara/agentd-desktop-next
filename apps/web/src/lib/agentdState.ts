@@ -95,3 +95,17 @@ export function useAgentdCommands() {
     joinTeam: useAtomCommand(agentdEnvironment.joinTeam),
   };
 }
+
+export function useAgentdCloudSetup(
+  cwd: string | null,
+  target: EnvironmentId,
+  includeBalance: boolean,
+) {
+  const environmentId = useAgentdEnvironment(target);
+  return useEnvironmentQuery(
+    environmentId === null || cwd === null
+      ? null
+      : agentdEnvironment.cloudSetup({ environmentId, input: { cwd, includeBalance } }),
+    useMessages(),
+  );
+}

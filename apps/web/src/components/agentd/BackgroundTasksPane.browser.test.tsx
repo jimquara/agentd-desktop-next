@@ -59,6 +59,8 @@ const finished: AgentdTaskRow = {
   workerRunning: false,
   workerTool: "claude",
   runsOn: "cloud",
+  cloudState: "completed",
+  cloudUsd: 0.42,
   updated: "2026-11-18T09:01:30Z",
 };
 
@@ -108,7 +110,13 @@ function setup() {
       id === finished.id
         ? taskDetails(finished, {
             branch: "agentd/hof-456def",
-            costUsd: 0.42,
+            cloud: {
+              state: "completed",
+              modelAccess: "byok",
+              workerUsd: 0.42,
+              inferenceUsd: 0,
+              totalUsd: 0.42,
+            },
             verdict: {
               verdict: "verified",
               check: "passed: pnpm test",
@@ -147,7 +155,8 @@ it("follows a running task's output and only stops the task after confirmation",
   await expect
     .element(
       finishedRow.filter({
-        hasText: /Verified.*Cloud Worker.*1m 30s.*agentd\/hof-456def.*\$0\.42/,
+        hasText:
+          /Cloud Worker.*Completed.*Your API key.*Worker cost: \$0\.42.*Inference: billed by your provider.*Total \(LibraOS\): \$0\.42.*agentd\/hof-456def.*1m 30s/,
       }),
     )
     .toBeVisible();

@@ -1,5 +1,6 @@
 import * as Schema from "effect/Schema";
 import type {
+  AgentdCloudTaskInput,
   AgentdConnectAgentInput,
   AgentdStartTaskInput,
   AgentdWorkerTool,
@@ -31,6 +32,8 @@ function text(name: string, value: string): string {
   }
   return value;
 }
+
+const CLOUD_SESSION = "agentd-new";
 
 /** An agentd server's address: http(s) with a host, normalized so agentd cannot read it as a flag. */
 function agentdServerUrl(value: string): string {
@@ -110,5 +113,50 @@ export const agentdArgs = {
     agentdServerUrl(server),
     "--ticket-file",
     "-",
+  ],
+  cloudHelp: () => ["handoff", "offer", "--help"],
+  cloudBalance: () => ["cloud", "balance", "--json"],
+  cloudSession: (cwd: string) => [
+    "session",
+    "join",
+    "--id",
+    CLOUD_SESSION,
+    "--tool",
+    "other",
+    "--label",
+    "agentd new",
+    "--wake",
+    "pull",
+    "--cwd",
+    text("working directory", cwd),
+  ],
+  cloudOffer: (input: AgentdCloudTaskInput, project: string) => [
+    "handoff",
+    "offer",
+    "--cloud",
+    "--to",
+    "any",
+    "--session",
+    CLOUD_SESSION,
+    "--budget",
+    input.cloud.budget,
+    "--model-access",
+    input.cloud.modelAccess,
+    ...(input.cloud.modelAccess === "byok" && input.cloud.anthropicKeyFile !== undefined
+      ? ["--anthropic-key-file", text("Anthropic key file", input.cloud.anthropicKeyFile)]
+      : []),
+    ...(input.cloud.modelAccess === "byok" && input.cloud.openaiKeyFile !== undefined
+      ? ["--openai-key-file", text("OpenAI key file", input.cloud.openaiKeyFile)]
+      : []),
+    "--project",
+    project,
+    "--goal",
+    text("goal", input.goal),
+    ...input.accept.flatMap((line, index) => [
+      "--accept",
+      text(`acceptance line ${index + 1}`, line),
+    ]),
+    ...(input.check === null ? ["--no-check"] : ["--check", text("check", input.check)]),
+    "--json",
   ],
 } as const;
