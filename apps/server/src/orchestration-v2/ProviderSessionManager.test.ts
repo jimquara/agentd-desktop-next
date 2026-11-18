@@ -43,6 +43,7 @@ import * as ProjectService from "../project/ProjectService.ts";
 import * as McpProviderSession from "@t3tools/provider-core/server/mcpSession";
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
 import * as McpSessionRegistry from "../mcp/McpSessionRegistry.ts";
+import type { McpCapability } from "../mcp/McpInvocationContext.ts";
 import * as SqlitePersistence from "../persistence/Sqlite.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import {
@@ -251,7 +252,6 @@ function makeThreadCreatedEvent(input: {
   readonly now: DateTime.Utc;
   readonly projectId?: ProjectId;
   readonly delegatedBy?: ThreadId;
-  readonly enableAgentOrchestrationTools?: boolean;
 }) {
   return Effect.gen(function* () {
     const projectId =
@@ -819,6 +819,7 @@ function runBrowserAccessScenario(input: {
   readonly createThread?: boolean;
   readonly projectExists?: boolean;
   readonly delegatedBy?: ThreadId;
+  readonly enableAgentOrchestrationTools?: boolean;
 }) {
   return Effect.gen(function* () {
     const state = yield* Ref.make(emptyState);
@@ -2509,7 +2510,10 @@ it("ProviderSessionManagerV2 counts a delegated task as a wake only while its re
   );
 });
 
-it.effect.each([
+it.effect.each<{
+  readonly enableAgentOrchestrationTools: boolean;
+  readonly expected: ReadonlyArray<McpCapability>;
+}>([
   { enableAgentOrchestrationTools: false, expected: ["preview"] },
   {
     enableAgentOrchestrationTools: true,
