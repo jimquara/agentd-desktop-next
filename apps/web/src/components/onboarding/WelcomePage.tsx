@@ -1715,7 +1715,7 @@ function ImportRowMeta({
   );
 }
 
-/** The desktop app links `t3` on a fresh install; this puts its folder on PATH when it is not. */
+/** The desktop app links `agentd-desktop` on a fresh install; this puts its folder on PATH when it is not. */
 function CliPathSetup() {
   const { state, busy, run } = useDesktopCliCommand();
   const setup = state?.pathSetup;

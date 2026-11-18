@@ -3004,7 +3004,7 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       protocols: [
         {
           name: resolveDesktopProductName(version),
-          schemes: ["t3code", "t3code-dev"],
+          schemes: ["agentd-desktop", "agentd-desktop-dev"],
         },
         {
           name: "Web site URL",
@@ -3058,7 +3058,7 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       protocols: [
         {
           name: resolveDesktopProductName(version),
-          schemes: ["t3code", "t3code-dev"],
+          schemes: ["agentd-desktop", "agentd-desktop-dev"],
         },
       ],
       desktop: {

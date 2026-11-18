@@ -537,7 +537,7 @@ it.layer(NodeServices.layer)("agentd-desktop update with a background service", 
       yield* fs.makeDirectory(runtime.versionDir, { recursive: true });
       yield* fs.writeFileString(runtime.entryPath, "");
       yield* fs.writeFileString(runtime.sentinelPath, `${version}\n`);
-      const unitPath = path.join(baseDir, "t3code.service");
+      const unitPath = path.join(baseDir, "agentd-desktop.service");
       const logPath = path.join(baseDir, "boot-service.log");
       // An earlier `agentd-desktop update` pointed the service at this version without restarting it.
       const service = Layer.mock(BootService.BootService, {
@@ -679,7 +679,7 @@ it.layer(NodeServices.layer)("agentd-desktop update checks the database before s
           supported: true,
           installed: false,
           current: false,
-          unitPath: path.join(baseDir, "t3code.service"),
+          unitPath: path.join(baseDir, "agentd-desktop.service"),
           logPath: path.join(baseDir, "boot-service.log"),
         }),
       });

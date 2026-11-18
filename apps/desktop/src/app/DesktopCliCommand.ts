@@ -15,6 +15,7 @@ import * as Stream from "effect/Stream";
 import * as ChildProcess from "effect/process/ChildProcess";
 import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 
+import { CLI_COMMAND_NAME } from "@t3tools/shared/desktopIdentity";
 import { pathSetup, readUserLoginShell } from "@t3tools/shared/shell";
 
 import * as DesktopCliShim from "./DesktopCliShim.ts";
@@ -172,7 +173,7 @@ export const make = Effect.gen(function* () {
 
   const firstOnPath = Effect.gen(function* () {
     for (const directory of pathEntries(env.PATH, ":")) {
-      const candidate = path.join(directory, "t3");
+      const candidate = path.join(directory, CLI_COMMAND_NAME);
       if (yield* isExecutableFile(candidate)) return Option.some(candidate);
     }
     return Option.none<string>();
@@ -201,7 +202,7 @@ export const make = Effect.gen(function* () {
         : Option.none<string>();
     }
     for (const directory of knownLocations(environment.homeDirectory, environment.platform)) {
-      const link = path.join(directory, "t3");
+      const link = path.join(directory, CLI_COMMAND_NAME);
       if (yield* isOurLink(link)) return Option.some(link);
     }
     return Option.none<string>();
@@ -286,14 +287,16 @@ export const make = Effect.gen(function* () {
     Effect.provideService(FileSystem.FileSystem, fs),
     Effect.flatMap(
       Option.match({
-        onNone: () => Effect.fail(fail(`Could not set up the t3 launcher at ${launcher}.`)),
+        onNone: () =>
+          Effect.fail(fail(`Could not set up the agentd-desktop launcher at ${launcher}.`)),
         onSome: () => Effect.void,
       }),
     ),
   );
 
   const install: DesktopCliCommand["Service"]["install"] = Effect.gen(function* () {
-    if (!environment.isPackaged) return yield* fail("The t3 command needs an installed app.");
+    if (!environment.isPackaged)
+      return yield* fail("The agentd-desktop command needs an installed app.");
     yield* ensureLauncher;
     if (windows) {
       // PATH would split the folder at the `;`, leaving two wrong entries behind.
@@ -307,7 +310,11 @@ export const make = Effect.gen(function* () {
         yield* writeUserPath([...entries, binDirectory].join(";"));
         yield* fs
           .writeFileString(ownedPathMarker, `${binDirectory}\n`)
-          .pipe(Effect.mapError(() => fail("Added t3 to your PATH but could not record it.")));
+          .pipe(
+            Effect.mapError(() =>
+              fail("Added agentd-desktop to your PATH but could not record it."),
+            ),
+          );
       }
       return yield* state;
     }
@@ -321,7 +328,7 @@ export const make = Effect.gen(function* () {
     // Our own link into another T3 home runs first too; it is the one this install updates.
     if (Option.isSome(shadowedBy) && shadowedBy.value !== replaced) {
       return yield* fail(
-        `Another t3 at ${shadowedBy.value} runs first in a new terminal. Remove it, or run the launcher directly at ${launcher}.`,
+        `Another agentd-desktop at ${shadowedBy.value} runs first in a new terminal. Remove it, or run the launcher directly at ${launcher}.`,
       );
     }
     // An old link of ours is updated where it is, so a t3 that works now keeps working. It is
@@ -332,7 +339,7 @@ export const make = Effect.gen(function* () {
       ...candidates.filter((candidate) => onPath.includes(candidate)),
       ...candidates.filter((candidate) => !onPath.includes(candidate)),
     ])) {
-      const link = path.join(directory, "t3");
+      const link = path.join(directory, CLI_COMMAND_NAME);
       const created = (yield* exists(directory))
         ? yield* writableDirectory(directory)
         : yield* fs.makeDirectory(directory, { recursive: true }).pipe(
@@ -365,7 +372,7 @@ export const make = Effect.gen(function* () {
       return yield* state;
     }
     return yield* fail(
-      `Another t3 command is already in ~/.local/bin and ~/bin, or neither is writable. Run the launcher directly at ${launcher}.`,
+      `Another agentd-desktop command is already in ~/.local/bin and ~/bin, or neither is writable. Run the launcher directly at ${launcher}.`,
     );
   }).pipe(Effect.withSpan("desktop.cliCommand.install"));
 
@@ -382,7 +389,7 @@ export const make = Effect.gen(function* () {
       return yield* state;
     }
     for (const directory of knownLocations(environment.homeDirectory, environment.platform)) {
-      const link = path.join(directory, "t3");
+      const link = path.join(directory, CLI_COMMAND_NAME);
       if (yield* isOurLink(link)) {
         yield* fs.remove(link).pipe(Effect.mapError(() => fail(`Could not remove ${link}.`)));
       }
@@ -395,15 +402,15 @@ export const make = Effect.gen(function* () {
   const addToPath: DesktopCliCommand["Service"]["addToPath"] = Effect.gen(function* () {
     const installed = yield* installedAt;
     if (Option.isNone(installed) || !(yield* leadsHere(installed.value))) {
-      return yield* fail("Install the t3 command first.");
+      return yield* fail("Install the agentd-desktop command first.");
     }
     const setup = startupLine(installed.value);
     if (setup === undefined)
-      return yield* fail("AgentD Desktop cannot add t3 to this shell's PATH.");
+      return yield* fail("AgentD Desktop cannot add agentd-desktop to this shell's PATH.");
     const shadowedBy = yield* foreignFirstOnPath;
     if (Option.isSome(shadowedBy)) {
       return yield* fail(
-        `Another t3 at ${shadowedBy.value} runs first; AgentD Desktop leaves it in place.`,
+        `Another agentd-desktop at ${shadowedBy.value} runs first; AgentD Desktop leaves it in place.`,
       );
     }
     if (!(yield* folderOnPath(installed.value)) && !(yield* hasLine(setup))) {
@@ -413,7 +420,7 @@ export const make = Effect.gen(function* () {
             flag: "a",
           }),
         ),
-        Effect.mapError(() => fail(`Could not add t3 to ${setup.file}.`)),
+        Effect.mapError(() => fail(`Could not add agentd-desktop to ${setup.file}.`)),
       );
     }
     return yield* state;
@@ -425,32 +432,40 @@ export const make = Effect.gen(function* () {
       // Mark first so a failed or removed install is never retried behind the user's back.
       yield* fs.writeFileString(firstLaunchMarker, "");
       if (!freshInstall) {
-        return yield* logInfo("left the t3 command to Settings on an existing install");
+        return yield* logInfo("left the agentd-desktop command to Settings on an existing install");
       }
       // Another T3 home's app owns the existing link; only Install in Settings may take it over.
       const existing = Option.getOrUndefined(yield* installedAt);
       if (existing !== undefined) {
         const target = yield* fs.readLink(existing).pipe(Effect.option);
         if (Option.getOrUndefined(target) !== launcher) {
-          return yield* logInfo("left another AgentD Desktop app's t3 command in place", {
-            existing,
-          });
+          return yield* logInfo(
+            "left another AgentD Desktop app's agentd-desktop command in place",
+            {
+              existing,
+            },
+          );
         }
       }
       // A t3 that is not ours in these folders, even off PATH, means the user has one already. On
       // Windows the app never writes there, so any t3 there is someone else's.
       for (const directory of userCandidates(environment.homeDirectory)) {
-        for (const name of windows ? ["t3.cmd", "t3.exe"] : ["t3"]) {
+        for (const name of windows
+          ? [`${CLI_COMMAND_NAME}.cmd`, `${CLI_COMMAND_NAME}.exe`]
+          : [CLI_COMMAND_NAME]) {
           const other = path.join(directory, name);
           const present =
             (yield* exists(other)) || Option.isSome(yield* fs.readLink(other).pipe(Effect.option));
           if (present && (windows || !(yield* isOurLink(other)))) {
-            return yield* logInfo("left the t3 command to Settings beside another t3", { other });
+            return yield* logInfo(
+              "left the agentd-desktop command to Settings beside another one",
+              { other },
+            );
           }
         }
       }
       const installed = yield* install;
-      yield* logInfo("installed the t3 command on first launch", {
+      yield* logInfo("installed the agentd-desktop command on first launch", {
         installedPath: installed.installedPath,
         onPath: installed.onPath,
       });
@@ -458,7 +473,7 @@ export const make = Effect.gen(function* () {
   ).pipe(
     // Our own messages are short and name only paths; anything else is logged as a category.
     Effect.catch((error) =>
-      logWarning("did not install the t3 command on first launch", {
+      logWarning("did not install the agentd-desktop command on first launch", {
         reason: error._tag === "DesktopCliCommandError" ? error.message : "state-write-failed",
       }),
     ),

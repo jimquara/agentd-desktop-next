@@ -1,0 +1,49 @@
+/** AgentD Desktop's own data folder, link scheme and command, apart from a T3 Code on the same machine. */
+
+import * as Config from "effect/Config";
+import * as Option from "effect/Option";
+
+/** Production scheme; other channels add a suffix, such as `agentd-desktop-dev`. */
+export const APP_LINK_SCHEME = "agentd-desktop";
+export const APP_LINK_PROTOCOL = /^agentd-desktop(?:-[a-z]+)?:$/;
+/** The command the app puts on PATH (`.cmd` on Windows). */
+export const CLI_COMMAND_NAME = "agentd-desktop";
+/** Background service, Windows task, systemd slices and per-user folders; T3 Code's are `t3code`. */
+export const OS_NAME = "agentd-desktop";
+/** `.service` keeps it apart from the app's bundle id, `ai.libraos.agentd-desktop`. */
+export const LAUNCHD_SERVICE_LABEL = "ai.libraos.agentd-desktop.service";
+
+export const DESKTOP_HOME_DIRECTORY_NAME = ".agentd-desktop";
+export const DESKTOP_HOME_ENV = "AGENTD_DESKTOP_HOME";
+/** Upstream's name, still read when the new one is unset. */
+const LEGACY_DESKTOP_HOME_ENV = "T3CODE_HOME";
+export const DESKTOP_HOME_ENV_NAMES = [DESKTOP_HOME_ENV, LEGACY_DESKTOP_HOME_ENV] as const;
+
+const nonBlank = (value: string | undefined): string | undefined => {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+};
+
+export const configuredDesktopHome = (
+  env: Readonly<Record<string, string | undefined>>,
+): string | undefined => nonBlank(env[DESKTOP_HOME_ENV]) ?? nonBlank(env[LEGACY_DESKTOP_HOME_ENV]);
+
+export const defaultDesktopHome = (
+  homeDirectory: string,
+  join: (first: string, ...segments: string[]) => string,
+): string => join(homeDirectory, DESKTOP_HOME_DIRECTORY_NAME);
+
+/** The configured home, trimmed; blank counts as unset. */
+export const DesktopHomeConfig: Config.Config<Option.Option<string>> = Config.all({
+  [DESKTOP_HOME_ENV]: Config.String(DESKTOP_HOME_ENV).pipe(Config.option),
+  [LEGACY_DESKTOP_HOME_ENV]: Config.String(LEGACY_DESKTOP_HOME_ENV).pipe(Config.option),
+}).pipe(
+  Config.map((values) =>
+    Option.fromUndefinedOr(
+      configuredDesktopHome({
+        [DESKTOP_HOME_ENV]: Option.getOrUndefined(values[DESKTOP_HOME_ENV]),
+        [LEGACY_DESKTOP_HOME_ENV]: Option.getOrUndefined(values[LEGACY_DESKTOP_HOME_ENV]),
+      }),
+    ),
+  ),
+);

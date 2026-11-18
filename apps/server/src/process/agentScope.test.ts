@@ -313,7 +313,7 @@ describe("AgentScope service", () => {
             "--user",
             "set-property",
             "--runtime",
-            "app-t3code-agents.slice",
+            "app-agentd-desktop-agents.slice",
             expect.stringMatching(/^MemoryHigh=\d+$/),
             expect.stringMatching(/^MemoryMax=\d+$/),
           ],
@@ -321,7 +321,7 @@ describe("AgentScope service", () => {
             "--user",
             "set-property",
             "--runtime",
-            "app-t3code.slice",
+            "app-agentd-desktop.slice",
             "CPUWeight=10",
             "IOWeight=10",
             "TasksMax=25%",
@@ -339,7 +339,8 @@ describe("AgentScope service", () => {
         const memoryLimits = () =>
           calls
             .filter(
-              ([, verb, , slice]) => verb === "set-property" && slice === "app-t3code-agents.slice",
+              ([, verb, , slice]) =>
+                verb === "set-property" && slice === "app-agentd-desktop-agents.slice",
             )
             .map((args) => args.slice(4));
         yield* launch;
@@ -379,7 +380,7 @@ describe("AgentScope service", () => {
             name: "terminal",
             survivesRestart: true,
           });
-          expect(sliceOf(terminal)).toBe("app-t3code-agents.slice");
+          expect(sliceOf(terminal)).toBe("app-agentd-desktop-agents.slice");
           expect(stopsOf(calls)).toHaveLength(1);
         }),
       { leftovers: true },

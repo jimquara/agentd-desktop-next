@@ -1,6 +1,7 @@
 // @effect-diagnostics nodeBuiltinImport:off - publish commits and rollbacks
 // move exact directory entries with rename, which the FileSystem service does
 // not expose atomically.
+import { DesktopHomeConfig } from "@t3tools/shared/desktopIdentity";
 import * as NodeFS from "node:fs";
 
 import {
@@ -10,7 +11,6 @@ import {
 } from "@t3tools/contracts";
 import { fromJsonStringPretty, fromLenientJson } from "@t3tools/shared/schemaJson";
 import { BUILT_IN_THEME_IDS, UNPUBLISHABLE_THEME_IDS } from "@t3tools/shared/themePalettes";
-import * as Config from "effect/Config";
 import * as Console from "effect/Console";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -159,7 +159,7 @@ export class ThemeTargetMissingError extends Schema.TaggedError<ThemeTargetMissi
   }
 }
 
-const envT3Home = Config.String("T3CODE_HOME").pipe(Config.option);
+const envT3Home = DesktopHomeConfig;
 const DEV_STATE_PLACEHOLDER_URL = new URL("http://localhost");
 
 const hasLiveServer = (statePath: string) =>

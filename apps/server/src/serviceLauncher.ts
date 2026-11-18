@@ -44,6 +44,9 @@ import {
   legacyOwnerStartTimeCommand,
 } from "./legacyServerOwner.ts";
 
+// Same as OS_NAME in @t3tools/shared/desktopIdentity, kept literal so the launcher loads no Effect.
+const SERVICE_NAME = "agentd-desktop";
+
 const HANDOFF_DELAY_MS = 2_000;
 /**
  * Migrations count toward it and can scale with the database: tens of GB on a cold page cache
@@ -162,7 +165,7 @@ async function serviceUnitFromEnvironment(
   if (unitName.endsWith(".xml")) {
     const localAppData = env.LOCALAPPDATA?.trim();
     if (!localAppData) return undefined;
-    const path = NodePath.win32.join(localAppData, "t3code", unitName);
+    const path = NodePath.win32.join(localAppData, SERVICE_NAME, unitName);
     const taskName = serviceTaskName(env.USERDOMAIN ?? "", env.USERNAME ?? "");
     return { path, reload: () => registerServiceTask(path, taskName) };
   }
@@ -751,7 +754,8 @@ async function terminateChild(
 }
 
 /** Task Scheduler names are machine-wide, so each Windows account runs its own task. */
-export const serviceTaskName = (domain: string, userName: string) => `t3code-${domain}-${userName}`;
+export const serviceTaskName = (domain: string, userName: string) =>
+  `${SERVICE_NAME}-${domain}-${userName}`;
 
 export const serviceLauncherLockPath = (baseDir: string) =>
   NodePath.join(baseDir, "runtime", SERVICE_LAUNCHER_LOCK_FILE);

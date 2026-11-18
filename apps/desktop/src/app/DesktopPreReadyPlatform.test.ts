@@ -171,7 +171,7 @@ describe("DesktopPreReadyPlatform", () => {
         assert.equal(identity.desktopName, "ai.libraos.agentd-desktop.desktop");
         assert.include(identity.desktopEntry ?? "", "Exec=/Applications/current.AppImage %U");
         assert.include(identity.desktopEntry ?? "", "Name=AgentD Desktop (Beta)");
-        assert.include(identity.desktopEntry ?? "", "MimeType=x-scheme-handler/t3code;");
+        assert.include(identity.desktopEntry ?? "", "MimeType=x-scheme-handler/agentd-desktop;");
         assert.include(
           identity.desktopEntry ?? "",
           "Icon=/xdg/icons/ai.libraos.agentd-desktop.desktop.png",

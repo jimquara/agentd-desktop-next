@@ -20,7 +20,7 @@ What each contains, checked by unpacking it:
 ## How
 
 ```sh
-. /data/mnt-data/ccao/libraos/.desktop-next-toolchain/env.sh   # Node 26.13.1, dependencies installed
+pnpm install                             # Node 26.13.1 (package.json engines)
 agentd/scripts/build-desktop.sh linux    # 2 min 40 s here once the image exists (first image build: about 2 min more)
 agentd/scripts/build-desktop.sh win      # 1 min 40 s here
 ```
