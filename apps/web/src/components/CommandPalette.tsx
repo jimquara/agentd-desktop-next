@@ -62,6 +62,7 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeftIcon,
   BugIcon,
+  ActivityIcon,
   ChartNoAxesColumnIcon,
   CheckIcon,
   ChevronRightIcon,
@@ -1747,6 +1748,17 @@ function OpenCommandPaletteDialog(props: {
     shortcutCommand: "usage.open",
     run: async () => {
       await navigate({ to: "/usage" });
+    },
+  });
+
+  actionItems.push({
+    kind: "action",
+    value: "action:agentd",
+    searchTerms: ["agentd", "status", "workers", "team", "nodes", "approvals", "inbox"],
+    title: gt("Open AgentD"),
+    icon: <ActivityIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      await navigate({ to: "/agentd" });
     },
   });
 
