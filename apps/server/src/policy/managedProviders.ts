@@ -1,9 +1,11 @@
 import {
+  AcpRegistryOperationError,
   AntigravitySettings,
   ClaudeSettings,
   CodexSettings,
   defaultInstanceIdForDriver,
   disallowedProviderMessage,
+  isProviderDriverOffered,
   type ManagedProviderInstance,
   type ManagedProviderLimits,
   type ManagedPolicySummary,
@@ -14,7 +16,9 @@ import {
   resolveProviderInstanceEnabled,
   type RuntimeMode,
   type ServerSettings,
+  type ServerSettingsError,
 } from "@t3tools/contracts";
+import * as Effect from "effect/Effect";
 import { acpRegistryClient } from "@t3tools/provider-acp-registry/client";
 import { cursorClient } from "@t3tools/provider-cursor/client";
 import { fxClient } from "@t3tools/provider-fx/client";
@@ -148,6 +152,36 @@ export const disallowedDriverReason = (
     ? undefined
     : disallowedProviderMessage(summary?.organization, labelFor(driver));
 };
+
+const ACP_REGISTRY_DRIVER = ProviderDriverKind.make("acpRegistry");
+
+export const withAcpRegistryDiscovery = Effect.fn("ManagedProviders.withAcpRegistryDiscovery")(
+  function* <A, E, R>(
+    getSettings: Effect.Effect<Pick<ServerSettings, "showOtherAgents">, ServerSettingsError>,
+    summary: ManagedPolicySummary | undefined,
+    discovery: Effect.Effect<A, E, R>,
+  ) {
+    const settings = yield* getSettings.pipe(
+      Effect.mapError(
+        (cause) =>
+          new AcpRegistryOperationError({
+            reason: "registry_unavailable",
+            message: "Could not read provider settings.",
+            cause,
+          }),
+      ),
+    );
+    if (!isProviderDriverOffered(summary, settings.showOtherAgents, ACP_REGISTRY_DRIVER)) {
+      return yield* new AcpRegistryOperationError({
+        reason: "registry_unavailable",
+        message:
+          disallowedDriverReason(summary, ACP_REGISTRY_DRIVER) ??
+          "Enable Show other agents in Providers settings to browse the ACP Registry.",
+      });
+    }
+    return yield* discovery;
+  },
+);
 
 /**
  * Variables that replace a provider's launch configuration. From the environment that starts the

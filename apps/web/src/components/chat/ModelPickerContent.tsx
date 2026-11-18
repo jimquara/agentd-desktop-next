@@ -7,6 +7,8 @@ import {
   type ProviderDriverKind,
   type ResolvedKeybindingsConfig,
   MODEL_PICKER_JUMP_KEYBINDING_COMMANDS,
+  isManagedDriverAllowed,
+  isProviderDriverOffered,
 } from "@t3tools/contracts";
 import { resolveSelectableModel } from "@t3tools/shared/model";
 import { useAtomValue } from "@effect/atom-react";
@@ -44,7 +46,7 @@ import {
 import { ModelEsque } from "./providerIconUtils";
 import { isCommandPaletteOpen } from "../../commandPaletteBus";
 import { registerModelPickerContent } from "../../modelPickerVisibility";
-import { primaryServerKeybindingsAtom } from "../../state/server";
+import { primaryServerKeybindingsAtom, serverEnvironment } from "../../state/server";
 import {
   modelPickerJumpCommandForIndex,
   modelPickerJumpIndexFromCommand,
@@ -362,7 +364,6 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     searchInputRef,
     keybindings: providedKeybindings,
     modelOptionsByInstance,
-    instanceEntries,
     getModelDisabledReason,
     onInstanceModelChange,
     onToggleModel,
@@ -376,9 +377,26 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
   useLayoutEffect(() => registerModelPickerContent(), []);
   const highlightedModelKeyRef = useRef<string | null>(null);
   const { favorites } = useEnvironmentModelPreferences(props.environmentId);
-  const activeEntry = props.instanceEntries.find(
-    (entry) => entry.instanceId === props.activeInstanceId,
+  const configAtom = serverEnvironment.configValueAtom(props.environmentId);
+  const showOtherAgents = useAtomValue(configAtom, (config) => config?.settings?.showOtherAgents);
+  const managedPolicy = useAtomValue(configAtom, (config) => config?.managedPolicy);
+  const configuredInstances = useAtomValue(
+    configAtom,
+    (config) => config?.settings?.providerInstances,
   );
+  const instanceEntries = props.instanceEntries.filter(
+    (entry) =>
+      isProviderDriverOffered(managedPolicy, showOtherAgents, entry.driverKind) ||
+      (entry.instanceId === props.activeInstanceId &&
+        entry.driverKind === props.lockedProvider &&
+        isManagedDriverAllowed(managedPolicy, entry.driverKind)),
+  );
+  const isUnconfiguredDefault = (entry: ProviderInstanceEntry) =>
+    entry.isDefault && !entry.enabled && !configuredInstances?.[entry.instanceId];
+  const offersSetup = (entry: ProviderInstanceEntry) =>
+    isUnconfiguredDefault(entry) ||
+    shouldOfferModelPickerSetup(entry, modelOptionsByInstance.get(entry.instanceId) ?? []);
+  const activeEntry = instanceEntries.find((entry) => entry.instanceId === props.activeInstanceId);
   const activeModel = resolveModelPickerSelectedModel({
     driverKind: activeEntry?.driverKind,
     model: props.model,
@@ -413,13 +431,8 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     ) &&
     !isProviderInstancePickerReady(activeEntry);
   const activeInstanceNeedsSetup =
-    onOpenProviderSetup !== undefined &&
-    activeEntry !== undefined &&
-    shouldOfferModelPickerSetup(
-      activeEntry,
-      modelOptionsByInstance.get(props.activeInstanceId) ?? [],
-    );
-  const [selectedInstanceId, setSelectedInstanceId] = useState<ProviderInstanceId | "favorites">(
+    onOpenProviderSetup !== undefined && activeEntry !== undefined && offersSetup(activeEntry);
+  const [requestedInstanceId, setSelectedInstanceId] = useState<ProviderInstanceId | "favorites">(
     () => {
       if (
         props.lockedProvider !== null ||
@@ -447,6 +460,13 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       return hasPickableFavorite ? "favorites" : props.activeInstanceId;
     },
   );
+  const selectedInstanceId =
+    requestedInstanceId === "favorites" ||
+    instanceEntries.some((entry) => entry.instanceId === requestedInstanceId)
+      ? requestedInstanceId
+      : (instanceEntries.find(isProviderInstancePickerReady)?.instanceId ??
+        instanceEntries[0]?.instanceId ??
+        "favorites");
   const { scanning: workspaceModelsScanning } = useProviderWorkspaceSnapshotRefresh({
     environmentId: props.environmentId,
     gitCwd: props.workspaceCwd ?? null,
@@ -544,9 +564,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     }
     if (canOpenProviderSetup) {
       for (const entry of instanceEntries) {
-        if (
-          shouldOfferModelPickerSetup(entry, modelOptionsByInstance.get(entry.instanceId) ?? [])
-        ) {
+        if (offersSetup(entry)) {
           instanceIds.add(entry.instanceId);
         }
       }
@@ -638,7 +656,9 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     return disabled;
   })();
   const sidebarInstanceEntries = (() => {
-    const enabledEntries = instanceEntries.filter(isProviderInstancePickerVisible);
+    const enabledEntries = instanceEntries.filter(
+      (entry) => isProviderInstancePickerVisible(entry) || isUnconfiguredDefault(entry),
+    );
     if (!isLocked) {
       return enabledEntries;
     }
@@ -731,10 +751,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       ? instanceEntries.filter(
           (entry) =>
             matchesLockedProvider(entry) &&
-            shouldOfferModelPickerSetup(
-              entry,
-              modelOptionsByInstance.get(entry.instanceId) ?? [],
-            ) &&
+            offersSetup(entry) &&
             (selectedEntry
               ? entry.instanceId === selectedEntry.instanceId
               : filteredModels.length === 0),
