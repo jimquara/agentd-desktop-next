@@ -49,6 +49,7 @@ export function BackgroundTasksPane({ threadRef }: { readonly threadRef: ScopedT
                     threadRef={threadRef}
                     turnItems={projection?.turnItems ?? []}
                     streamsOutput={streamsOutput}
+                    agentdRows={rows}
                   />
                 ))}
                 {running.map((row) => (

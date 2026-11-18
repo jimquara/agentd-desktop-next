@@ -71,3 +71,8 @@ export function finishedAgentdTaskLabel(
   if (verdict === null) return resolve(msg("Result unavailable"));
   return resolve(msg("Needs work", { $context: "result of background work" }));
 }
+
+/** The agentd tasks a session command waits on or reads, e.g. `agentd handoff wait hof-…`. */
+export function handoffIdsInCommand(command: string | undefined): readonly string[] {
+  return [...new Set(command?.match(/\bhof-[0-9a-f]{6,}\b/gu) ?? [])];
+}

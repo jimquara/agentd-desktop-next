@@ -3240,8 +3240,27 @@
   "3e2b0e58ad657ac0": "Agentd tasks are unavailable in this environment.",
   "33838ca8ef5a710a": "No agentd tasks.",
   "668e353261860b41": "Background work",
+  "65328c7f8bf4cd56": "Waiting for an AgentD worker",
+  "8e7bdb314813b183": "Running",
   "2132a271f96567bb": "This session",
-  "8158821ace63ea8e": "No live output is available for this session task.",
+  "358bb4f92e83de1f": [
+    "Waiting for AgentD task ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    "."
+  ],
+  "397298806f6012a9": [
+    "Worker: ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    }
+  ],
+  "7c6c8fba08df7b9a": "Running. The agent reads this command's output when it finishes.",
   "480b43a826eb2720": "Your API key",
   "1cdcb8450d2249b5": "Open Cloud Workers setup in LibraOS Console",
   "0606bddb2fb895bd": "Run in the cloud",
