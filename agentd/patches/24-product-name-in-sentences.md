@@ -3,7 +3,7 @@
 Every `T3 Code` in `apps/web/src`, `apps/desktop/src` and `packages/` became `AgentD Desktop`, as are
 "the T3 server", "T3 home", "T3 process" and "T3 thread" where users see them. Literal names in web code use
 `APP_BASE_NAME`; translated sentences carry plain "AgentD Desktop". Done with one scripted pass plus hand edits
-(articles: "a AgentD" became "an AgentD").
+(articles: "an AgentD" became "an AgentD").
 
 ## Kept on purpose
 
@@ -275,3 +275,6 @@ Only text changed. No paths, commands or processes.
 - `packages/ssh/src/auth.ts`: product name in sentences (messages, errors, labels or comments).
 - `packages/ssh/src/tunnel.ts`: remote launch script messages say AgentD Desktop server.
 - `packages/tailscale/src/tailscale.ts`: product name in sentences (messages, errors, labels or comments).
+
+- `apps/{web,desktop,mobile}/src/i18n/translations/*.json`: regenerated with `vp run i18n:generate`; every new `zh` key has Chinese text (old translations reused with the new name, the rest translated by hand).
+- Left as "T3": legacy profile names (migration), the upstream GitHub app name, `T3 Connect` (upstream's relay service), and the `t3` CLI command in messages.

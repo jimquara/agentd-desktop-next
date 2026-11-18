@@ -189,13 +189,16 @@ const T3_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
     "thread-create",
   ),
   t3_thread_start: tool(
-    ["Start", "Starting", "Started", "a AgentD Desktop thread"],
+    ["Start", "Starting", "Started", "an AgentD Desktop thread"],
     "thread-create",
   ),
   t3_thread_list: tool(["List", "Listing", "Listed", "AgentD Desktop threads"], "thread-list"),
-  t3_thread_read: tool(["Read", "Reading", "Read", "a AgentD Desktop thread"], "thread-read"),
-  t3_thread_send: tool(["Send", "Sending", "Sent", "to a AgentD Desktop thread"], "thread-send"),
-  t3_thread_wait: tool(["Wait", "Waiting", "Waited", "for a AgentD Desktop thread"], "thread-wait"),
+  t3_thread_read: tool(["Read", "Reading", "Read", "an AgentD Desktop thread"], "thread-read"),
+  t3_thread_send: tool(["Send", "Sending", "Sent", "to an AgentD Desktop thread"], "thread-send"),
+  t3_thread_wait: tool(
+    ["Wait", "Waiting", "Waited", "for an AgentD Desktop thread"],
+    "thread-wait",
+  ),
   t3_workflow_stop: tool(
     ["Stop", "Stopping", "Requested a stop for", "a workflow"],
     "workflow-stop",
@@ -205,7 +208,7 @@ const T3_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
     "background-wait",
   ),
   t3_thread_interrupt: tool(
-    ["Interrupt", "Interrupting", "Requested an interrupt of", "a AgentD Desktop thread"],
+    ["Interrupt", "Interrupting", "Requested an interrupt of", "an AgentD Desktop thread"],
     "thread-interrupt",
   ),
   t3_worktree_handoff: tool(
