@@ -1,9 +1,8 @@
 # Welcome page
 
 T3 Code shows a Welcome page when you open a new installation. Existing
-workspaces skip it. It shows what T3 Code found on the computer you are using,
-on one page: your agents, projects from your Claude Code, Codex, and Pi history,
-and the phone app. Only an agent is needed to start chatting.
+workspaces skip it. You can check your agents and import projects you have used
+before. You do not need an account to open the page.
 
 To see the page again, go to **Settings → About → Welcome page** and select
 **Open**. Direct links, such as Settings, open normally before setup is done.
@@ -22,45 +21,25 @@ unreadable settings with defaults.
 
 ## Agents
 
-T3 Code lists the agents it found on the computer first, ready ones on top.
-**Add more agents** lists every other agent T3 Code supports, A to Z. When no agent
-is found, it reads **Set up an agent** and opens by itself:
+The Welcome page checks Claude Code, Codex, and opencode on the selected computer.
+Open **More agents** to see other agents or browse the ACP Registry. You do not
+need to set up all three; **Continue** is available once any agent is ready.
+Checked projects are imported when you continue.
 
 - **Turn on** enables an agent that is off on this computer, including one only
   some projects use. T3 Code then checks whether it is installed and signed in.
-- For Claude Code, **Install** or **Sign in** opens a terminal with the correct
-  command ready to run. Install uses the vendor's own installer, which keeps
-  **Update now** working in Settings.
-- For Codex, **Set up** offers sign-in with your ChatGPT account or your own
-  Codex CLI. **Use existing CLI** opens the terminal to install or sign in, and
-  **Continue with ChatGPT** stays available until Codex is signed in.
+- For Claude Code, Codex, and opencode, **Install** or **Sign in** opens a setup
+  terminal. Review the command and press Enter to run it. Installing opencode
+  from this page requires npm on the computer running the agent.
 - When T3 Code knows an installed version does not work with it, **Update** opens
   the agent in **Settings → Providers**, which shows the version to use and updates it
   when it can.
 - Other agents, and agents that could not load, open their page in
   **Settings → Providers**.
-- **Browse** opens the ACP Registry for more agents.
-
-On the desktop app, when the folder of the `t3` command is not on your `PATH`,
-**Add to PATH** adds one line to your shell's startup file.
 
 The setup terminal uses the home directory and environment configured for the
 provider instance. Sensitive values remain redacted in Settings and
 terminal metadata while the terminal process can use them.
-
-**Start** waits for one ready agent. Select **Start without an agent** to finish
-without one. Checked projects are still imported.
-
-## Phone
-
-Select **Set up** and scan the code with your phone. It opens the App Store on an
-iPhone and Google Play on Android. Then select **Sign in to T3 Connect** and allow
-this computer when T3 Code asks, so the app can reach it. Sign in to the app with
-the same account. If you are signed in but this computer is not shared yet, select
-**Set up T3 Connect**. If T3 Connect is on but the app cannot reach this computer,
-select **Check T3 Connect** to see why. The page leaves the phone out on builds
-without T3 Connect, or when your organization turns it off. You can still pair the
-app with a code from **Settings → Sharing & access**.
 
 ## Projects
 
@@ -84,7 +63,7 @@ projects it found and warns when projects or conversations may be missing.
 
 Imported projects include Claude, Codex and Pi conversations active within the last
 30 days. You can continue those conversations in T3 Code. Pi is off by default:
-open **Add more agents** and select **Turn on** next to Pi, and the page looks for
+open **More agents** and select **Turn on** next to Pi, and the page looks for
 its sessions too. Pi sessions
 are read from each enabled Pi provider's session directory, which follows
 `PI_CODING_AGENT_SESSION_DIR` and `PI_CODING_AGENT_DIR` in its environment. A

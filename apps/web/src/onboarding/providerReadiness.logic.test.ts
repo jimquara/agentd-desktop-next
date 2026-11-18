@@ -8,6 +8,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   getOnboardingProviderState,
+  resolveOnboardingProviderInstallCommand,
   resolveOnboardingProviderLoginCommand,
 } from "./providerReadiness.logic";
 
@@ -25,7 +26,17 @@ const readyCodex: ServerProvider = {
   skills: [],
 };
 
+const openCode = {
+  ...readyCodex,
+  instanceId: ProviderInstanceId.make("opencode"),
+  driver: ProviderDriverKind.make("opencode"),
+};
+
 describe("getOnboardingProviderState", () => {
+  it("offers OpenCode sign-in when its CLI reports no usable models, not when probing fails", () => {
+    expect(getOnboardingProviderState({ ...openCode, status: "warning" })).toBe("signIn");
+    expect(getOnboardingProviderState({ ...openCode, status: "error" })).toBe("attention");
+  });
   it("treats authenticated providers as ready only when their provider status is ready", () => {
     expect(getOnboardingProviderState({ ...readyCodex, auth: { status: "authenticated" } })).toBe(
       "ready",
@@ -70,6 +81,42 @@ describe("getOnboardingProviderState", () => {
       "install",
     );
   });
+});
+
+it("installs OpenCode and signs in using the provider instance's binary path", () => {
+  expect(resolveOnboardingProviderInstallCommand("opencode", "linux")).toBe(
+    "npm install -g opencode-ai",
+  );
+  expect(resolveOnboardingProviderInstallCommand("opencode", "windows")).toBe(
+    "npm.cmd install -g opencode-ai",
+  );
+  const settings = {
+    ...DEFAULT_SERVER_SETTINGS,
+    providerInstances: {
+      [openCode.instanceId]: {
+        driver: openCode.driver,
+        config: { binaryPath: "/opt/agents/Open Code" },
+      },
+    },
+  };
+  expect(resolveOnboardingProviderLoginCommand(openCode, settings, "linux")).toBe(
+    "'/opt/agents/Open Code' auth login",
+  );
+  expect(
+    resolveOnboardingProviderLoginCommand(
+      openCode,
+      {
+        ...settings,
+        providerInstances: {
+          [openCode.instanceId]: {
+            driver: openCode.driver,
+            config: { binaryPath: "C:\\Program Files\\OpenCode\\opencode.exe" },
+          },
+        },
+      },
+      "windows",
+    ),
+  ).toBe("& 'C:\\Program Files\\OpenCode\\opencode.exe' auth login");
 });
 
 describe("resolveOnboardingProviderLoginCommand", () => {

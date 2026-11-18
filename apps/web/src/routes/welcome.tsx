@@ -12,6 +12,10 @@ import { useEnvironments, usePrimaryEnvironmentId } from "../state/environments"
 const decodeEnvironmentId = Schema.decodeOption(EnvironmentId);
 
 export const Route = createFileRoute("/welcome")({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { screen?: "endpoint" | "team" | undefined } =>
+    search.screen === "endpoint" || search.screen === "team" ? { screen: search.screen } : {},
   beforeLoad: ({ context }) => {
     const { authGateState } = context;
     if (authGateState.status !== "authenticated" && authGateState.status !== "hosted-static") {

@@ -1,6 +1,7 @@
 import {
   ClaudeSettings,
   CodexSettings,
+  makeBinaryPathSetting,
   type ExecutionEnvironmentPlatformOs,
   type ServerProvider,
   type ServerSettings,
@@ -10,6 +11,9 @@ import * as Schema from "effect/Schema";
 
 const decodeClaudeSettings = Schema.decodeUnknownOption(ClaudeSettings);
 const decodeCodexSettings = Schema.decodeUnknownOption(CodexSettings);
+const decodeOpenCodeBinary = Schema.decodeUnknownOption(
+  Schema.Struct({ binaryPath: makeBinaryPathSetting("opencode") }),
+);
 const SAFE_SHELL_BINARY_PATTERN = /^[A-Za-z0-9_./:\\-]+$/;
 
 function quoteProviderBinary(
@@ -41,6 +45,12 @@ export function getOnboardingProviderState(provider: ServerProvider | undefined)
   if (!provider.installed) return "install";
   if (provider.auth.status === "unauthenticated") return "signIn";
   if (provider.status === "ready") return "ready";
+  if (
+    provider.driver === "opencode" &&
+    provider.status === "warning" &&
+    provider.auth.status === "unknown"
+  )
+    return "signIn";
   return "attention";
 }
 
@@ -57,9 +67,12 @@ const NATIVE_INSTALL_COMMANDS = {
 } as const;
 
 export function resolveOnboardingProviderInstallCommand(
-  driver: keyof typeof NATIVE_INSTALL_COMMANDS,
+  driver: keyof typeof NATIVE_INSTALL_COMMANDS | "opencode",
   platform: ExecutionEnvironmentPlatformOs,
 ): string {
+  if (driver === "opencode") {
+    return platform === "windows" ? "npm.cmd install -g opencode-ai" : "npm install -g opencode-ai";
+  }
   const commands = NATIVE_INSTALL_COMMANDS[driver];
   return platform === "windows" ? commands.windows : commands.posix;
 }
@@ -81,6 +94,12 @@ export function resolveOnboardingProviderLoginCommand(
     const config = decodeCodexSettings(instance?.config ?? {});
     const binaryPath = Option.isSome(config) ? config.value.binaryPath : "codex";
     return `${quoteProviderBinary(binaryPath, "codex", platform)} login`;
+  }
+
+  if (provider.driver === "opencode") {
+    const config = decodeOpenCodeBinary(instance?.config ?? {});
+    const binaryPath = Option.isSome(config) ? config.value.binaryPath : "opencode";
+    return `${quoteProviderBinary(binaryPath, "opencode", platform)} auth login`;
   }
 
   return provider.driver;
