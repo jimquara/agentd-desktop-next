@@ -13,6 +13,8 @@
         ".coderabbit.config.ts",
         ".github/scripts/thread-transfer-report.cjs",
         ".github/scripts/pr-limits.cjs",
+        // Upstream's mobile workflow ran this; #13 removed the workflow and keeps the script for upstream merges.
+        ".github/scripts/mirror-play-apk.cjs",
       ],
       "vite": { "entry": [".github/**/*.test.cjs"] },
       "vitest": { "entry": [".github/**/*.test.cjs"] },
@@ -28,6 +30,9 @@
       "entry": [
         // These fixture scripts are injected into a browser page by path.
         "fixtures/*/*.js",
+        // Upstream's release workflows ran these; #13 removed the workflows and keeps the scripts for upstream merges.
+        "resolve-nightly-release.ts",
+        "smoke-cli-archive.ts",
         "knip-schemas.ts",
         "linux-after-pack.ts",
         "mobile-behavior/run.ts",
@@ -101,7 +106,12 @@
     "apps/web": {
       // Worktree setup (scripts/setup-worktree.ts) runs this directly, and evidence
       // fixtures run under node. agentdState.ts serves the agentd screens still to come.
-      "entry": ["scripts/warm-dep-cache.ts", "test/fixtures/**/*.mjs", "src/lib/agentdState.ts"],
+      "entry": [
+        "scripts/warm-dep-cache.ts",
+        "scripts/verify-built-boot.ts",
+        "test/fixtures/**/*.mjs",
+        "src/lib/agentdState.ts",
+      ],
       // UI component modules are copied and adapted as cohesive sets. Keep their
       // named subcomponents even before they have callers; the file audit still
       // reports an entire component module when nothing imports it.
