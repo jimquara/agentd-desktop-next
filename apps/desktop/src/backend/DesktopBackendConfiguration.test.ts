@@ -981,6 +981,59 @@ describe("DesktopBackendConfiguration", () => {
     }).pipe(Effect.scoped, Effect.provide(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))),
   );
 
+  it.effect.skipIf(HostProcess.Platform.defaultValue() === "win32")(
+    "starts the backend with AGENTD_BIN at the bundled agentd unless the one on PATH is newer",
+    () =>
+      Effect.gen(function* () {
+        const fileSystem = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const baseDir = yield* fileSystem.makeTempDirectoryScoped({
+          prefix: "t3-desktop-backend-config-test-",
+        });
+        const resourcesPath = path.join(baseDir, "resources");
+        const userBinDir = path.join(baseDir, "user-bin");
+        const bundledPath = path.join(resourcesPath, "agentd/agentd");
+        const userPath = path.join(userBinDir, "agentd");
+        yield* fileSystem.makeDirectory(path.join(resourcesPath, "agentd"), { recursive: true });
+        yield* fileSystem.makeDirectory(userBinDir, { recursive: true });
+        const writeAgentd = (file: string, said: string) =>
+          fileSystem
+            .writeFileString(file, `#!/bin/sh\necho '${said}'\n`)
+            .pipe(Effect.andThen(fileSystem.chmod(file, 0o755)));
+        yield* writeAgentd(bundledPath, "agentd v0.1.12 547cf3a6616b");
+
+        const resolveAgentdBin = Effect.gen(function* () {
+          const configuration = yield* DesktopBackendConfiguration.DesktopBackendConfiguration;
+          const config = yield* configuration.resolvePrimary;
+          return config.env.AGENTD_BIN;
+        }).pipe(
+          Effect.provideService(HostProcess.Environment, { PATH: `relative:${userBinDir}` }),
+          Effect.provide(
+            layerBackendConfiguration().pipe(
+              Layer.provideMerge(layerServerExposure),
+              Layer.provideMerge(DesktopAppSettings.layerTest()),
+              Layer.provideMerge(DesktopWslServerTree.layerTest()),
+              Layer.provideMerge(DesktopWslEnvironment.layerTest()),
+              Layer.provideMerge(
+                layerEnvironment(baseDir, {
+                  appPath: `${resourcesPath}/app.asar`,
+                  dirname: `${resourcesPath}/app.asar/apps/desktop/dist-electron`,
+                  isPackaged: true,
+                  resourcesPath,
+                }),
+              ),
+            ),
+          ),
+        );
+
+        assert.equal(yield* resolveAgentdBin, bundledPath);
+        yield* writeAgentd(userPath, "agentd v0.1.11 0000000");
+        assert.equal(yield* resolveAgentdBin, bundledPath);
+        yield* writeAgentd(userPath, "agentd v0.2.0 0000000");
+        assert.equal(yield* resolveAgentdBin, userPath);
+      }).pipe(Effect.scoped, Effect.provide(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))),
+  );
+
   it("resolvePrimaryLabel is runSync-safe against the real WSL availability probe", async () => {
     // oxlint-disable-next-line t3code/no-manual-effect-runtime-in-tests -- This test intentionally replicates the sync IPC handler's runSync path to catch a regression to async-only resolution; it.effect would mask it.
     const runtime = ManagedRuntime.make(

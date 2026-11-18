@@ -49,6 +49,8 @@ import {
   LinuxBrowserSecretHostError,
   LinuxPackagedAppMissingError,
   MacPackagedAppMissingError,
+  stageAgentdCli,
+  AgentdCliStageError,
   stageBrowserSecret,
   validateLinuxPackagedPayload,
   validateMacPackagedPayload,
@@ -773,6 +775,44 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       assert.isFalse(excludes("universal", file), file);
     }
   });
+
+  it.effect("bundles the target's agentd from AGENTD_DIST_DIR only when its sha256 matches", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const tempDir = yield* fs.makeTempDirectoryScoped({ prefix: "t3-agentd-stage-test-" });
+      const distDir = path.join(tempDir, "dist");
+      const stageResourcesDir = path.join(tempDir, "resources");
+      yield* fs.makeDirectory(distDir, { recursive: true });
+      yield* fs.writeFileString(path.join(distDir, "agentd-windows-arm64.exe"), "win-arm64");
+      yield* fs.writeFileString(path.join(distDir, "agentd-linux-amd64"), "linux-amd64");
+      const sha = (text: string) => NodeCrypto.createHash("sha256").update(text).digest("hex");
+      yield* fs.writeFileString(
+        path.join(distDir, "SHA256SUMS"),
+        `${sha("win-arm64")}  agentd-windows-arm64.exe\n${"0".repeat(64)}  agentd-linux-amd64\n`,
+      );
+      const stage = (env: Record<string, string>, platform: "win" | "linux") =>
+        stageAgentdCli({
+          stageResourcesDir,
+          platform,
+          arch: platform === "win" ? "arm64" : "x64",
+          verbose: false,
+        }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env }))));
+
+      yield* stage({}, "win");
+      assert.isFalse(yield* fs.exists(path.join(stageResourcesDir, "agentd")));
+
+      yield* stage({ AGENTD_DIST_DIR: distDir }, "win");
+      assert.equal(
+        yield* fs.readFileString(path.join(stageResourcesDir, "agentd/agentd.exe")),
+        "win-arm64",
+      );
+
+      const error = yield* stage({ AGENTD_DIST_DIR: distDir }, "linux").pipe(Effect.flip);
+      assert.instanceOf(error, AgentdCliStageError);
+      assert.equal(error.asset, "agentd-linux-amd64");
+    }),
+  );
 
   it.effect("unpacks target Windows natives while excluding the other architecture", () =>
     Effect.scoped(

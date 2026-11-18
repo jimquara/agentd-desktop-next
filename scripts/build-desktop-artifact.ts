@@ -1001,6 +1001,10 @@ export const DESKTOP_FILE_EXCLUSIONS = [
   "!apps/desktop/prod-resources/windows-server/**/*",
   "!apps/desktop/prod-resources/wsl-runtime.tar.gz",
   "!apps/desktop/prod-resources/wsl-runtime.tar.gz.sha256",
+  "!apps/desktop/resources/agentd",
+  "!apps/desktop/resources/agentd/**/*",
+  "!apps/desktop/prod-resources/agentd",
+  "!apps/desktop/prod-resources/agentd/**/*",
   "!apps/desktop/gnome-extension",
   "!apps/desktop/gnome-extension/**/*",
 ] as const;
@@ -1099,6 +1103,11 @@ export const DESKTOP_EXTRA_RESOURCES = [
   {
     from: "apps/desktop/prod-resources/resource-monitor",
     to: "resource-monitor",
+  },
+  // Staged only when AGENTD_DIST_DIR is set; electron-builder skips a missing source directory.
+  {
+    from: "apps/desktop/prod-resources/agentd",
+    to: "agentd",
   },
 ] as const;
 export const LINUX_CAPTURE_EXTRA_RESOURCES = [
@@ -2436,6 +2445,107 @@ export const stageResourceMonitor = Effect.fn("stageResourceMonitor")(function* 
   if (input.platform !== "win") {
     yield* fs.chmod(destinationPath, 0o755);
   }
+});
+
+export class AgentdCliStageError extends Schema.TaggedError<AgentdCliStageError>()(
+  "AgentdCliStageError",
+  { distDir: Schema.String, asset: Schema.String, reason: Schema.String },
+) {
+  override get message(): string {
+    return `Cannot bundle agentd ${this.asset} from AGENTD_DIST_DIR=${this.distDir}: ${this.reason}.`;
+  }
+}
+
+/** Release asset names as agentd publishes them, e.g. agentd-darwin-arm64, agentd-windows-amd64.exe. */
+export function agentdReleaseAssets(
+  platform: typeof BuildPlatform.Type,
+  arch: typeof BuildArch.Type,
+): ReadonlyArray<string> {
+  const os = platform === "mac" ? "darwin" : platform === "win" ? "windows" : "linux";
+  const cpus = arch === "universal" ? ["amd64", "arm64"] : [arch === "x64" ? "amd64" : "arm64"];
+  return cpus.map((cpu) => `agentd-${os}-${cpu}${platform === "win" ? ".exe" : ""}`);
+}
+
+/** Copies the prebuilt agentd for the target into resources/agentd, each asset checked against the release's SHA256SUMS. */
+export const stageAgentdCli = Effect.fn("stageAgentdCli")(function* (input: {
+  readonly stageResourcesDir: string;
+  readonly platform: typeof BuildPlatform.Type;
+  readonly arch: typeof BuildArch.Type;
+  readonly verbose: boolean;
+}) {
+  const distDir = yield* Config.String("AGENTD_DIST_DIR").pipe(Config.option);
+  if (Option.isNone(distDir) || distDir.value.trim() === "") {
+    yield* Effect.log("[desktop-artifact] AGENTD_DIST_DIR is unset; not bundling agentd.");
+    return;
+  }
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const dir = path.resolve(distDir.value);
+  const assets = agentdReleaseAssets(input.platform, input.arch);
+  const sums = yield* fs
+    .readFileString(path.join(dir, "SHA256SUMS"))
+    .pipe(
+      Effect.mapError(
+        () =>
+          new AgentdCliStageError({ distDir: dir, asset: "SHA256SUMS", reason: "not readable" }),
+      ),
+    );
+  const pinned = new Map(
+    sums
+      .split(/\r?\n/)
+      .map((line) => /^([0-9a-f]{64})\s+\*?(\S+)$/i.exec(line.trim()))
+      .filter((match) => match !== null)
+      .map((match) => [match[2]!, match[1]!.toLowerCase()] as const),
+  );
+  const sources: string[] = [];
+  for (const asset of assets) {
+    const source = path.join(dir, asset);
+    const bytes = yield* fs
+      .readFile(source)
+      .pipe(
+        Effect.mapError(
+          () => new AgentdCliStageError({ distDir: dir, asset, reason: "not found" }),
+        ),
+      );
+    const expected = pinned.get(asset);
+    if (expected === undefined) {
+      return yield* new AgentdCliStageError({ distDir: dir, asset, reason: "not in SHA256SUMS" });
+    }
+    const actual = NodeCrypto.createHash("sha256").update(bytes).digest("hex");
+    if (actual !== expected) {
+      return yield* new AgentdCliStageError({
+        distDir: dir,
+        asset,
+        reason: `sha256 ${actual} does not match SHA256SUMS ${expected}`,
+      });
+    }
+    sources.push(source);
+  }
+
+  const destinationDirectory = path.join(input.stageResourcesDir, "agentd");
+  const destinationPath = path.join(
+    destinationDirectory,
+    input.platform === "win" ? "agentd.exe" : "agentd",
+  );
+  yield* fs.remove(destinationDirectory, { recursive: true, force: true }).pipe(Effect.ignore);
+  yield* fs.makeDirectory(destinationDirectory, { recursive: true });
+  if (sources.length === 1) {
+    yield* fs.copyFile(sources[0]!, destinationPath);
+  } else {
+    yield* runCommand(
+      ChildProcess.make("lipo", ["-create", ...sources, "-output", destinationPath]),
+      {
+        label: "lipo agentd universal binary",
+        verbose: input.verbose,
+      },
+    );
+  }
+  if (input.platform !== "win") {
+    yield* fs.chmod(destinationPath, 0o755);
+  }
+  yield* Effect.log(
+    `[desktop-artifact] Bundled agentd (${assets.join(", ")}) at ${destinationPath}.`,
+  );
 });
 
 export const stageBrowserSecret = Effect.fn("stageBrowserSecret")(function* (input: {
@@ -3830,6 +3940,12 @@ const buildDesktopArtifactUnlocked = Effect.fn("buildDesktopArtifactUnlocked")(f
   }
   yield* stageResourceMonitor({
     repoRoot,
+    stageResourcesDir,
+    platform: options.platform,
+    arch: options.arch,
+    verbose: options.verbose,
+  });
+  yield* stageAgentdCli({
     stageResourcesDir,
     platform: options.platform,
     arch: options.arch,
