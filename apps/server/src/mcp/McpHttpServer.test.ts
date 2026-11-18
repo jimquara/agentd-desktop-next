@@ -1729,6 +1729,10 @@ it.effect("lists pull request watch tools only to threads that are not delegated
       const scopeFor = (
         token: string,
         subagent: boolean,
+        capabilities: ReadonlyArray<McpInvocationContext.McpCapability> = [
+          "orchestration",
+          "pull-requests",
+        ],
       ): McpInvocationContext.McpThreadInvocationScope => ({
         environmentId,
         requestNamespace: token,
@@ -1739,15 +1743,16 @@ it.effect("lists pull request watch tools only to threads that are not delegated
           subagent,
         },
         client: undefined,
-        capabilities: new Set(["pull-requests"]),
+        capabilities: new Set(capabilities),
         issuedAt: 1,
       });
       const scopes = new Map([
         ["parentToken", scopeFor("parentToken", false)],
         ["childToken", scopeFor("childToken", true)],
+        ["browserOnlyToken", scopeFor("browserOnlyToken", false, ["preview"])],
       ]);
       const serverLayer = McpHttpServer.layerMcpTransport(
-        McpHttpServer.layerPullRequestsToolkit,
+        Layer.mergeAll(McpHttpServer.layerPullRequestsToolkit, McpHttpServer.layerToolSearch),
       ).pipe(
         Layer.provide(ServerSettings.layerTest()),
         Layer.provide(
@@ -1810,6 +1815,7 @@ it.effect("lists pull request watch tools only to threads that are not delegated
       expect(childTools).toContain("link_pull_request");
       expect(childTools).not.toContain("watch_pull_request");
       expect(childTools).not.toContain("unwatch_pull_request");
+      expect(yield* listedTools("browserOnlyToken")).toEqual([]);
     }),
   ).pipe(Effect.provide(NodeHttpServer.layerTest)),
 );

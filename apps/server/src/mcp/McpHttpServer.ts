@@ -1372,6 +1372,19 @@ const layerToolExposure = Layer.effect(
   }),
 );
 
+/** AgentD: all a thread credential without `orchestration` lists (besides `tool_search`). */
+const BROWSER_AND_DEVICE_TOOLS: ReadonlySet<string> = new Set(
+  [
+    PreviewStandardToolkit,
+    PreviewSnapshotToolkit,
+    PreviewControlsToolkit,
+    DeviceStandardToolkit,
+    DeviceScreenshotToolkit,
+    HtmlPreviewToolkit,
+    HtmlRenderToolkit,
+  ].flatMap((toolkit) => Object.keys(toolkit.tools)),
+);
+
 /**
  * A provider session that sends `MCP_TOOL_EXPOSURE_HEADER: deferred` lists only
  * the direct tools and what its `tool_search` calls loaded. Calls are never
@@ -1384,7 +1397,16 @@ const layerDeferredListing = McpServer.visibility(
     return Effect.fnUntraced(function* ({ method, target, headers }: McpServer.MiddlewareOptions) {
       if (method !== "tools/list") return true;
       const scope = yield* Effect.serviceOption(McpInvocationContext.McpInvocationContext);
-      const providerSessionId = Option.getOrUndefined(scope)?.thread?.providerSessionId;
+      const invocation = Option.getOrUndefined(scope);
+      if (
+        invocation?.thread !== undefined &&
+        !invocation.capabilities.has("orchestration") &&
+        target !== McpToolExposure.TOOL_SEARCH &&
+        !BROWSER_AND_DEVICE_TOOLS.has(target)
+      ) {
+        return false;
+      }
+      const providerSessionId = invocation?.thread?.providerSessionId;
       if (headers[MCP_TOOL_EXPOSURE_HEADER] !== "deferred" || providerSessionId === undefined) {
         return target !== McpToolExposure.TOOL_SEARCH;
       }

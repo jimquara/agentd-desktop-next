@@ -251,6 +251,7 @@ function makeThreadCreatedEvent(input: {
   readonly now: DateTime.Utc;
   readonly projectId?: ProjectId;
   readonly delegatedBy?: ThreadId;
+  readonly enableAgentOrchestrationTools?: boolean;
 }) {
   return Effect.gen(function* () {
     const projectId =
@@ -869,6 +870,7 @@ function runBrowserAccessScenario(input: {
           projectServiceLayer: layerProjectService,
           serverSettingsLayer: ServerSettings.layerTest({
             enableAgentBrowserAccess: input.enableAgentBrowserAccess,
+            enableAgentOrchestrationTools: input.enableAgentOrchestrationTools ?? true,
             ...(input.enableAgentDeviceAccess === undefined
               ? {}
               : { enableAgentDeviceAccess: input.enableAgentDeviceAccess }),
@@ -2507,9 +2509,15 @@ it("ProviderSessionManagerV2 counts a delegated task as a wake only while its re
   );
 });
 
-it.effect(
-  "ProviderSessionManagerV2 issues MCP credentials before opening and revokes them on close",
-  () =>
+it.effect.each([
+  { enableAgentOrchestrationTools: false, expected: ["preview"] },
+  {
+    enableAgentOrchestrationTools: true,
+    expected: ["preview", "orchestration", "worktree", "pull-requests", "issues"],
+  },
+])(
+  "ProviderSessionManagerV2 issues MCP credentials before opening and revokes them on close (orchestration tools $enableAgentOrchestrationTools)",
+  ({ enableAgentOrchestrationTools, expected }) =>
     Effect.gen(function* () {
       const state = yield* Ref.make(emptyState);
       const mcpConfigs = yield* Ref.make<
@@ -2547,10 +2555,7 @@ it.effect(
         assert.isDefined(token);
         const resolved = yield* registry.resolve(token!);
         assert.equal(resolved?.thread.threadId, threadId);
-        assert.deepEqual(
-          resolved?.capabilities,
-          new Set(["preview", "orchestration", "worktree", "pull-requests", "issues"]),
-        );
+        assert.deepEqual(resolved?.capabilities, new Set(expected));
 
         assert.isFalse(yield* captured!.hasPendingWake!);
 
@@ -2565,6 +2570,7 @@ it.effect(
             state,
             idleTimeoutMs: 1_000,
             mcpConfigs,
+            serverSettingsLayer: ServerSettings.layerTest({ enableAgentOrchestrationTools }),
           }),
         ),
       );
@@ -2675,9 +2681,32 @@ it.effect(
             mcpConfigs,
             serverSettingsLayer: ServerSettings.layerTest({
               enableAgentBrowserAccess: false,
+              enableAgentOrchestrationTools: true,
             }).pipe(Layer.orDie),
           }),
         ),
+      );
+    }),
+);
+
+it.effect.each([
+  { browser: true, device: false, expected: ["preview"] },
+  { browser: false, device: true, expected: ["device"] },
+  { browser: false, device: false, expected: undefined },
+])(
+  "ProviderSessionManagerV2 offers only browser and device tools with orchestration tools off (browser $browser, device $device)",
+  ({ browser, device, expected }) =>
+    Effect.gen(function* () {
+      const captured = yield* runBrowserAccessScenario({
+        enableAgentBrowserAccess: browser,
+        projectOverride: browser,
+        enableAgentDeviceAccess: device,
+        enableDeviceSupport: device,
+        enableAgentOrchestrationTools: false,
+      });
+      assert.deepEqual(
+        captured === undefined ? undefined : [...(captured.capabilities ?? [])],
+        expected,
       );
     }),
 );
