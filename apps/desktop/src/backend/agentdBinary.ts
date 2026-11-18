@@ -13,7 +13,7 @@ export const AGENTD_BIN_ENV = "AGENTD_BIN";
 const VERSION_TIMEOUT = Duration.seconds(5);
 const SEMVER = /^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/;
 
-const agentdBinaryName = (platform: NodeJS.Platform): string =>
+export const agentdBinaryName = (platform: NodeJS.Platform): string =>
   platform === "win32" ? "agentd.exe" : "agentd";
 
 /** The version in `agentd version` output ("agentd v0.1.11 547cf3a6616b"), else null. */
@@ -38,7 +38,7 @@ const comparePrerelease = (a: string, b: string): number => {
 };
 
 /** Semver order of two agentd versions; null when either is not a version. */
-const compareAgentdVersions = (a: string, b: string): number | null => {
+export const compareAgentdVersions = (a: string, b: string): number | null => {
   const x = SEMVER.exec(a);
   const y = SEMVER.exec(b);
   if (!x || !y) return null;
@@ -65,22 +65,24 @@ export const chooseAgentdBinary = (
   return (compareAgentdVersions(user.version, bundled.version) ?? 0) > 0 ? user.path : bundled.path;
 };
 
-const resolveBundledAgentdPath = Effect.fn("desktop.agentdBinary.resolveBundled")(function* () {
-  const environment = yield* DesktopEnvironment.DesktopEnvironment;
-  const fileSystem = yield* FileSystem.FileSystem;
-  const relative = environment.path.join("agentd", agentdBinaryName(environment.platform));
-  const candidates = environment.isDevelopment
-    ? []
-    : environment.isPackaged
-      ? [environment.path.join(environment.resourcesPath, relative)]
-      : environment.resolveResourcePathCandidates(relative);
-  for (const candidate of candidates) {
-    if (yield* fileSystem.exists(candidate).pipe(Effect.orElseSucceed(() => false))) {
-      return Option.some(candidate);
+export const resolveBundledAgentdPath = Effect.fn("desktop.agentdBinary.resolveBundled")(
+  function* () {
+    const environment = yield* DesktopEnvironment.DesktopEnvironment;
+    const fileSystem = yield* FileSystem.FileSystem;
+    const relative = environment.path.join("agentd", agentdBinaryName(environment.platform));
+    const candidates = environment.isDevelopment
+      ? []
+      : environment.isPackaged
+        ? [environment.path.join(environment.resourcesPath, relative)]
+        : environment.resolveResourcePathCandidates(relative);
+    for (const candidate of candidates) {
+      if (yield* fileSystem.exists(candidate).pipe(Effect.orElseSucceed(() => false))) {
+        return Option.some(candidate);
+      }
     }
-  }
-  return Option.none<string>();
-});
+    return Option.none<string>();
+  },
+);
 
 const findAgentdOnPath = Effect.fn("desktop.agentdBinary.findOnPath")(function* (
   env: NodeJS.ProcessEnv,
@@ -103,7 +105,7 @@ const findAgentdOnPath = Effect.fn("desktop.agentdBinary.findOnPath")(function* 
   return Option.none<string>();
 });
 
-const readAgentdVersion = Effect.fn("desktop.agentdBinary.readVersion")(function* (
+export const readAgentdVersion = Effect.fn("desktop.agentdBinary.readVersion")(function* (
   binaryPath: string,
 ) {
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;

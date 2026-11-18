@@ -45,7 +45,7 @@ const sameWindowsPath = (left: string, right: string) =>
 
 // Preserve REG_EXPAND_SZ and %VAR% expansion; notify Explorer with WM_SETTINGCHANGE.
 // Failed reads must exit nonzero to prevent replacing PATH wholesale.
-const WINDOWS_USER_PATH_SCRIPT = `
+export const WINDOWS_USER_PATH_SCRIPT = `
 $ErrorActionPreference = 'Stop'
 if ($env:T3_SET -eq '1') {
   $key = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey('Environment')
