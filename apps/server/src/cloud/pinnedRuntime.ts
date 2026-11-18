@@ -207,10 +207,10 @@ const installFromArchive = Effect.fn("cloud.pinned_runtime.install_archive")(fun
   }
   const httpClient = input.httpClient;
   input.onProgress?.({ stage: "download", received: 0, total: undefined });
-  const { fileName, expected } = yield* publishedArchive(input, platformKey);
+  const { fileName, expected, releaseBaseUrl } = yield* publishedArchive(input, platformKey);
   const archive = yield* fetchReleaseAsset(
     httpClient,
-    cliReleaseAssetUrl(input.version, fileName, input.releaseBaseUrl),
+    cliReleaseAssetUrl(input.version, fileName, releaseBaseUrl),
     "downloading the t3 release archive",
     input.onProgress,
   );
@@ -264,12 +264,19 @@ const publishedArchive = Effect.fn("cloud.pinned_runtime.published_archive")(fun
   input: PinnedRuntimeInstallInput,
   platformKey: CliArchivePlatformKey,
 ) {
+  const releaseBaseUrl = input.releaseBaseUrl?.trim() || undefined;
+  // This build has no default release source.
+  if (releaseBaseUrl === undefined) {
+    return yield* new PinnedRuntimeInstallError({
+      step: "finding a release source for this build",
+    });
+  }
   const fileName = cliArchiveFileName(input.version, platformKey);
   const checksums = parseChecksums(
     new TextDecoder().decode(
       yield* fetchReleaseAsset(
         input.httpClient,
-        cliReleaseAssetUrl(input.version, CLI_RELEASE_CHECKSUMS_FILE, input.releaseBaseUrl),
+        cliReleaseAssetUrl(input.version, CLI_RELEASE_CHECKSUMS_FILE, releaseBaseUrl),
         "downloading the t3 release checksums",
       ),
     ),
@@ -280,7 +287,7 @@ const publishedArchive = Effect.fn("cloud.pinned_runtime.published_archive")(fun
       step: `finding ${fileName} in the t3 release checksums`,
     });
   }
-  return { fileName, expected };
+  return { fileName, expected, releaseBaseUrl };
 });
 
 const isPinnedRuntimeInstallError = Schema.is(PinnedRuntimeInstallError);

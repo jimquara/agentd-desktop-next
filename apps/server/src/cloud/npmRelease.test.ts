@@ -36,6 +36,7 @@ const makeService = Effect.fnUntraced(function* (
   run: ProcessRunner.ProcessRunner["Service"]["run"],
   publicRegistry: HttpClient.HttpClient = noPublicRegistry,
   npmInstalled = true,
+  releaseBaseUrl: string | null = "https://releases.example/download",
 ) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
@@ -49,6 +50,7 @@ const makeService = Effect.fnUntraced(function* (
     Effect.provideService(HostProcess.Environment, {
       PATH: npmInstalled ? npmBin : "",
       PATHEXT: ".CMD",
+      ...(releaseBaseUrl === null ? {} : { T3CODE_RELEASE_BASE_URL: releaseBaseUrl }),
     }),
   );
 }, Effect.provide(NodeServices.layer));
@@ -87,6 +89,21 @@ it.effect.each([
     yield* TestClock.adjust("1 minute");
     expect(yield* service.get({ spec: fixture.spec })).toEqual(expected);
     expect(calls).toHaveLength(2);
+  }),
+);
+
+it.effect("looks up nothing when this build has no release source", () =>
+  Effect.gen(function* () {
+    const service = yield* makeService(
+      () => Effect.die("an unconfigured build must not run npm"),
+      noPublicRegistry,
+      true,
+      null,
+    );
+    const error = yield* service.get({ spec: "latest" }).pipe(Effect.flip);
+    expect(error.reason).toBe(
+      "Updates are not configured for this build. Set T3CODE_RELEASE_BASE_URL to a release mirror to enable them.",
+    );
   }),
 );
 
