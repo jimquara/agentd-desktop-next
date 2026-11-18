@@ -71,3 +71,5 @@ installer installs and the app starts.
 - That `gh release download` from libraos/agentd works with this repository's `GITHUB_TOKEN`, and
   `gh release create --draft` makes the draft with all eight files.
 - That Windows Git Bash runs `build-desktop.sh` end to end (path handling, `ls` of the output).
+- `.github/workflows/release.yml`: the Linux build runs on `ubuntu-24.04`, not `ubuntu-latest` (now 26.04 with glibc 2.42, above the 2.39 ceiling the build enforces).
+- `.github/workflows/release.yml`: macOS arm64 builds on `macos-15`; GitHub no longer runs `macos-14` jobs.
