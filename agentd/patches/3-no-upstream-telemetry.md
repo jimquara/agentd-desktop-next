@@ -14,3 +14,5 @@
 - `apps/server/src/cloud/publicConfig.ts`: unchanged. Relay tracing resolves to `null` unless URL, dataset and token are all set (build defines in `apps/server/vite.config.ts` default to `""`), so nothing is sent when they are unset. Same for the relay URL and Clerk keys.
 - `docs/user/telemetry.md`, `docs/user/faq.md`, `docs/internals/product-analytics.md`, `docs/internals/model-manifest.md`: say analytics and the remote manifest are off unless configured.
 - `agentd/design/outbound.md`: new, the outbound endpoints that remain.
+
+Windows: the change adds no file paths, binaries or shell commands. It reads three environment variables (`T3CODE_POSTHOG_*`, `T3CODE_MODEL_MANIFEST_URL`, `T3CODE_TRIAGE_REPOSITORY`) through Effect `Config`, which works the same on Windows. Triage still runs git only through the existing `GitVcsDriver`, and now only when a repository is configured. Verified on Linux only; not run on Windows.
