@@ -100,8 +100,8 @@
     },
     "apps/web": {
       // Worktree setup (scripts/setup-worktree.ts) runs this directly, and evidence
-      // fixtures run under node.
-      "entry": ["scripts/warm-dep-cache.ts", "test/fixtures/**/*.mjs"],
+      // fixtures run under node. agentdState.ts serves the agentd screens still to come.
+      "entry": ["scripts/warm-dep-cache.ts", "test/fixtures/**/*.mjs", "src/lib/agentdState.ts"],
       // UI component modules are copied and adapted as cohesive sets. Keep their
       // named subcomponents even before they have callers; the file audit still
       // reports an entire component module when nothing imports it.

@@ -246,6 +246,17 @@ const RPC_AGGREGATES = {
   [WS_METHODS.subscribeServerConfig]: "server",
   [WS_METHODS.subscribeServerLifecycle]: "server",
   [WS_METHODS.subscribeAuthAccess]: "auth",
+  [WS_METHODS.agentdStatus]: "agentd",
+  [WS_METHODS.agentdSubscribeTasks]: "agentd",
+  [WS_METHODS.agentdTask]: "agentd",
+  [WS_METHODS.agentdSubscribeTaskOutput]: "agentd",
+  [WS_METHODS.agentdStopTask]: "agentd",
+  [WS_METHODS.agentdStartTask]: "agentd",
+  [WS_METHODS.agentdApprovals]: "agentd",
+  [WS_METHODS.agentdInbox]: "agentd",
+  [WS_METHODS.agentdPeople]: "agentd",
+  [WS_METHODS.agentdConnectAgent]: "agentd",
+  [WS_METHODS.agentdJoinTeam]: "agentd",
 } as const satisfies Readonly<Record<WsRpcMethod, string>>;
 
 const RPC_SPAN_PREFIX = "ws.rpc";

@@ -196,6 +196,7 @@ import * as CloudCliState from "./cloud/CliState.ts";
 import * as ServerSelfUpdate from "./cloud/selfUpdate.ts";
 import * as DesktopAppUpdate from "./desktopUpdate/DesktopAppUpdate.ts";
 import * as ServiceLauncherClient from "./cloud/serviceLauncherClient.ts";
+import * as AgentdBridge from "./agentd/AgentdBridge.ts";
 import * as ProcessDiagnostics from "./diagnostics/ProcessDiagnostics.ts";
 import * as HostResources from "./resourceTelemetry/HostResources.ts";
 import * as ProcessResourceMonitor from "./diagnostics/ProcessResourceMonitor.ts";
@@ -325,6 +326,11 @@ const layerResourceDiagnostics = Layer.mergeAll(
   ProcessDiagnostics.layer.pipe(Layer.provide(layerResourceTelemetry)),
   ProcessResourceMonitor.layer.pipe(Layer.provide(layerResourceTelemetry)),
   ProcessGroupMetrics.layer.pipe(Layer.provide(layerResourceTelemetry)),
+);
+
+const layerAgentd = AgentdBridge.layer.pipe(
+  Layer.provide(ProcessRunner.layer),
+  Layer.provide(layerBackground),
 );
 
 const layerRelayClient = Layer.unwrap(
@@ -812,6 +818,7 @@ const layerRuntimeDependencies = layerRuntimeCoreDependencies.pipe(
   Layer.provideMerge(layerUsage),
   Layer.provideMerge(layerBackground),
   Layer.provideMerge(layerResourceDiagnostics),
+  Layer.provideMerge(layerAgentd),
   Layer.provideMerge(TraceDiagnostics.layer),
   Layer.provideMerge(TriageService.layer.pipe(Layer.provide(GitVcsDriver.layer))),
   // Layers memoize by reference, so this is the same policy the settings layer reads.

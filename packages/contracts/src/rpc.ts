@@ -1,4 +1,5 @@
 import {
+  OrchestrationV2CommandOutputFrame,
   OrchestrationV2SearchThreadError,
   OrchestrationV2SearchThreadInput,
   OrchestrationV2SearchThreadResult,
@@ -376,6 +377,23 @@ import {
   ResourceTelemetrySnapshot,
 } from "./resourceTelemetry.ts";
 import {
+  AgentdApproval,
+  AgentdCommandOutput,
+  AgentdConnectAgentInput,
+  AgentdError,
+  AgentdInboxItem,
+  AgentdJoinTeamInput,
+  AgentdPeople,
+  AgentdPeopleInput,
+  AgentdStartTaskInput,
+  AgentdStartTaskResult,
+  AgentdStatus,
+  AgentdStopTaskInput,
+  AgentdTask,
+  AgentdTaskInput,
+  AgentdTaskRow,
+} from "./agentd.ts";
+import {
   UsageLimitSourceError,
   ProviderConsumeResetCreditInput,
   ProviderConsumeResetCreditResult,
@@ -668,6 +686,18 @@ export const WS_METHODS = {
   subscribeServerLifecycle: "subscribeServerLifecycle",
   subscribeAuthAccess: "subscribeAuthAccess",
   subscribeResourceTelemetry: "subscribeResourceTelemetry",
+
+  agentdStatus: "agentd.status",
+  agentdSubscribeTasks: "agentd.subscribeTasks",
+  agentdTask: "agentd.task",
+  agentdSubscribeTaskOutput: "agentd.subscribeTaskOutput",
+  agentdStopTask: "agentd.stopTask",
+  agentdStartTask: "agentd.startTask",
+  agentdApprovals: "agentd.approvals",
+  agentdInbox: "agentd.inbox",
+  agentdPeople: "agentd.people",
+  agentdConnectAgent: "agentd.connectAgent",
+  agentdJoinTeam: "agentd.joinTeam",
 } as const;
 
 const WsServerUpsertKeybindingRpc = Rpc.make(WS_METHODS.serverUpsertKeybinding, {
@@ -2240,6 +2270,76 @@ const WsSubscribeResourceTelemetryRpc = Rpc.make(WS_METHODS.subscribeResourceTel
   stream: true,
 });
 
+const AgentdRpcError = Schema.Union([AgentdError, EnvironmentAuthorizationError]);
+
+const WsAgentdStatusRpc = Rpc.make(WS_METHODS.agentdStatus, {
+  payload: Schema.Struct({}),
+  success: AgentdStatus,
+  error: AgentdRpcError,
+});
+
+const WsAgentdSubscribeTasksRpc = Rpc.make(WS_METHODS.agentdSubscribeTasks, {
+  payload: Schema.Struct({}),
+  success: Schema.Array(AgentdTaskRow),
+  error: AgentdRpcError,
+  stream: true,
+});
+
+const WsAgentdTaskRpc = Rpc.make(WS_METHODS.agentdTask, {
+  payload: AgentdTaskInput,
+  success: AgentdTask,
+  error: AgentdRpcError,
+});
+
+const WsAgentdSubscribeTaskOutputRpc = Rpc.make(WS_METHODS.agentdSubscribeTaskOutput, {
+  payload: AgentdTaskInput,
+  success: OrchestrationV2CommandOutputFrame,
+  error: AgentdRpcError,
+  stream: true,
+});
+
+const WsAgentdStopTaskRpc = Rpc.make(WS_METHODS.agentdStopTask, {
+  payload: AgentdStopTaskInput,
+  success: Schema.Struct({}),
+  error: AgentdRpcError,
+});
+
+const WsAgentdStartTaskRpc = Rpc.make(WS_METHODS.agentdStartTask, {
+  payload: AgentdStartTaskInput,
+  success: AgentdStartTaskResult,
+  error: AgentdRpcError,
+});
+
+const WsAgentdApprovalsRpc = Rpc.make(WS_METHODS.agentdApprovals, {
+  payload: Schema.Struct({}),
+  success: Schema.Array(AgentdApproval),
+  error: AgentdRpcError,
+});
+
+const WsAgentdInboxRpc = Rpc.make(WS_METHODS.agentdInbox, {
+  payload: Schema.Struct({}),
+  success: Schema.Array(AgentdInboxItem),
+  error: AgentdRpcError,
+});
+
+const WsAgentdPeopleRpc = Rpc.make(WS_METHODS.agentdPeople, {
+  payload: AgentdPeopleInput,
+  success: AgentdPeople,
+  error: AgentdRpcError,
+});
+
+const WsAgentdConnectAgentRpc = Rpc.make(WS_METHODS.agentdConnectAgent, {
+  payload: AgentdConnectAgentInput,
+  success: AgentdCommandOutput,
+  error: AgentdRpcError,
+});
+
+const WsAgentdJoinTeamRpc = Rpc.make(WS_METHODS.agentdJoinTeam, {
+  payload: AgentdJoinTeamInput,
+  success: AgentdCommandOutput,
+  error: AgentdRpcError,
+});
+
 export class RpcScopeAuthorization extends RpcMiddleware.Service<RpcScopeAuthorization>()(
   "t3/contracts/RpcScopeAuthorization",
   { error: EnvironmentAuthorizationError },
@@ -2457,6 +2557,17 @@ export const WsRpcGroup = RpcGroup.make(
   WsSubscribeServerLifecycleRpc,
   WsSubscribeAuthAccessRpc,
   WsSubscribeResourceTelemetryRpc,
+  WsAgentdStatusRpc,
+  WsAgentdSubscribeTasksRpc,
+  WsAgentdTaskRpc,
+  WsAgentdSubscribeTaskOutputRpc,
+  WsAgentdStopTaskRpc,
+  WsAgentdStartTaskRpc,
+  WsAgentdApprovalsRpc,
+  WsAgentdInboxRpc,
+  WsAgentdPeopleRpc,
+  WsAgentdConnectAgentRpc,
+  WsAgentdJoinTeamRpc,
   WsOrchestrationV2DispatchCommandRpc,
   WsOrchestrationV2GetWorkflowScriptRpc,
   WsOrchestrationV2GetNativeChildWorkRpc,
