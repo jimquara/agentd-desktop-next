@@ -51,7 +51,7 @@ may also be left by a test build; delete them only if T3 Code is not installed.
 - `apps/server/src/cliCompileCache.ts`, `apps/desktop/src/compileCache.ts`: compile cache folder `agentd-desktop` (literal: loads before anything else).
 - `apps/desktop/src/snapShot/GnomeCaptureSetup.ts`, `HyprlandSnapShot.ts`, `KdeSnapShot.ts`: data folders under `agentd-desktop`; KDE desktop file id renamed.
 - `packages/shared/src/desktopAppControl.ts`: app control socket folder and Windows pipe name.
-- Tests updated for the new names: `cloud/bootService`, `serviceLauncher`, `process/agentScope`, `cli/update`, shared `desktopAppControl` (the darwin long-path case shortened to fit the longer folder name), desktop `GnomeCaptureSetup`.
+- Tests updated for the new names: `cloud/bootService`, `serviceLauncher`, `process/agentScope`, `cli/update`, `cliCompileCache`, shared `desktopAppControl` (the darwin long-path case shortened to fit the longer folder name), desktop `GnomeCaptureSetup`.
 - `apps/server/src/cli/update.test.ts`: two managed-policy expectations still said "T3 Code" after #24 renamed that sentence; they fail on main and run in `check:changed` now that the file changed.
 
 ## Not changed
