@@ -1,24 +1,47 @@
 #!/usr/bin/env bash
-# Internal test build of AgentD Desktop with agentd inside. Usage: agentd/scripts/build-desktop.sh linux|win
+# AgentD Desktop with agentd inside. Usage: agentd/scripts/build-desktop.sh linux|win|mac [arm64|x64]
 #
-# Writes release/AgentD-Desktop-<upstream>-agentd.<N>-x64.{AppImage,exe}. Nothing is published.
-# By default it runs the upstream packager (scripts/build-desktop-artifact.ts) inside a container
-# made from electron-builder's Wine image, pinned by digest, plus Rust, MinGW and ImageMagick, so
-# the host needs only Docker, git, gh and the repository's Node and dependencies.
+# Writes release/AgentD-Desktop-<upstream>-agentd.<N>-<arch>.{AppImage,deb,exe,dmg,zip}. Nothing is
+# published (.github/workflows/release.yml does that). For linux and win it runs the upstream packager
+# (scripts/build-desktop-artifact.ts) by default inside a container made from electron-builder's Wine
+# image, pinned by digest, plus Rust, MinGW and ImageMagick, so the host needs only Docker, git, gh and
+# the repository's Node and dependencies. mac always builds on the host (a Mac with Xcode's command line
+# tools and Rust), unsigned and ad-hoc signed; its arch defaults to the host's.
 #
 #   AGENTD_BUILD_N=1          N in <upstream>-agentd.N
 #   AGENTD_DIST_DIR=DIR       agentd release assets and their SHA256SUMS; unset: downloaded with gh
 #   AGENTD_RELEASE=vX.Y.Z     the agentd release to download (default: the latest of libraos/agentd)
 #   AGENTD_BUILD_ON_HOST=1    run the packager here, not in the container (the host then needs
-#                             cargo, cc, make, libsecret-1-dev and ImageMagick; win: Windows)
+#                             cargo, cc, make, libsecret-1-dev and ImageMagick; win: Windows with
+#                             MSVC, run from Git Bash)
 set -euo pipefail
 
+usage="usage: $0 linux|win|mac [arm64|x64]"
 platform=${1:-}
+arch=${2:-}
 case "$platform" in
-  linux) target=AppImage ;;
-  win) target=nsis ;;
-  *) echo "usage: $0 linux|win" >&2; exit 2 ;;
+  linux) target=AppImage os=linux ;;
+  win) target=nsis os=windows ;;
+  mac)
+    target=dmg os=darwin
+    if [ "$(uname -s)" != Darwin ]; then
+      echo "mac builds need macOS (Xcode's codesign, hdiutil, sips)" >&2; exit 2
+    fi
+    AGENTD_BUILD_ON_HOST=1
+    if [ -z "$arch" ]; then
+      case "$(uname -m)" in arm64) arch=arm64 ;; *) arch=x64 ;; esac
+    fi
+    ;;
+  *) echo "$usage" >&2; exit 2 ;;
 esac
+arch=${arch:-x64}
+case "$platform/$arch" in
+  mac/arm64 | */x64) ;;
+  *) echo "$usage (arm64 is mac only)" >&2; exit 2 ;;
+esac
+case "$arch" in arm64) cpu=arm64 ;; *) cpu=amd64 ;; esac
+agentd_asset=agentd-$os-$cpu
+[ "$platform" = win ] && agentd_asset=$agentd_asset.exe
 
 repo=$(git -C "$(dirname -- "$0")" rev-parse --show-toplevel)
 cd "$repo"
@@ -40,14 +63,16 @@ if [ "${AGENTD_BUILD_INSIDE:-}" != 1 ]; then
     release=${AGENTD_RELEASE:-$(gh release view -R libraos/agentd --json tagName -q .tagName)}
     AGENTD_DIST_DIR=$repo/release/agentd-dist/$release
     # The Skills too: the packager bundles them beside the binary (#55).
-    if [ ! -s "$AGENTD_DIST_DIR/SHA256SUMS" ] || [ ! -s "$AGENTD_DIST_DIR/SKILL-agentd.md" ]; then
+    # The packager checks each one against SHA256SUMS before bundling it.
+    if [ ! -s "$AGENTD_DIST_DIR/SHA256SUMS" ] || [ ! -s "$AGENTD_DIST_DIR/$agentd_asset" ] ||
+      [ ! -s "$AGENTD_DIST_DIR/SKILL.md" ] || [ ! -s "$AGENTD_DIST_DIR/SKILL-agentd.md" ]; then
       mkdir -p "$AGENTD_DIST_DIR"
       gh release download "$release" -R libraos/agentd -D "$AGENTD_DIST_DIR" --clobber \
-        -p SHA256SUMS -p agentd-linux-amd64 -p agentd-windows-amd64.exe \
-        -p SKILL.md -p SKILL-agentd.md
+        -p SHA256SUMS -p "$agentd_asset" -p SKILL.md -p SKILL-agentd.md
     fi
   fi
-  AGENTD_DIST_DIR=$(cd "$AGENTD_DIST_DIR" && pwd)
+  # pwd -W: Git Bash on Windows gives the Windows path that Node needs.
+  AGENTD_DIST_DIR=$(cd "$AGENTD_DIST_DIR" && { pwd -W 2>/dev/null || pwd; })
   export AGENTD_DIST_DIR
 
   if [ "${AGENTD_BUILD_ON_HOST:-}" != 1 ]; then
@@ -100,10 +125,10 @@ if [ "$platform" = win ] && [ "${AGENTD_BUILD_INSIDE:-}" = 1 ]; then
   export T3CODE_DESKTOP_REUSE_RESOURCE_MONITOR=1
 fi
 
-echo "[agentd] building $platform/$target $version with agentd from $AGENTD_DIST_DIR"
-node scripts/build-desktop-artifact.ts --platform "$platform" --target "$target" --arch x64
+echo "[agentd] building $platform/$target $arch $version with agentd from $AGENTD_DIST_DIR"
+node scripts/build-desktop-artifact.ts --platform "$platform" --target "$target" --arch "$arch"
 if [ "$platform" = linux ]; then
   # electron-builder names an AppImage after its own arch (x86_64); ours carry x64 as on Windows.
   mv -f "release/AgentD-Desktop-$version-x86_64.AppImage" "release/AgentD-Desktop-$version-x64.AppImage"
 fi
-ls -l "release/AgentD-Desktop-$version-x64".*
+ls -l release/AgentD-Desktop-"$version"-*

@@ -40,7 +40,9 @@ Open the pairing URL printed by the dev runner. The [development runbook](./docs
 
 ## Build the installers
 
-`agentd/scripts/build-desktop.sh linux` builds an AppImage and a `.deb`, and `agentd/scripts/build-desktop.sh win` builds a Windows NSIS installer, each with agentd inside. They build in Docker, so a Linux host builds both. Versions are upstream's version followed by `-agentd.N`, and the builds have no update feed. [agentd/design/build.md](./agentd/design/build.md) has the details. The builds are unsigned and x64 only.
+A release is built by GitHub Actions: push a tag `v<upstream>-agentd.<N>` (for example `v0.1.10-agentd.4`), and `.github/workflows/release.yml` builds the Linux AppImage and `.deb`, the Windows installer and the macOS arm64 and x64 `.dmg`, each with the latest agentd release and its Skills inside, and puts them with a `SHA256SUMS` in a draft release. Review the draft, then publish it. Running the workflow by hand builds the same files as workflow artifacts, without a release.
+
+Locally, `agentd/scripts/build-desktop.sh linux` builds an AppImage and a `.deb`, and `agentd/scripts/build-desktop.sh win` builds a Windows NSIS installer. They build in Docker, so a Linux host builds both. On a Mac, `agentd/scripts/build-desktop.sh mac` builds a `.dmg` for the Mac's architecture. Versions are upstream's version followed by `-agentd.N`, and the builds have no update feed. The builds are not signed: macOS apps are ad-hoc signed and not notarized. [agentd/design/build.md](./agentd/design/build.md) has the details.
 
 ## Built on T3 Code
 
