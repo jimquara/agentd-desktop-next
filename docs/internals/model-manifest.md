@@ -1,8 +1,8 @@
 # Model manifest
 
 The [bundled manifest](../../apps/server/src/provider/model-manifest.json) allows
-offline startup; fetching it from `main` lets model metadata change between
-releases. Failed fetches or invalid data preserve the last usable manifest.
+offline startup and is the only source unless `T3CODE_MODEL_MANIFEST_URL` names a
+remote copy, which lets model metadata change between releases. Failed fetches or invalid data preserve the last usable manifest.
 Remote data must pass both catalog-reference validation and the owning provider's
 adapter validation before replacing the cache.
 

@@ -4,11 +4,13 @@ import {
   type ProviderDriverKind,
 } from "@t3tools/contracts";
 import * as Clock from "effect/Clock";
+import * as Config from "effect/Config";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 import * as Semaphore from "effect/Semaphore";
@@ -22,8 +24,11 @@ import bundledManifestJson from "./model-manifest.json" with { type: "json" };
 import { ProviderCompatibilityPolicy } from "./providerCompatibility.ts";
 import * as ModelCatalog from "@t3tools/provider-core/server/ModelCatalog";
 
-const MODEL_MANIFEST_URL =
-  "https://raw.githubusercontent.com/pingdotgg/t3code/main/apps/server/src/provider/model-manifest.json";
+// No default: without this the bundled manifest is the only source and nothing is fetched.
+const ModelManifestUrlConfig = Config.String("T3CODE_MODEL_MANIFEST_URL").pipe(
+  Config.map((url) => url.trim()),
+  Config.option,
+);
 
 const MANIFEST_TTL_MS = 60 * 60 * 1000;
 
@@ -201,6 +206,7 @@ export const make = Effect.gen(function* () {
   const settingsService = yield* ServerSettings.ServerSettingsService;
   const httpClient = yield* HttpClient.HttpClient;
   const serviceScope = yield* Effect.scope;
+  const manifestUrl = Option.filter(yield* ModelManifestUrlConfig, (url) => url !== "");
 
   const cachePath = path.join(config.stateDir, "model-manifest.json");
   let manifest = BUNDLED_MODEL_MANIFEST;
@@ -229,6 +235,7 @@ export const make = Effect.gen(function* () {
     ttlMs = MANIFEST_TTL_MS,
   ) {
     yield* ensureDiskCacheLoaded;
+    if (Option.isNone(manifestUrl)) return manifest;
     const now = yield* Clock.currentTimeMillis;
     // Expire future timestamps after clock rollback; disk caches cross restarts, ruling out monotonic time.
     const isWithin = (sinceMs: number | null, windowMs: number) =>
@@ -242,7 +249,7 @@ export const make = Effect.gen(function* () {
     if (settings !== null && !settings.enableProviderUpdateChecks) return manifest;
 
     lastAttemptMs = now;
-    const fetched = yield* httpClient.get(MODEL_MANIFEST_URL).pipe(
+    const fetched = yield* httpClient.get(manifestUrl.value).pipe(
       Effect.flatMap(HttpClientResponse.filterStatusOk),
       Effect.flatMap((response) => response.json),
       Effect.flatMap((json) => decodeManifest(json)),

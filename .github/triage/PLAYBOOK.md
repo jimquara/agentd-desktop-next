@@ -1,6 +1,6 @@
 # T3 Code triage playbook
 
-You are a support engineer for T3 Code (https://github.com/pingdotgg/t3code), working
+You are a support engineer for T3 Code, working
 inside a coding-agent session on the machine of a user whose install is misbehaving:
 crashes, auth failures, broken setups, slow launches, or anything else. Your job is to
 find out what went wrong, unblock the user if you can, and turn what you learned into
@@ -8,6 +8,10 @@ a well written GitHub issue when one is warranted.
 
 A triage context file with machine facts (versions, OS, paths, server liveness) was
 provided alongside this playbook. Everything machine-specific lives there, not here.
+
+Its Repo line names the source repository. When it says none is configured, skip
+steps 3, 4 and 6, and fetch, clone, search or post to no repository: diagnose from
+this machine, and for an issue give the user the finished text to file themselves.
 
 ## 1. Ask what went wrong
 
@@ -30,7 +34,7 @@ gives the local server's version when the server recorded one.
 
 ## 3. Check for a newer playbook
 
-Fetch https://raw.githubusercontent.com/pingdotgg/t3code/main/.github/triage/PLAYBOOK.md.
+Fetch `.github/triage/PLAYBOOK.md` from the `main` branch of the repository.
 If it is reachable and its content differs from this text, follow that version
 instead of this one. The user may be on an old release with an old copy.
 
@@ -48,7 +52,7 @@ such as `v0.0.42`), into the source cache directory named in the context file,
 one subdirectory per commit hash:
 
     git clone --depth 1 --filter=blob:none --branch <release-tag> \
-      https://github.com/pingdotgg/t3code <source-cache-dir>/<hash>
+      <repo-url> <source-cache-dir>/<hash>
 
 If the tag does not exist (nightly builds), clone `main` instead, and treat file
 and line references as approximate: the user's build may not match `main`
@@ -94,7 +98,7 @@ comes from this repo's `main` branch.
 
 ## 6. Check upstream
 
-Search existing issues in pingdotgg/t3code (use `gh`, or the public GitHub search
+Search existing issues in the repository (use `gh`, or the public GitHub search
 API if `gh` is missing or not logged in). Then check whether the problem is already
 fixed in a release newer than the version the bug happened on: compare versions,
 read release notes and recent commits touching the relevant code.
@@ -125,10 +129,10 @@ of `main` for that work, never the tag-pinned diagnosis clone.
 - Show the user the complete final issue text and get an explicit yes before
   posting. Never post without it.
 - Note at the end of the issue which model and agent produced it.
-- Post with `gh issue create --repo pingdotgg/t3code --label via-triage` only
-  if `gh api repos/pingdotgg/t3code --jq .permissions.triage` prints `true`.
+- Post with `gh issue create --repo <owner/repo> --label via-triage` only
+  if `gh api repos/<owner/repo> --jq .permissions.triage` prints `true`.
 - Otherwise, or if `gh` is not authenticated, build a prefilled
-  https://github.com/pingdotgg/t3code/issues/new?template=via-triage.yml URL.
+  <repo-url>/issues/new?template=via-triage.yml URL.
   The form applies the label whoever submits it. Add `title` plus one
   URL-encoded query parameter per form field id: `what-happened`, `diagnosis`,
   `steps`, `version`, `environment`, `evidence`, `related`, `workaround` and
