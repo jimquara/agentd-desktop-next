@@ -261,6 +261,7 @@ function speechWorkerArgs(mode: "discover" | "model", moduleUrl?: string) {
 export async function listNativeSpeechGpuDevices(moduleUrl?: string) {
   const child = NodeChildProcess.spawn(process.execPath, speechWorkerArgs("discover", moduleUrl), {
     stdio: ["ignore", "ignore", "inherit", "ipc"],
+    windowsHide: true,
     env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
   });
   return await new Promise<{ id: string; name: string }[]>((resolve, reject) => {
@@ -322,6 +323,7 @@ async function loadNativeSpeechModelOnce(
   signal.throwIfAborted();
   const child = NodeChildProcess.spawn(process.execPath, speechWorkerArgs("model"), {
     stdio: ["ignore", "ignore", "inherit", "ipc"],
+    windowsHide: true,
     serialization: "advanced",
     env: {
       ...process.env,

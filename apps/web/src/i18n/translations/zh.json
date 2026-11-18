@@ -3056,6 +3056,7 @@
   "9b5bce65d53a1bd8": "未连接任何环境。",
   "d6822cceebb0012d": "查看 AgentD 状态需要此环境的读取权限。",
   "10d611a07d695c7d": "未找到 AgentD",
+  "0b345855ad18695d": "AgentD Desktop 自带的 agentd 无法运行。请重新安装 AgentD Desktop 以恢复它。",
   "7bda04b10c99117f": [
     "请按照",
     " ",

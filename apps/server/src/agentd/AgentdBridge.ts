@@ -154,6 +154,8 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
   const env = yield* HostProcess.Environment;
   const platform = yield* HostProcess.Platform;
 
+  // Set by the desktop app beside the AGENTD_BIN of the agentd it carries.
+  const bundled = env.AGENTD_DESKTOP_BUNDLED === "1" ? { bundled: true } : {};
   // Resolved per call, so an agentd installed after the server started is found.
   const binary = Effect.gen(function* () {
     const configured = env.AGENTD_BIN?.trim() || undefined;
@@ -168,6 +170,7 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
           configured === undefined
             ? "agentd was not found on PATH."
             : `agentd was not found at AGENTD_BIN (${configured}).`,
+        ...bundled,
       });
     }
     return found;
@@ -193,7 +196,10 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
       .pipe(
         Effect.mapError((error) =>
           error._tag === "ProcessSpawnError"
-            ? new AgentdNotFoundError({ message: `agentd at ${command} could not be started.` })
+            ? new AgentdNotFoundError({
+                message: `agentd at ${command} could not be started.`,
+                ...bundled,
+              })
             : commandError(
                 error._tag === "ProcessTimeoutError"
                   ? "agentd did not answer in time."

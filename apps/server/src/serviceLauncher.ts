@@ -839,7 +839,7 @@ export async function stateDirOwned(baseDir: string): Promise<boolean> {
     NodeChildProcess.execFile(
       command,
       args,
-      { env: { ...process.env, ...env }, timeout: 2_000, maxBuffer: 16_384 },
+      { env: { ...process.env, ...env }, timeout: 2_000, maxBuffer: 16_384, windowsHide: true },
       (error, stdout) => resolve(error === null ? stdout : undefined),
     ),
   );
@@ -1187,6 +1187,7 @@ export class Launcher {
         this.#output === undefined
           ? ["inherit", "inherit", "inherit", "ipc"]
           : ["ignore", this.#output, this.#output, "ipc"],
+      windowsHide: true,
     });
     await new Promise<void>((resolve, reject) => {
       const onError = (error: Error) => reject(error);
