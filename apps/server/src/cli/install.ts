@@ -210,7 +210,7 @@ const reportInstalled = Effect.fn("cli.install.report")(function* (
 });
 
 export const installCommand = Command.make("install").pipe(
-  Command.withDescription("Install this version as the `t3` command."),
+  Command.withDescription("Install this version as a command on your PATH."),
   Command.withHandler(() => installCli().pipe(Effect.flatMap(reportInstalled))),
 );
 
