@@ -351,6 +351,10 @@
       "types": "./src/state/shell.ts",
       "default": "./src/state/shell.ts"
     },
+    "./state/agentd": {
+      "types": "./src/state/agentd.ts",
+      "default": "./src/state/agentd.ts"
+    },
     "./state/issue-trackers": {
       "types": "./src/state/issueTrackers.ts",
       "default": "./src/state/issueTrackers.ts"
