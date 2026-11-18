@@ -10,6 +10,8 @@ import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
 
 export const AGENTD_BIN_ENV = "AGENTD_BIN";
+/** Set beside AGENTD_BIN when the app carries agentd, so the server never sends anyone to install it. */
+export const AGENTD_BUNDLED_ENV = "AGENTD_DESKTOP_BUNDLED";
 const VERSION_TIMEOUT = Duration.seconds(5);
 const SEMVER = /^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/;
 
@@ -117,6 +119,7 @@ export const readAgentdVersion = Effect.fn("desktop.agentdBinary.readVersion")(f
           stdin: "ignore",
           stdout: "pipe",
           stderr: "ignore",
+          windowsHide: true,
         }),
       );
       return yield* Stream.mkString(Stream.decodeText(child.stdout));

@@ -1,0 +1,10 @@
+# Tests that still asserted upstream's names or hosted app
+
+- `evals/mcp-tool-use/run.test.ts`: expects the `## AgentD Desktop devices` heading the prompt now has.
+- `apps/desktop/src/window/DesktopWindow.test.ts`, `apps/web/src/components/desktop/DesktopWebLinkCoordinator.browser.test.tsx`: use the `agentd-desktop(-dev)://` scheme (#66).
+- `apps/desktop/src/app/CodexAuthCallback.test.ts`: returns to a loopback web client; this build has no hosted app, so `app.t3.codes` is refused.
+- `apps/mobile/src/lib/composerContextClipboard.test.ts`: pastes a `t3-thread://` link; hosted `app.t3.codes` thread links are not recognized without a hosted app.
+- `apps/mobile/src/features/settings/environmentUpdateCheck.test.ts`: removed. It tested the timeout and abort of the release fetch, and this build's `findEnvironmentUpdate` fetches nothing ("Updates are not configured for this build.").
+- `.github/workflows/ci.yml` (ours): the unit test job frees unused preinstalled SDKs first and has 75 minutes; the server tests filled the runner's disk and the job hit its 45-minute limit.
+- `.github/workflows/ci.yml` (ours): unit tests run as parallel jobs: web in 2 shards, server in 6 (its files run one at a time, so one job took about 50 minutes), and the rest; a flaky web browser test no longer stops the server tests.
+- Server tests (first full run after the rename): expected copy now says AgentD Desktop (self update, device, ACP and OpenCode adapters, pull requests); boot-service tests use the renamed launchd label `ai.libraos.agentd-desktop.service` and systemd unit `agentd-desktop.service`; the OpenCode title fixture and the Muse and Kiro replay transcripts carry the renamed prompt text and ACP client title. The `<t3_code_instructions>` tags are unchanged.

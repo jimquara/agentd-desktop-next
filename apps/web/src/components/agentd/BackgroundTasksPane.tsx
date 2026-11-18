@@ -49,6 +49,7 @@ export function BackgroundTasksPane({ threadRef }: { readonly threadRef: ScopedT
                     threadRef={threadRef}
                     turnItems={projection?.turnItems ?? []}
                     streamsOutput={streamsOutput}
+                    agentdRows={rows}
                   />
                 ))}
                 {running.map((row) => (
@@ -88,7 +89,14 @@ export function BackgroundTasksPane({ threadRef }: { readonly threadRef: ScopedT
             )}
           </section>
         ) : null}
-        {failure?._tag === "AgentdNotFoundError" ? (
+        {failure?._tag === "AgentdNotFoundError" && failure.bundled ? (
+          <p className="text-muted-foreground" role="status">
+            <T>
+              AgentD Desktop carries its own agentd, and it could not be run. Reinstall AgentD
+              Desktop to restore it.
+            </T>
+          </p>
+        ) : failure?._tag === "AgentdNotFoundError" ? (
           <p className="text-muted-foreground" role="status">
             <T>
               Agentd was not found in this environment. Follow the{" "}

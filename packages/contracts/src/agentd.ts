@@ -11,7 +11,8 @@ export type AgentdWorkerTool = typeof AgentdWorkerTool.Type;
 
 export class AgentdNotFoundError extends Schema.TaggedError<AgentdNotFoundError>()(
   "AgentdNotFoundError",
-  { message: Schema.String },
+  /** bundled: the desktop app carries agentd, so it is never something to install separately. */
+  { message: Schema.String, bundled: Schema.optionalKey(Schema.Boolean) },
 ) {}
 
 export class AgentdCommandError extends Schema.TaggedError<AgentdCommandError>()(

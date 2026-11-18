@@ -1,19 +1,27 @@
 import type { ThreadStructure } from "@t3tools/client-runtime/state/shell";
-import type { OrchestrationV2PendingBackgroundTask, ScopedThreadRef } from "@t3tools/contracts";
-import { T, useGT } from "gt-react";
+import type {
+  AgentdTaskRow,
+  OrchestrationV2PendingBackgroundTask,
+  ScopedThreadRef,
+} from "@t3tools/contracts";
+import { T, useGT, useMessages, Var } from "gt-react";
 
 import { CommandOutputPanel } from "../chat/CommandOutputPanel";
 import { ShellCommandBlock } from "../chat/ShellCommandBlock";
+import { AgentdTaskOutput } from "./AgentdTaskOutput";
 import { BackgroundTaskCard } from "./BackgroundTaskCard";
+import { handoffIdsInCommand, runningAgentdTaskLabel } from "./backgroundTasks.logic";
 
 export function SessionBackgroundTaskRow(props: {
   readonly task: OrchestrationV2PendingBackgroundTask;
   readonly threadRef: ScopedThreadRef;
   readonly turnItems: ThreadStructure["turnItems"];
   readonly streamsOutput: boolean;
+  readonly agentdRows: readonly AgentdTaskRow[];
 }) {
-  const { task, threadRef, turnItems, streamsOutput } = props;
+  const { task, threadRef, turnItems, streamsOutput, agentdRows } = props;
   const gt = useGT();
+  const resolve = useMessages();
   const item = turnItems.findLast((candidate) =>
     task.itemId === undefined
       ? (candidate.nativeItemRef?.nativeId || candidate.id) === task.taskId
@@ -22,14 +30,32 @@ export function SessionBackgroundTaskRow(props: {
   const command = task.command ?? (item?.type === "command_execution" ? item.input : undefined);
   const itemId = task.itemId ?? (item?.type === "command_execution" ? item.id : undefined);
   const live = itemId !== undefined && streamsOutput && item?.status === "running";
+  // A wait on an agentd task shows that task's progress, so the row never looks stuck.
+  const waitedOn = handoffIdsInCommand(command).map(
+    (id) => agentdRows.find((row) => row.id === id) ?? id,
+  );
 
   return (
     <BackgroundTaskCard
       title={task.description?.trim() || command || gt("Background work")}
       summary={
-        <span>
-          <T>This session</T>
-        </span>
+        <>
+          <span className="font-medium text-foreground">
+            {waitedOn.length > 0 ? (
+              <T>Waiting for an AgentD worker</T>
+            ) : (
+              <T $context="status of background work">Running</T>
+            )}
+          </span>
+          {waitedOn.map((row) =>
+            typeof row === "string" ? null : (
+              <span key={row.id}>{runningAgentdTaskLabel(row, null, resolve)}</span>
+            ),
+          )}
+          <span>
+            <T>This session</T>
+          </span>
+        </>
       }
     >
       {command ? (
@@ -37,6 +63,24 @@ export function SessionBackgroundTaskRow(props: {
           <ShellCommandBlock command={command} />
         </div>
       ) : null}
+      {waitedOn.map((row) =>
+        typeof row === "string" ? (
+          <p key={row} className="text-muted-foreground">
+            <T>
+              Waiting for AgentD task <Var>{row}</Var>.
+            </T>
+          </p>
+        ) : (
+          <div key={row.id} className="space-y-1">
+            <p className="wrap-anywhere text-muted-foreground">
+              <T>
+                Worker: <Var>{row.title || row.id}</Var>
+              </T>
+            </p>
+            <AgentdTaskOutput id={row.id} environmentId={threadRef.environmentId} />
+          </div>
+        ),
+      )}
       {live ? (
         <div className="font-mono wrap-anywhere whitespace-pre-wrap select-text">
           <CommandOutputPanel
@@ -45,9 +89,9 @@ export function SessionBackgroundTaskRow(props: {
             itemId={itemId}
           />
         </div>
-      ) : (
+      ) : waitedOn.length > 0 ? null : (
         <p className="text-muted-foreground">
-          <T>No live output is available for this session task.</T>
+          <T>Running. The agent reads this command&apos;s output when it finishes.</T>
         </p>
       )}
     </BackgroundTaskCard>

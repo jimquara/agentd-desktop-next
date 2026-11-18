@@ -224,7 +224,13 @@ export const installAgentdAfterConsent = Effect.fn("desktop.agentdInstall.afterC
                   ? path.join(root, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
                   : "powershell.exe",
                 ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", WINDOWS_USER_PATH_SCRIPT],
-                { stdin: "ignore", stderr: "ignore", env: overrides, extendEnv: true },
+                {
+                  stdin: "ignore",
+                  stderr: "ignore",
+                  env: overrides,
+                  extendEnv: true,
+                  windowsHide: true,
+                },
               ),
             );
             const [stdout, exitCode] = yield* Effect.all(

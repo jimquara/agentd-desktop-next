@@ -51,6 +51,7 @@ import {
   LinuxPackagedAppMissingError,
   MacPackagedAppMissingError,
   stageAgentdCli,
+  AgentdCliMissingError,
   AgentdCliStageError,
   stageBrowserSecret,
   validateLinuxPackagedPayload,
@@ -621,7 +622,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     ),
   );
 
-  it.effect("declares Calendar access for hosted commands in macOS builds", () =>
+  it.effect("declares Calendar access and ad-hoc signs unsigned macOS builds", () =>
     Effect.gen(function* () {
       for (const version of ["0.1.0", "0.1.1-nightly.20261019.1"]) {
         for (const signed of [false, true]) {
@@ -634,7 +635,17 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
             undefined,
             undefined,
           );
-          const mac = config.mac as { extendInfo: Record<string, unknown> };
+          const mac = config.mac as { extendInfo: Record<string, unknown> } & Record<
+            string,
+            unknown
+          >;
+          if (signed) {
+            assert.notProperty(mac, "identity");
+          } else {
+            assert.strictEqual(mac.identity, "-");
+            assert.strictEqual(mac.hardenedRuntime, false);
+            assert.strictEqual(mac.notarize, false);
+          }
           for (const key of [
             "NSCalendarsUsageDescription",
             "NSCalendarsFullAccessUsageDescription",
@@ -818,7 +829,9 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
           verbose: false,
         }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env }))));
 
-      yield* stage({}, "win");
+      const missing = yield* stage({}, "win").pipe(Effect.flip);
+      assert.instanceOf(missing, AgentdCliMissingError);
+      yield* stage({ AGENTD_ALLOW_NO_BUNDLE: "1" }, "win");
       assert.isFalse(yield* fs.exists(path.join(stageResourcesDir, "agentd")));
 
       yield* stage({ AGENTD_DIST_DIR: distDir }, "win");

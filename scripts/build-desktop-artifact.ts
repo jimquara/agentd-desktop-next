@@ -1069,7 +1069,8 @@ export function resolveWindowsServerAsarIgnoreGlobs(arch: typeof BuildArch.Type)
   ];
 }
 
-export const WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT = 80;
+// Upstream's 80 plus room for the bundled agentd, its Skills and our resources (93 in agentd.4).
+export const WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT = 100;
 export const WINDOWS_SERVER_RESOURCE_SOURCE_DIR = "apps/desktop/prod-resources/windows-server";
 export const WINDOWS_SERVER_EXTRA_RESOURCES = [
   {
@@ -1107,7 +1108,7 @@ export const DESKTOP_EXTRA_RESOURCES = [
     from: "apps/desktop/prod-resources/resource-monitor",
     to: "resource-monitor",
   },
-  // Staged only when AGENTD_DIST_DIR is set; electron-builder skips a missing source directory.
+  // Missing only in an AGENTD_ALLOW_NO_BUNDLE=1 build; electron-builder skips a missing source directory.
   {
     from: "apps/desktop/prod-resources/agentd",
     to: "agentd",
@@ -2459,6 +2460,21 @@ export class AgentdCliStageError extends Schema.TaggedError<AgentdCliStageError>
   }
 }
 
+export class AgentdCliMissingError extends Schema.TaggedError<AgentdCliMissingError>()(
+  "AgentdCliMissingError",
+  {},
+) {
+  override get message(): string {
+    return (
+      "AGENTD_DIST_DIR is unset, so the installer would ship without agentd. Stage it: download an " +
+      "agentd release's assets (agentd-<os>-<arch>[.exe], SKILL.md, SKILL-agentd.md, SHA256SUMS) " +
+      "into a folder and set AGENTD_DIST_DIR to it, e.g. `gh release download -R libraos/agentd " +
+      "-D DIR` (agentd/scripts/build-desktop.sh does this). For a local development build only, " +
+      "set AGENTD_ALLOW_NO_BUNDLE=1."
+    );
+  }
+}
+
 /** Release asset names as agentd publishes them, e.g. agentd-darwin-arm64, agentd-windows-amd64.exe. */
 export function agentdReleaseAssets(
   platform: typeof BuildPlatform.Type,
@@ -2472,6 +2488,15 @@ export function agentdReleaseAssets(
 /** The agentd Skills a release ships beside its binaries; installed into each agent client after consent. */
 export const AGENTD_SKILL_ASSETS = ["SKILL.md", "SKILL-agentd.md"] as const;
 
+/** AGENTD_DIST_DIR; unset fails unless AGENTD_ALLOW_NO_BUNDLE=1, so no installer ships without agentd by accident. */
+const agentdDistDir = Effect.gen(function* () {
+  const distDir = yield* Config.String("AGENTD_DIST_DIR").pipe(Config.withDefault(""));
+  if (distDir.trim() !== "") return Option.some(distDir);
+  const allowed = yield* Config.String("AGENTD_ALLOW_NO_BUNDLE").pipe(Config.withDefault(""));
+  if (allowed.trim() !== "1") return yield* new AgentdCliMissingError();
+  return Option.none<string>();
+});
+
 /** Copies the prebuilt agentd for the target and its Skills into resources/agentd, each asset checked against the release's SHA256SUMS. */
 export const stageAgentdCli = Effect.fn("stageAgentdCli")(function* (input: {
   readonly stageResourcesDir: string;
@@ -2479,9 +2504,11 @@ export const stageAgentdCli = Effect.fn("stageAgentdCli")(function* (input: {
   readonly arch: typeof BuildArch.Type;
   readonly verbose: boolean;
 }) {
-  const distDir = yield* Config.String("AGENTD_DIST_DIR").pipe(Config.option);
-  if (Option.isNone(distDir) || distDir.value.trim() === "") {
-    yield* Effect.log("[desktop-artifact] AGENTD_DIST_DIR is unset; not bundling agentd.");
+  const distDir = yield* agentdDistDir;
+  if (Option.isNone(distDir)) {
+    yield* Effect.log(
+      "[desktop-artifact] AGENTD_ALLOW_NO_BUNDLE=1: building without agentd (development only).",
+    );
     return;
   }
   const fs = yield* FileSystem.FileSystem;
@@ -3012,7 +3039,11 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
           role: "Viewer",
         },
       ],
-      ...(signed ? { sign: path.join(repoRoot, "scripts/sign-macos.ts") } : {}),
+      // Unsigned: ad-hoc sign so Apple Silicon says "unidentified developer", not "damaged".
+      // Hardened runtime would refuse ad-hoc signed native modules (library validation).
+      ...(signed
+        ? { sign: path.join(repoRoot, "scripts/sign-macos.ts") }
+        : { identity: "-", hardenedRuntime: false, notarize: false }),
       ...(macPasskeySigning
         ? {
             entitlements: macPasskeySigning.entitlementsPath,
@@ -3762,6 +3793,7 @@ const buildDesktopArtifactUnlocked = Effect.fn("buildDesktopArtifactUnlocked")(f
   const path = yield* Path.Path;
   const fs = yield* FileSystem.FileSystem;
   const hostPlatform = yield* HostProcess.Platform;
+  yield* agentdDistDir;
   if (hostPlatform === "linux" && options.platform === "linux") {
     yield* preflightLinuxDesktopBuild(options.arch);
   }

@@ -304,6 +304,19 @@ export function WelcomePage({
                         : gt("Continue", { $context: "verb, finishes setup" })}
                     </Button>
                   </div>
+                  {/* Setup must not dead-end when no agent is detected; Settings > Providers connects one later. */}
+                  {agentReady ? null : (
+                    <div className="mt-2 flex justify-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={isImporting}
+                        onClick={() => projectImport.finishAfterImport()}
+                      >
+                        <T>Skip for now</T>
+                      </Button>
+                    </div>
+                  )}
                   <ProjectsSection
                     scan={scans[0]}
                     projectImport={projectImport}

@@ -1,0 +1,218 @@
+name: Release
+
+# A tag v<upstream>-agentd.<N> builds every installer and puts them in a draft release that a
+# person reviews and publishes. workflow_dispatch builds the same files as workflow artifacts only.
+# Unsigned (decided 2026-11-18): no secrets beyond GITHUB_TOKEN; macOS is ad-hoc signed, not notarized.
+on:
+  push:
+    tags:
+      - "v*-agentd.*"
+  workflow_dispatch:
+    inputs:
+      n:
+        description: "N in <upstream>-agentd.N"
+        required: true
+        default: "1"
+      agentd_release:
+        description: "libraos/agentd release to bundle, e.g. v0.1.13 (empty: the latest)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Version and agentd release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      n: ${{ steps.version.outputs.n }}
+      agentd_release: ${{ steps.agentd.outputs.release }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+          sparse-checkout: apps/desktop/package.json
+          sparse-checkout-cone-mode: false
+      - name: Resolve version
+        id: version
+        env:
+          EVENT: ${{ github.event_name }}
+          TAG: ${{ github.ref_name }}
+          INPUT_N: ${{ inputs.n }}
+        run: |
+          upstream=$(node -p 'require("./apps/desktop/package.json").version')
+          if [ "$EVENT" = push ]; then
+            case "$TAG" in
+              "v$upstream-agentd."*) n=${TAG#"v$upstream-agentd."} ;;
+              *) echo "::error::tag $TAG does not match v$upstream-agentd.<N> (apps/desktop/package.json is $upstream)"; exit 1 ;;
+            esac
+          else
+            n=$INPUT_N
+          fi
+          case "$n" in
+            '' | *[!0-9]*) echo "::error::N must be a number, got '$n'"; exit 1 ;;
+          esac
+          echo "version=$upstream-agentd.$n" >> "$GITHUB_OUTPUT"
+          echo "n=$n" >> "$GITHUB_OUTPUT"
+      # Resolved once so every installer carries the same agentd.
+      - name: Resolve agentd release
+        id: agentd
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_RELEASE: ${{ inputs.agentd_release }}
+          VAR_RELEASE: ${{ vars.AGENTD_RELEASE }}
+        run: |
+          release=${INPUT_RELEASE:-$VAR_RELEASE}
+          release=${release:-$(gh release view -R libraos/agentd --json tagName -q .tagName)}
+          gh release view "$release" -R libraos/agentd --json tagName -q .tagName
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.label }}
+    needs: prepare
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Linux x64
+            # Pinned: native modules built on a newer glibc (ubuntu-latest is 26.04, glibc 2.42)
+            # exceed the 2.39 ceiling the build checks, so they would not load on older distros.
+            runner: ubuntu-24.04
+            platform: linux
+            arch: x64
+            rust_target: x86_64-unknown-linux-gnu
+          - label: Windows x64
+            runner: windows-latest
+            platform: win
+            arch: x64
+            rust_target: x86_64-pc-windows-msvc
+          - label: macOS arm64
+            runner: macos-15
+            platform: mac
+            arch: arm64
+            rust_target: aarch64-apple-darwin
+          # GitHub retired macos-13; macos-15-intel is its Intel successor.
+          - label: macOS x64
+            runner: macos-15-intel
+            platform: mac
+            arch: x64
+            rust_target: x86_64-apple-darwin
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: voidzero-dev/setup-vp@250f29ce396baf5e8f24498e17c0dfdebabc26eb # v1.15.0
+        with:
+          node-version-file: package.json
+          cache: true
+      # The resource monitor's sysinfo needs Rust 1.95 or newer; same toolchain as the local image.
+      - name: Install Rust
+        run: |
+          rustup toolchain install 1.100.0 --profile minimal --target "${{ matrix.rust_target }}"
+          rustup default 1.100.0
+      - name: Install Linux build libraries
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsecret-1-dev pkg-config imagemagick \
+            libgtk-3-0t64 libnss3 libasound2t64 libgbm1
+      - name: Build installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AGENTD_BUILD_ON_HOST: "1"
+          AGENTD_BUILD_N: ${{ needs.prepare.outputs.n }}
+          AGENTD_RELEASE: ${{ needs.prepare.outputs.agentd_release }}
+          T3CODE_DESKTOP_VERBOSE: "1"
+        run: bash agentd/scripts/build-desktop.sh "${{ matrix.platform }}" "${{ matrix.arch }}"
+      # Blockmaps serve update feeds, which our builds do not have.
+      - name: Upload installer
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: desktop-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            release/AgentD-Desktop-${{ needs.prepare.outputs.version }}-*.AppImage
+            release/AgentD-Desktop-${{ needs.prepare.outputs.version }}-*.deb
+            release/AgentD-Desktop-${{ needs.prepare.outputs.version }}-*.exe
+            release/AgentD-Desktop-${{ needs.prepare.outputs.version }}-*.dmg
+            release/AgentD-Desktop-${{ needs.prepare.outputs.version }}-*.zip
+          if-no-files-found: error
+          compression-level: 0
+
+  checksums:
+    name: SHA256SUMS
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: desktop-*
+          path: dist
+          merge-multiple: true
+      - name: Check every installer is there and write SHA256SUMS
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          cd dist
+          for f in "AgentD-Desktop-$VERSION-x64.AppImage" "AgentD-Desktop-$VERSION-amd64.deb" \
+            "AgentD-Desktop-$VERSION-x64.exe" "AgentD-Desktop-$VERSION-arm64.dmg" \
+            "AgentD-Desktop-$VERSION-x64.dmg"; do
+            test -s "$f" || { echo "::error::missing $f"; ls -l; exit 1; }
+          done
+          sha256sum AgentD-Desktop-* > SHA256SUMS
+          cat SHA256SUMS
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: desktop-SHA256SUMS
+          path: dist/SHA256SUMS
+          if-no-files-found: error
+
+  release:
+    name: Draft release
+    if: github.event_name == 'push'
+    needs: [prepare, checksums]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: desktop-*
+          path: dist
+          merge-multiple: true
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          AGENTD_RELEASE: ${{ needs.prepare.outputs.agentd_release }}
+        run: |
+          cd dist
+          sha256sum -c SHA256SUMS
+          cat > notes.md <<EOF
+          AgentD Desktop $VERSION, with agentd $AGENTD_RELEASE and its Skills inside.
+
+          These builds are not signed yet:
+
+          - **macOS:** the app is not notarized. The first time, right-click AgentD Desktop in Applications and choose Open, or open System Settings → Privacy & Security and click Open Anyway.
+          - **Windows:** SmartScreen may warn. Click More info, then Run anyway.
+
+          Check a download against \`SHA256SUMS\`.
+          EOF
+          gh release create "$TAG" -R "$REPO" --draft --verify-tag \
+            --title "AgentD Desktop $VERSION" --notes-file notes.md \
+            AgentD-Desktop-* SHA256SUMS

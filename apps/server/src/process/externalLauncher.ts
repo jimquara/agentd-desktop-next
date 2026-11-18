@@ -939,6 +939,8 @@ const launchEditorProcess = Effect.fn("externalLauncher.launchEditorProcess")(fu
       options: {
         detached: launch.detached ?? true,
         shell: spawnCommand.shell,
+        // Effect shows detached children; hide only the cmd.exe running a shim, not the editor.
+        windowsHide: spawnCommand.shell,
         env: yield* readGraphicalSessionEnv(),
         stdin: "ignore",
         stdout: "ignore",
