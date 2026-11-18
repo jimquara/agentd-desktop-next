@@ -383,6 +383,8 @@ import {
   AgentdError,
   AgentdInboxItem,
   AgentdJoinTeamInput,
+  AgentdTeamNodeInput,
+  AgentdTeamNodeStatus,
   AgentdPeople,
   AgentdPeopleInput,
   AgentdStartTaskInput,
@@ -698,6 +700,9 @@ export const WS_METHODS = {
   agentdPeople: "agentd.people",
   agentdConnectAgent: "agentd.connectAgent",
   agentdJoinTeam: "agentd.joinTeam",
+  agentdSubscribeTeamNode: "agentd.subscribeTeamNode",
+  agentdSetTeamNode: "agentd.setTeamNode",
+  agentdTeamNodeForeground: "agentd.teamNodeForeground",
 } as const;
 
 const WsServerUpsertKeybindingRpc = Rpc.make(WS_METHODS.serverUpsertKeybinding, {
@@ -2340,6 +2345,25 @@ const WsAgentdJoinTeamRpc = Rpc.make(WS_METHODS.agentdJoinTeam, {
   error: AgentdRpcError,
 });
 
+const WsAgentdSubscribeTeamNodeRpc = Rpc.make(WS_METHODS.agentdSubscribeTeamNode, {
+  payload: Schema.Struct({}),
+  success: AgentdTeamNodeStatus,
+  error: AgentdRpcError,
+  stream: true,
+});
+
+const WsAgentdSetTeamNodeRpc = Rpc.make(WS_METHODS.agentdSetTeamNode, {
+  payload: AgentdTeamNodeInput,
+  success: AgentdTeamNodeStatus,
+  error: AgentdRpcError,
+});
+
+const WsAgentdTeamNodeForegroundRpc = Rpc.make(WS_METHODS.agentdTeamNodeForeground, {
+  payload: Schema.Struct({}),
+  success: Schema.Struct({}),
+  error: AgentdRpcError,
+});
+
 export class RpcScopeAuthorization extends RpcMiddleware.Service<RpcScopeAuthorization>()(
   "t3/contracts/RpcScopeAuthorization",
   { error: EnvironmentAuthorizationError },
@@ -2568,6 +2592,9 @@ export const WsRpcGroup = RpcGroup.make(
   WsAgentdPeopleRpc,
   WsAgentdConnectAgentRpc,
   WsAgentdJoinTeamRpc,
+  WsAgentdSubscribeTeamNodeRpc,
+  WsAgentdSetTeamNodeRpc,
+  WsAgentdTeamNodeForegroundRpc,
   WsOrchestrationV2DispatchCommandRpc,
   WsOrchestrationV2GetWorkflowScriptRpc,
   WsOrchestrationV2GetNativeChildWorkRpc,

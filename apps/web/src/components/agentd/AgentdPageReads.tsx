@@ -59,7 +59,14 @@ export function AgentdTimestamp({ value }: { value: string | null }) {
   );
 }
 
-export function AgentdStatusDetails({ status }: { status: AgentdStatus }) {
+export function AgentdStatusDetails({
+  status,
+  team,
+}: {
+  status: AgentdStatus;
+  /** Shown under the team server once this environment is joined to one. */
+  team?: ReactNode;
+}) {
   const checks = status.checks.filter((check) => check.status !== "pass");
   return (
     <div className="space-y-4">
@@ -99,7 +106,10 @@ export function AgentdStatusDetails({ status }: { status: AgentdStatus }) {
             </Button>
           </>
         ) : status.teamServer ? (
-          <span className="break-all text-muted-foreground">{status.teamServer}</span>
+          <>
+            <span className="break-all text-muted-foreground">{status.teamServer}</span>
+            {team}
+          </>
         ) : (
           <span className="text-muted-foreground">
             <T>Team connection not reported</T>

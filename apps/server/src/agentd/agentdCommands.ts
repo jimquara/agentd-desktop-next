@@ -111,4 +111,12 @@ export const agentdArgs = {
     "--ticket-file",
     "-",
   ],
+  enrolWorker: (server: string) => [
+    "worker",
+    "--server",
+    agentdServerUrl(server),
+    "--ticket-file",
+    "-",
+  ],
+  foreground: (minutes: number) => ["worker", "foreground", "on", "--for", `${minutes}m`],
 } as const;
