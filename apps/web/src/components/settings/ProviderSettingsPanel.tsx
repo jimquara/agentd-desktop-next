@@ -28,6 +28,7 @@ import {
   type ProviderInstanceConfig,
   type ProviderInstanceId,
   type ServerProvider,
+  isProviderDriverOffered,
   resolveEnvironmentMachineKind,
   resolveProjectProviderInstanceEnabled,
   resolveProviderInstanceEnabled,
@@ -93,6 +94,7 @@ import {
   EmptyTitle,
 } from "../ui/empty";
 import { ScrollArea } from "../ui/scroll-area";
+import { Switch } from "../ui/switch";
 import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { stackedThreadToast, toastManager } from "../ui/toast";
@@ -579,9 +581,9 @@ export function EnvironmentProviderSettings({
   const gt = useGT();
   const settings = useEnvironmentSettings(environmentId);
   const managedPolicy = useManagedPolicy(environmentId);
+  const managedDriverList = managedPolicy?.limits?.providers?.allowedDrivers;
   // A policy that allows no provider leaves nothing to add.
-  const canAddProvider =
-    !readOnly && managedPolicy?.limits?.providers?.allowedDrivers?.length !== 0;
+  const canAddProvider = !readOnly && managedDriverList?.length !== 0;
   const canWriteSettings = useEnvironmentScope(environmentId, AuthSettingsWriteScope);
   const canRefreshProviders = useEnvironmentScope(environmentId, AuthOrchestrationReadScope);
   const updateSettings = useUpdateEnvironmentSettings(environmentId);
@@ -647,13 +649,12 @@ export function EnvironmentProviderSettings({
     },
   );
 
+  const isOffered = (driver: ProviderDriverKind) =>
+    isProviderDriverOffered(managedPolicy, settings.showOtherAgents, driver);
   const visibleProviderSettings = PROVIDER_SETTINGS.filter(
     (providerSettings) =>
-      providerSettings.provider !== "cursor" ||
-      serverProviders.some(
-        (provider) =>
-          provider.instanceId === defaultInstanceIdForDriver(ProviderDriverKind.make("cursor")),
-      ),
+      isOffered(providerSettings.provider) ||
+      defaultInstanceIdForDriver(providerSettings.provider) === targetInstanceId,
   );
   const resolvedBackgroundActivity = resolveServerBackgroundActivitySettings(settings);
   const providerHealthPreset = getBackgroundActivityPresetSettings(
@@ -749,16 +750,11 @@ export function EnvironmentProviderSettings({
   >();
   for (const [rawId, instance] of Object.entries(settings.providerInstances ?? {})) {
     const driver = instance.driver;
+    if (rawId !== targetInstanceId && !isOffered(driver)) continue;
     const list = instancesByDriver.get(driver) ?? [];
     list.push([rawId as ProviderInstanceId, instance]);
     instancesByDriver.set(driver, list);
   }
-
-  const defaultSlotIdsBySource = new Set<string>(
-    visibleProviderSettings.map((providerSettings) =>
-      String(defaultInstanceIdForDriver(providerSettings.provider)),
-    ),
-  );
 
   const rows: InstanceRow[] = [];
   const visibleDriverKinds = new Set<ProviderDriverKind>(
@@ -771,14 +767,7 @@ export function EnvironmentProviderSettings({
     const explicitInstance = settings.providerInstances?.[defaultInstanceId];
     const isDirty = explicitInstance !== undefined;
     const hasDefaultSlot = providerSettings.hasDefaultInstance || explicitInstance !== undefined;
-    if (
-      hasDefaultSlot &&
-      (driver === "codex" ||
-        driver === "claudeAgent" ||
-        isDirty ||
-        resolveProviderInstanceEnabled(explicitInstance ?? { driver }) ||
-        defaultInstanceId === targetInstanceId)
-    ) {
+    if (hasDefaultSlot) {
       rows.push({
         instanceId: defaultInstanceId,
         explicitInstance,
@@ -804,7 +793,7 @@ export function EnvironmentProviderSettings({
         instanceId: id,
         explicitInstance: instance,
         driver: instance.driver,
-        isDefault: defaultSlotIdsBySource.has(String(id)),
+        isDefault: id === defaultInstanceIdForDriver(driver),
       });
     }
   }
@@ -1094,6 +1083,26 @@ export function EnvironmentProviderSettings({
                 "This session can view {environment}''s providers but can't change their settings.",
                 { environment: environmentLabel },
               )}
+            />
+          </SettingsGroup>
+        ) : null}
+        {managedDriverList === undefined ? (
+          <SettingsGroup>
+            <SettingsRow
+              title={gt("Show other agents")}
+              description={gt("Offer more agents in the model picker and when adding a provider.")}
+              control={
+                <Switch
+                  aria-label={gt("Show other agents")}
+                  checked={settings.showOtherAgents}
+                  disabled={
+                    readOnly ||
+                    !canWriteSettings ||
+                    managedPolicy?.lockedSettings.includes("showOtherAgents") === true
+                  }
+                  onCheckedChange={(showOtherAgents) => updateSettings({ showOtherAgents })}
+                />
+              }
             />
           </SettingsGroup>
         ) : null}

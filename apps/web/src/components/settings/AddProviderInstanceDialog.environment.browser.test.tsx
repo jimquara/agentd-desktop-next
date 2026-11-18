@@ -1,4 +1,11 @@
-import { EnvironmentId, ProviderDriverKind, type AcpRegistrySearchAgent } from "@t3tools/contracts";
+import {
+  EnvironmentId,
+  ProviderDriverKind,
+  ProviderInstanceId,
+  type AcpRegistrySearchAgent,
+  type ManagedPolicySummary,
+  type UnifiedSettings,
+} from "@t3tools/contracts";
 import { userEvent } from "vite-plus/test/browser";
 import { describe, expect, it, vi } from "vite-plus/test";
 
@@ -10,7 +17,8 @@ const actions = vi.hoisted(() => ({
   canManageProviders: true,
 }));
 const settingsHooks = vi.hoisted(() => ({
-  read: vi.fn(() => ({ providerInstances: {} })),
+  read: vi.fn<() => Pick<UnifiedSettings, "providerInstances" | "showOtherAgents">>(),
+  policy: vi.fn<() => ManagedPolicySummary | undefined>(),
   mutate: vi.fn(),
   useMutation: vi.fn(),
 }));
@@ -36,6 +44,10 @@ vi.mock(import("../../hooks/useSettings"), async (original) => ({
   ...(await original()),
   useEnvironmentSettings: settingsHooks.read as never,
   usePersistEnvironmentProviderInstanceMutation: settingsHooks.useMutation as never,
+}));
+vi.mock(import("../../state/managedPolicy"), async (original) => ({
+  ...(await original()),
+  useManagedPolicy: settingsHooks.policy,
 }));
 vi.mock(import("../../state/session"), async (original) => {
   const hasScope = (environmentId: EnvironmentId, scope: string) =>
@@ -139,11 +151,12 @@ async function prepareCodexInstance() {
   return screen;
 }
 
-function setup() {
+function setup(showOtherAgents = false) {
   actions.canManageProviders = true;
   actions.toast.mockReset();
   actions.onOpenChange.mockReset();
-  settingsHooks.read.mockReset().mockReturnValue({ providerInstances: {} });
+  settingsHooks.read.mockReset().mockReturnValue({ providerInstances: {}, showOtherAgents });
+  settingsHooks.policy.mockReset();
   settingsHooks.mutate.mockReset().mockResolvedValue({ _tag: "Success", value: {} });
   settingsHooks.useMutation.mockReset().mockReturnValue(settingsHooks.mutate);
 }
@@ -152,7 +165,13 @@ describe("AddProviderInstanceDialog environment routing", () => {
   it("chooses an unused identity for another account without replacing configured instances", async () => {
     setup();
     settingsHooks.read.mockReturnValue({
-      providerInstances: { codex_2: { driver: "codex", enabled: false } },
+      showOtherAgents: false,
+      providerInstances: {
+        [ProviderInstanceId.make("codex_2")]: {
+          driver: ProviderDriverKind.make("codex"),
+          enabled: false,
+        },
+      },
     });
     await using _screen = await render(dialog());
     await click("Configure manually");
@@ -171,7 +190,7 @@ describe("AddProviderInstanceDialog environment routing", () => {
   });
 
   it("includes the explicitly added default accent color when creating a provider", async () => {
-    setup();
+    setup(true);
     await using _screen = await render(dialog());
     await click("Show more");
     await click("Use Kilo Code");
@@ -190,10 +209,34 @@ describe("AddProviderInstanceDialog environment routing", () => {
     });
   });
 
-  it("keeps fx and the ACP Registry under Show more", async () => {
+  it.each([false, true])(
+    "honors a managed driver allow-list with Show other agents=%s",
+    async (showOtherAgents) => {
+      setup(showOtherAgents);
+      settingsHooks.policy.mockReturnValue({
+        organization: "Example Corp",
+        lockedSettings: [],
+        limits: { providers: { allowedDrivers: [ProviderDriverKind.make("pi")] } },
+      });
+      await using _screen = await render(dialog());
+      expect(radio("Pi")).toBeDefined();
+      expect(radio("Codex")).toBeUndefined();
+      expect(document.body.textContent).not.toContain("Show more");
+    },
+  );
+
+  it("offers only Claude, Codex, and OpenCode until other agents are enabled", async () => {
     setup();
-    await using _screen = await render(dialog());
-    expect(radio("Codex")).toBeDefined();
+    await using screen = await render(dialog());
+    expect(
+      [...document.querySelectorAll('[role="radio"]')]
+        .map((element) => element.textContent?.trim())
+        .sort(),
+    ).toEqual(["Claude", "Codex", "OpenCode"]);
+    expect(document.body.textContent).not.toContain("Show more");
+
+    settingsHooks.read.mockReturnValue({ providerInstances: {}, showOtherAgents: true });
+    await screen.rerender(dialog());
     expect(radio("fx")).toBeUndefined();
     expect(document.body.textContent).not.toContain("Use Kilo Code");
 
@@ -211,7 +254,7 @@ describe("AddProviderInstanceDialog environment routing", () => {
   });
 
   it("awaits an atomic create before closing and retains prepared ACP metadata", async () => {
-    setup();
+    setup(true);
     const mutation = deferred<{ readonly _tag: "Success"; readonly value: unknown }>();
     settingsHooks.mutate.mockReturnValueOnce(mutation.promise);
     await using _screen = await render(dialog());
@@ -245,7 +288,7 @@ describe("AddProviderInstanceDialog environment routing", () => {
   });
 
   it("creates a local command in the selected environment without a sign-in step", async () => {
-    setup();
+    setup(true);
     await using _screen = await render(dialog());
     await click("Show more");
     await click("Use local command");

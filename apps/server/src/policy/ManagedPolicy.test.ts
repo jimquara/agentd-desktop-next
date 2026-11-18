@@ -6,6 +6,7 @@ import * as Path from "effect/Path";
 
 import {
   DEFAULT_SERVER_SETTINGS,
+  isProviderDriverOffered,
   ProviderDriverKind,
   ProviderInstanceId,
 } from "@t3tools/contracts";
@@ -13,7 +14,11 @@ import * as HostProcess from "@t3tools/shared/HostProcess";
 
 import { BUILT_IN_DRIVERS } from "../provider/builtInDrivers.ts";
 import * as ManagedPolicy from "./ManagedPolicy.ts";
-import { disallowedDriverReason, providerHostEnvironment } from "./managedProviders.ts";
+import {
+  disallowedDriverReason,
+  providerHostEnvironment,
+  withAcpRegistryDiscovery,
+} from "./managedProviders.ts";
 
 it.layer(NodeServices.layer)("ManagedPolicy.load", (it) => {
   const loadFrom = (contents: string | undefined) =>
@@ -30,6 +35,62 @@ it.layer(NodeServices.layer)("ManagedPolicy.load", (it) => {
     Effect.gen(function* () {
       const policy = yield* loadFrom(undefined);
       assert.isUndefined(policy.summary);
+    }),
+  );
+
+  it.effect("offers three agents by default without restricting existing instances", () =>
+    Effect.gen(function* () {
+      const policy = yield* loadFrom(undefined);
+      const drivers = BUILT_IN_DRIVERS.map((driver) => driver.driverKind);
+      assert.isFalse(DEFAULT_SERVER_SETTINGS.showOtherAgents);
+      assert.deepEqual(
+        drivers
+          .filter((driver) =>
+            isProviderDriverOffered(
+              policy.summary,
+              DEFAULT_SERVER_SETTINGS.showOtherAgents,
+              driver,
+            ),
+          )
+          .sort(),
+        ["claudeAgent", "codex", "opencode"],
+      );
+      assert.deepEqual(
+        drivers.filter((driver) => isProviderDriverOffered(policy.summary, true, driver)),
+        drivers,
+      );
+      assert.isTrue(policy.providers.isDriverAllowed(ProviderDriverKind.make("cursor")));
+    }),
+  );
+
+  it.effect("only reaches registry discovery when the setting or policy allows it", () =>
+    Effect.gen(function* () {
+      const withDrivers = (allowedDrivers: ReadonlyArray<string>) =>
+        loadFrom(
+          JSON.stringify({
+            schemaVersion: 1,
+            organization: "Example Corp",
+            limits: { providers: { allowedDrivers } },
+          }),
+        );
+      const registryOnly = yield* withDrivers(["acpRegistry"]);
+      const codexOnly = yield* withDrivers(["codex"]);
+      let requests = 0;
+      const discovery = Effect.sync(() => ++requests);
+      const run = (showOtherAgents: boolean, policy?: typeof registryOnly.summary) =>
+        withAcpRegistryDiscovery(Effect.succeed({ showOtherAgents }), policy, discovery);
+
+      assert.equal((yield* Effect.flip(run(false))).reason, "registry_unavailable");
+      assert.equal(
+        (yield* Effect.flip(run(true, codexOnly.summary))).reason,
+        "registry_unavailable",
+      );
+      assert.equal(requests, 0);
+      assert.equal(yield* run(true), 1);
+      assert.equal(yield* run(false, registryOnly.summary), 2);
+      assert.isFalse(
+        isProviderDriverOffered(registryOnly.summary, false, ProviderDriverKind.make("codex")),
+      );
     }),
   );
 

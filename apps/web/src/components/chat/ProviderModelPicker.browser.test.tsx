@@ -1,10 +1,15 @@
+import { RegistryContext } from "@effect/atom-react";
 import {
   DEFAULT_CLIENT_SETTINGS,
+  EnvironmentId,
   ProviderDriverKind,
   ProviderInstanceId,
+  ServerConfig,
   type ModelSelection,
 } from "@t3tools/contracts";
 import { compileResolvedKeybindingsConfig } from "@t3tools/shared/keybindings";
+import { AtomRegistry } from "effect/reactivity";
+import * as Schema from "effect/Schema";
 import { useState } from "react";
 import { expect, it, vi } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
@@ -14,9 +19,134 @@ import "~/index.css";
 import { render } from "../../../test/render";
 import { __setClientSettingsForTests } from "../../hooks/useSettings";
 import { deriveProviderInstanceEntries } from "../../providerInstances";
+import { serverEnvironment } from "../../state/server";
 import { ProviderModelPicker } from "./ProviderModelPicker";
 
+const pickerEnvironmentId = EnvironmentId.make("picker-test");
+const decodePickerConfig = Schema.decodeUnknownSync(ServerConfig);
+
+function pickerRegistry(showOtherAgents: boolean, allowedDrivers: readonly string[] | undefined) {
+  const config = decodePickerConfig({
+    environment: {
+      environmentId: pickerEnvironmentId,
+      label: "Desk",
+      platform: { os: "linux", arch: "x64" },
+      serverVersion: "1.0.0",
+      orchestrationProtocolVersion: 2,
+      capabilities: {},
+    },
+    auth: {
+      policy: "loopback-browser",
+      bootstrapMethods: ["one-time-token"],
+      sessionMethods: ["browser-session-cookie"],
+      sessionCookieName: "t3_session",
+    },
+    cwd: "/workspace",
+    keybindingsConfigPath: "/workspace/keybindings.json",
+    keybindings: [],
+    issues: [],
+    providers: [],
+    availableEditors: [],
+    observability: {
+      logsDirectoryPath: "/workspace/logs",
+      localTracingEnabled: false,
+      otlpTracesEnabled: false,
+      otlpMetricsEnabled: false,
+    },
+    settings: { showOtherAgents },
+    ...(allowedDrivers === undefined
+      ? {}
+      : {
+          managedPolicy: {
+            organization: "Example Corp",
+            lockedSettings: [],
+            limits: { providers: { allowedDrivers } },
+          },
+        }),
+  });
+  return AtomRegistry.make({
+    initialValues: [
+      [serverEnvironment.configValueAtom(pickerEnvironmentId), config, { skipInitialRun: true }],
+    ],
+  });
+}
+
+it.each([
+  { profile: "fresh", showOtherAgents: false, expected: ["claudeAgent", "codex", "opencode"] },
+  {
+    profile: "opted in",
+    showOtherAgents: true,
+    expected: ["claudeAgent", "codex", "opencode", "cursor"],
+  },
+  { profile: "managed", showOtherAgents: true, policyAllows: ["cursor"], expected: ["cursor"] },
+  {
+    profile: "locked to a hidden agent",
+    showOtherAgents: false,
+    locked: true,
+    expected: ["cursor", "claudeAgent", "codex", "opencode"],
+  },
+])(
+  "offers the right agents in a $profile profile",
+  async ({ showOtherAgents, policyAllows, locked, expected }) => {
+    using cleanup = new DisposableStack();
+    const registry = cleanup.adopt(pickerRegistry(showOtherAgents, policyAllows), (registry) =>
+      registry.dispose(),
+    );
+    cleanup.defer(registry.mount(serverEnvironment.configValueAtom(pickerEnvironmentId)));
+    const entries = deriveProviderInstanceEntries(
+      ["claudeAgent", "codex", "opencode", "cursor"].map((driver) => ({
+        instanceId: ProviderInstanceId.make(driver),
+        driver: ProviderDriverKind.make(driver),
+        ...(driver === "cursor" ? { displayName: "Existing Work Agent" } : {}),
+        enabled: driver !== "opencode",
+        installed: driver !== "opencode",
+        status: driver === "opencode" ? "disabled" : "ready",
+        version: null,
+        auth: { status: "authenticated" },
+        checkedAt: "2026-01-01T00:00:00.000Z",
+        models:
+          driver === "opencode"
+            ? []
+            : [{ slug: "model", name: `${driver} model`, isCustom: false, capabilities: {} }],
+        slashCommands: [],
+        skills: [],
+      })),
+    );
+    await using screen = await render(
+      <RegistryContext.Provider value={registry}>
+        <ProviderModelPicker
+          environmentId={pickerEnvironmentId}
+          activeInstanceId={ProviderInstanceId.make(locked ? "cursor" : "codex")}
+          model="model"
+          lockedProvider={locked ? ProviderDriverKind.make("cursor") : null}
+          instanceEntries={entries}
+          modelOptionsByInstance={new Map(entries.map((entry) => [entry.instanceId, entry.models]))}
+          onInstanceModelChange={vi.fn()}
+        />
+      </RegistryContext.Provider>,
+    );
+    await screen
+      .getByRole("button", { name: locked ? "cursor model" : "codex model", exact: true })
+      .click();
+    await expect.element(page.getByRole("toolbar", { name: "Providers" })).toBeVisible();
+    expect(
+      [
+        ...document.querySelectorAll<HTMLElement>(
+          '[data-model-picker-provider]:not([data-model-picker-provider="favorites"])',
+        ),
+      ].map((element) => element.dataset.modelPickerProvider),
+    ).toEqual(expected);
+    if (locked)
+      await expect
+        .element(page.getByRole("button", { name: "Existing Work Agent", exact: true }))
+        .toBeVisible();
+  },
+);
+
 it("keeps each registry image when adding a model from another ACP agent", async () => {
+  using cleanup = new DisposableStack();
+  const registry = cleanup.adopt(pickerRegistry(true, undefined), (registry) => registry.dispose());
+  cleanup.defer(registry.mount(serverEnvironment.configValueAtom(pickerEnvironmentId)));
   const icons = [
     "https://cdn.agentclientprotocol.com/registry/icons/picker-explicit.svg",
     "https://cdn.agentclientprotocol.com/registry/v1/latest/picker-by-id.svg",
@@ -64,7 +194,7 @@ it("keeps each registry image when adding a model from another ACP agent", async
     const [selection, setSelection] = useState<ReadonlyArray<ModelSelection>>([first]);
     return (
       <ProviderModelPicker
-        environmentId={null}
+        environmentId={pickerEnvironmentId}
         activeInstanceId={first.instanceId}
         model={first.model}
         {...(selection.length > 1 ? { selectedModels: selection } : {})}
@@ -77,7 +207,11 @@ it("keeps each registry image when adding a model from another ACP agent", async
     );
   }
 
-  await using screen = await render(<Picker />);
+  await using screen = await render(
+    <RegistryContext.Provider value={registry}>
+      <Picker />
+    </RegistryContext.Provider>,
+  );
   const imageWidths = () =>
     Array.from(
       screen.container.querySelectorAll<HTMLImageElement>("[data-chat-provider-model-picker] img"),
@@ -247,8 +381,8 @@ it("lists a model reported twice by one provider once, with contiguous jump shor
 it("opens on the active provider when every favorite belongs to a disabled provider", async () => {
   const entries = deriveProviderInstanceEntries(
     ["Codex", "Claude"].map((name) => ({
-      instanceId: ProviderInstanceId.make(name.toLowerCase()),
-      driver: ProviderDriverKind.make(name.toLowerCase()),
+      instanceId: ProviderInstanceId.make(name === "Claude" ? "claudeAgent" : "codex"),
+      driver: ProviderDriverKind.make(name === "Claude" ? "claudeAgent" : "codex"),
       enabled: name === "Codex",
       installed: true,
       version: null,
@@ -290,8 +424,8 @@ it("opens on the active provider when every favorite belongs to a disabled provi
 it("keeps the touch keyboard down while choosing a provider", async () => {
   const entries = deriveProviderInstanceEntries(
     ["Codex", "Claude"].map((name) => ({
-      instanceId: ProviderInstanceId.make(name.toLowerCase()),
-      driver: ProviderDriverKind.make(name.toLowerCase()),
+      instanceId: ProviderInstanceId.make(name === "Claude" ? "claudeAgent" : "codex"),
+      driver: ProviderDriverKind.make(name === "Claude" ? "claudeAgent" : "codex"),
       enabled: true,
       installed: true,
       version: null,

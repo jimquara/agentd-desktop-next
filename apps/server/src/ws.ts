@@ -178,6 +178,7 @@ import * as ProviderRegistry from "./provider/ProviderRegistry.ts";
 import * as SecretCheck from "./secrets/SecretCheck.ts";
 import * as AcpRegistrySessions from "./provider/AcpRegistrySessions.ts";
 import * as ProviderInstanceRegistry from "./provider/ProviderInstanceRegistry.ts";
+import { withAcpRegistryDiscovery } from "./policy/managedProviders.ts";
 import * as AcpRegistrySupport from "@t3tools/provider-acp-registry/server/AcpRegistrySupport";
 import * as AcpRegistryRuntimeCoordinator from "@t3tools/provider-acp-registry/server/AcpRegistryRuntimeCoordinator";
 import * as ProviderMaintenanceRunner from "./provider/providerMaintenanceRunner.ts";
@@ -2367,15 +2368,23 @@ export const layerWsRpc = (
             deferNetworkDiscovery: false,
           }),
         [WS_METHODS.serverSearchAcpRegistry]: (input) =>
-          acpRegistryCatalog
-            .search(input)
-            .pipe(Effect.mapError(AcpRegistrySupport.toAcpRegistryOperationError)),
+          withAcpRegistryDiscovery(
+            serverSettings.getSettings,
+            serverSettings.managedPolicy,
+            acpRegistryCatalog
+              .search(input)
+              .pipe(Effect.mapError(AcpRegistrySupport.toAcpRegistryOperationError)),
+          ),
         [WS_METHODS.serverPrepareAcpRegistryAgent]: (input) =>
           Effect.annotateCurrentSpan({ "acp_registry.agent_id": input.agentId }).pipe(
             Effect.andThen(
-              acpRegistryCatalog
-                .prepare(input)
-                .pipe(Effect.mapError(AcpRegistrySupport.toAcpRegistryOperationError)),
+              withAcpRegistryDiscovery(
+                serverSettings.getSettings,
+                serverSettings.managedPolicy,
+                acpRegistryCatalog
+                  .prepare(input)
+                  .pipe(Effect.mapError(AcpRegistrySupport.toAcpRegistryOperationError)),
+              ),
             ),
           ),
         [WS_METHODS.serverUninstallAcpRegistryManagedBinary]: (input) =>

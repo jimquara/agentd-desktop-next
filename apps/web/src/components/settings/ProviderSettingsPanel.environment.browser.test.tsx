@@ -250,6 +250,24 @@ async function setup() {
 }
 
 describe("EnvironmentProviderSettings routing", () => {
+  it("offers more default providers when the environment enables Show other agents", async () => {
+    await setup();
+    await using screen = await render(panel());
+    const showOtherAgents = page.getByRole("switch", { name: "Show other agents" });
+    const selectProvider = (provider: string) =>
+      page.getByRole("button", { name: `Select ${provider}`, exact: true });
+    await expect.element(showOtherAgents).not.toBeChecked();
+    await expect.element(selectProvider("OpenCode")).toBeVisible();
+    await expect.element(selectProvider("Pi")).not.toBeInTheDocument();
+    await showOtherAgents.click();
+    expect(state.updateSettings).toHaveBeenCalledWith({ showOtherAgents: true });
+
+    state.settings = { ...DEFAULT_UNIFIED_SETTINGS, showOtherAgents: true };
+    await screen.rerender(panel());
+    await expect.element(showOtherAgents).toBeChecked();
+    await expect.element(selectProvider("Pi")).toBeVisible();
+  });
+
   it("does not substitute another account when the requested instance was removed", async () => {
     await setup();
     await setProviders([provider()]);

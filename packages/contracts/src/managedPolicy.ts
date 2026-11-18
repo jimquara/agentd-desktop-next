@@ -236,6 +236,21 @@ export function isManagedDriverAllowed(
   return allowed === undefined || allowed.includes(driver);
 }
 
+/** Discovery is narrower than runtime access so previously configured threads can still run. */
+export function isProviderDriverOffered(
+  summary: ManagedPolicySummary | undefined,
+  showOtherAgents: boolean | undefined,
+  driver: ProviderDriverKind,
+): boolean {
+  return (
+    summary?.limits?.providers?.allowedDrivers?.includes(driver) ??
+    (showOtherAgents === true ||
+      driver === "claudeAgent" ||
+      driver === "codex" ||
+      driver === "opencode")
+  );
+}
+
 /** Why updates are unavailable on an environment with `summary`, or undefined when allowed. */
 export function managedUpdatesDenial(summary: ManagedPolicySummary | undefined) {
   return summary?.limits?.updates?.mode === "off"
