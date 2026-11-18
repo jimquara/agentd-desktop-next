@@ -51,9 +51,20 @@ jobs:
         run: vp run typecheck
 
   test:
-    name: Unit tests
+    name: Unit tests (${{ matrix.part.name }})
     runs-on: ubuntu-latest
     timeout-minutes: 75
+    # Split so a slow or flaky part neither starves nor hides the others' results.
+    strategy:
+      fail-fast: false
+      matrix:
+        part:
+          - { name: web, filter: "--filter @t3tools/web" }
+          - { name: server, filter: "--filter t3" }
+          - {
+              name: other,
+              filter: "--filter '!@t3tools/monorepo' --filter '!@t3tools/web' --filter '!t3'",
+            }
     steps:
       # The server tests ran the runner's 14 GB disk full; these preinstalled SDKs are unused here.
       - name: Free disk space
@@ -79,7 +90,7 @@ jobs:
           node apps/server/node_modules/playwright-core/cli.js install --only-shell chromium
       - name: Test
         # Every package's own test task; the root `test` script would recurse.
-        run: vp run --filter '!@t3tools/monorepo' test
+        run: vp run ${{ matrix.part.filter }} test
       - name: Disk left
         if: always()
         run: df -h /

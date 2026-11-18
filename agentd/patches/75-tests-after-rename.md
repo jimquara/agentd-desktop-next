@@ -6,3 +6,4 @@
 - `apps/mobile/src/lib/composerContextClipboard.test.ts`: pastes a `t3-thread://` link; hosted `app.t3.codes` thread links are not recognized without a hosted app.
 - `apps/mobile/src/features/settings/environmentUpdateCheck.test.ts`: removed. It tested the timeout and abort of the release fetch, and this build's `findEnvironmentUpdate` fetches nothing ("Updates are not configured for this build.").
 - `.github/workflows/ci.yml` (ours): the unit test job frees unused preinstalled SDKs first and has 75 minutes; the server tests filled the runner's disk and the job hit its 45-minute limit.
+- `.github/workflows/ci.yml` (ours): unit tests run as three parallel jobs (web, server, the rest), so a flaky web browser test no longer stops the server tests from running at all.
