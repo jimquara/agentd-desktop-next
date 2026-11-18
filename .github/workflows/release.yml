@@ -84,7 +84,9 @@ jobs:
       matrix:
         include:
           - label: Linux x64
-            runner: ubuntu-latest
+            # Pinned: native modules built on a newer glibc (ubuntu-latest is 26.04, glibc 2.42)
+            # exceed the 2.39 ceiling the build checks, so they would not load on older distros.
+            runner: ubuntu-24.04
             platform: linux
             arch: x64
             rust_target: x86_64-unknown-linux-gnu
@@ -94,7 +96,7 @@ jobs:
             arch: x64
             rust_target: x86_64-pc-windows-msvc
           - label: macOS arm64
-            runner: macos-14
+            runner: macos-15
             platform: mac
             arch: arm64
             rust_target: aarch64-apple-darwin
