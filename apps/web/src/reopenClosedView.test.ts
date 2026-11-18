@@ -44,6 +44,57 @@ beforeEach(() => {
 });
 
 describe("reopenClosedView", () => {
+  it("restores the singleton Background tasks tab after closing it and after a reload", async () => {
+    const panels = useRightPanelStore.getState();
+    const surface = { id: "background-tasks", kind: "background-tasks" };
+    panels.open(threadRef, "background-tasks");
+    panels.open(threadRef, "background-tasks");
+    expect(
+      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, threadRef),
+    ).toMatchObject({ isOpen: true, activeSurfaceId: "background-tasks", surfaces: [surface] });
+
+    panels.closeSurface(threadRef, "background-tasks");
+    expect(
+      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, threadRef),
+    ).toMatchObject({ isOpen: false, activeSurfaceId: null, surfaces: [] });
+
+    const historyPersistence = useClosedViewStore.persist.getOptions();
+    const savedHistory = await historyPersistence.storage!.getItem(historyPersistence.name!);
+    expect(savedHistory?.state).toEqual({
+      entries: [{ id: expect.any(String), kind: "panel-tab", threadRef, surface }],
+    });
+    useClosedViewStore.setState({ entries: [] });
+    await historyPersistence.storage!.setItem(historyPersistence.name!, {
+      state: savedHistory!.state,
+      version: 1,
+    });
+    await useClosedViewStore.persist.rehydrate();
+    const restoredEntry = useClosedViewStore.getState().entries[0];
+    expect(restoredEntry).toEqual({
+      id: expect.any(String),
+      kind: "panel-tab",
+      threadRef,
+      surface,
+    });
+    expect(
+      await reopenClosedView(restoredEntry!, {
+        workspaceAvailable: false,
+        openPreview: () => {
+          throw new Error("Background tasks must not create a browser session");
+        },
+      }),
+    ).toBe(true);
+
+    const { storage, name } = useRightPanelStore.persist.getOptions();
+    const savedPanel = await storage!.getItem(name!);
+    useRightPanelStore.setState({ byThreadKey: {} });
+    await storage!.setItem(name!, savedPanel!);
+    await useRightPanelStore.persist.rehydrate();
+    expect(
+      selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, threadRef),
+    ).toMatchObject({ isOpen: true, activeSurfaceId: "background-tasks", surfaces: [surface] });
+  });
+
   it.each([
     { relativePath: "src/app.ts", line: 18, folderTrail: undefined },
     { relativePath: "apps", line: null, folderTrail: "apps/web/src" },

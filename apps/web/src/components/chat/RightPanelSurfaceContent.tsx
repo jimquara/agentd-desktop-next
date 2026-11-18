@@ -21,6 +21,7 @@ import {
   PersistentThreadTerminalPanel,
   type PersistentThreadTerminalPanelProps,
 } from "../PersistentThreadTerminals";
+import { BackgroundTasksPane } from "../agentd/BackgroundTasksPane";
 import { IssueDetailPanel } from "../issue/IssueDetailPanel";
 import { pullRequestPanelContext } from "../pullRequest/pullRequestDetail.logic";
 import { PullRequestDetailPanel } from "../pullRequest/PullRequestDetailPanel";
@@ -88,6 +89,8 @@ export function RightPanelSurfaceContent(props: {
   const gt = useGT();
   if (surface === null) return null;
   switch (surface.kind) {
+    case "background-tasks":
+      return <BackgroundTasksPane threadRef={threadRef} />;
     case "preview":
       return (
         <Suspense fallback={null}>

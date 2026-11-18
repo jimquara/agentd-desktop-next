@@ -1,14 +1,20 @@
 import "~/index.css";
 
-import { EnvironmentId } from "@t3tools/contracts";
+import { EnvironmentId, ThreadId } from "@t3tools/contracts";
 import { describe, expect, it, vi } from "vite-plus/test";
-import { userEvent } from "vite-plus/test/browser";
+import { page, userEvent } from "vite-plus/test/browser";
 
 import { InputGroup, InputGroupAddon, InputGroupInput } from "~/components/ui/input-group";
-import type { RightPanelSurface } from "~/rightPanelStore";
+import {
+  selectThreadRightPanelState,
+  useRightPanelStore,
+  type RightPanelSurface,
+} from "~/rightPanelStore";
 import { render, stubGlobal } from "../../test/render";
 import { HistorySwipeNavigation } from "./HistorySwipeNavigation";
 import { RightPanelTabs, type RightPanelTabsProps } from "./RightPanelTabs";
+import { BackgroundTasksPane } from "./agentd/BackgroundTasksPane";
+import { openBackgroundTasks } from "./chat/useRightPanelActions";
 import { subscribePreviewAction } from "./preview/previewActionBus";
 
 const navigateHistory = vi.hoisted(() => vi.fn());
@@ -146,7 +152,7 @@ const BROWSER_SURFACE: RightPanelSurface = {
 };
 const DIFF_SURFACE: RightPanelSurface = { id: "diff", kind: "diff" };
 
-function panel(activeSurface: RightPanelSurface) {
+function panel(activeSurface: RightPanelSurface, overrides?: Partial<RightPanelTabsProps>) {
   const noop = () => {};
   const props: RightPanelTabsProps = {
     mode: "inline",
@@ -198,8 +204,41 @@ function panel(activeSurface: RightPanelSurface) {
       </div>
     ),
   };
-  return <RightPanelTabs {...props} />;
+  return <RightPanelTabs {...props} {...overrides} />;
 }
+
+it("offers Background tasks in both launchers and opens it from the add menu", async () => {
+  const threadRef = {
+    environmentId: EnvironmentId.make("environment-local"),
+    threadId: ThreadId.make("background-tasks-test"),
+  };
+  const store = useRightPanelStore.getState();
+  store.removeThread(threadRef);
+  await using cleanup = new AsyncDisposableStack();
+  cleanup.defer(() => store.removeThread(threadRef));
+
+  function ThreadPanel() {
+    const { activeSurfaceId, surfaces } = useRightPanelStore((state) =>
+      selectThreadRightPanelState(state.byThreadKey, threadRef),
+    );
+    return panel(DIFF_SURFACE, {
+      activeSurfaceId,
+      surfaces,
+      onAddBackgroundTasks: () => openBackgroundTasks(threadRef),
+      backgroundTasksAvailable: true,
+      children: <BackgroundTasksPane threadRef={threadRef} />,
+    });
+  }
+
+  await using screen = await render(<ThreadPanel />);
+  await expect.element(screen.getByRole("button", { name: "Background tasks" })).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "Add panel surface" }));
+  const item = page.getByRole("menuitem", { name: "Background tasks" });
+  await expect.element(item).not.toHaveAttribute("aria-keyshortcuts");
+  await userEvent.click(item);
+  await expect.element(screen.getByText("No background tasks")).toBeVisible();
+  await expect.element(screen.getByRole("button", { name: "Background tasks" })).toBeVisible();
+});
 
 // Chromium focuses on an uncancelled mousedown and runs history back/forward on an
 // uncancelled button 3/4 mouseup.
