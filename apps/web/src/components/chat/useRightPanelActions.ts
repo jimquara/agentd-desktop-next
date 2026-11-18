@@ -15,6 +15,7 @@ import {
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
 import { useDiffPanelStore } from "../../diffPanelStore";
+import { revealCodeMode } from "../../chatCodeModeStore";
 import { type ThreadPanelPresentation } from "../../rightPanelLayout";
 import {
   selectThreadPanelOpen,
@@ -312,8 +313,17 @@ export function useRightPanelActions(input: RightPanelActionsInput) {
     [embedded, togglePreviewPanelStable],
   );
 
+  const toggleRightPanelFromShortcut = useStableCallback(() => {
+    if (!activeThreadRef) return false;
+    if (revealCodeMode(scopedThreadKey(activeThreadRef)) && rightPanelOpen) {
+      focusActivePanelTerminal(activeThreadRef);
+      return;
+    }
+    toggleRightPanel();
+  });
+
   const shortcuts = {
-    "rightPanel.toggle": () => toggleRightPanel(),
+    "rightPanel.toggle": toggleRightPanelFromShortcut,
     "rightPanel.toggleMaximized": ({ event }) => {
       if (!event.repeat) toggleRightPanelMaximized();
     },
@@ -322,7 +332,14 @@ export function useRightPanelActions(input: RightPanelActionsInput) {
       if (!activeRightPanelSurface) return false;
       if (!event.repeat) closeRightPanelSurface(activeRightPanelSurface);
     },
-    "diff.toggle": () => onToggleDiff(),
+    "diff.toggle": () => {
+      if (!isServerThread || !activeThreadRef) return false;
+      if (revealCodeMode(scopedThreadKey(activeThreadRef)) && diffOpen) {
+        useRightPanelStore.getState().open(activeThreadRef, "diff");
+        return;
+      }
+      onToggleDiff();
+    },
   } satisfies ChatShortcutCommands;
 
   return {
@@ -345,6 +362,7 @@ export function useRightPanelActions(input: RightPanelActionsInput) {
     openFileSurfaceStable,
     toggleRightPanelMaximizedStable,
     toggleRightPanelStable,
+    toggleRightPanelFromShortcut,
     toggleThreadPanelStable,
   };
 }

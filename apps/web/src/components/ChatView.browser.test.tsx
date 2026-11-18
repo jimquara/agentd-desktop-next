@@ -8,10 +8,6 @@ import {
   WS_METHODS,
 } from "@t3tools/contracts";
 import { DEFAULT_CLIENT_SETTINGS } from "@t3tools/contracts/settings";
-import {
-  compileResolvedKeybindingsConfig,
-  mergeWithDefaultKeybindings,
-} from "@t3tools/shared/keybindings";
 import type * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import { expect, it, vi } from "vite-plus/test";
@@ -581,20 +577,15 @@ it("a mounted thread view lets go of the thread structures it has replaced", asy
   expect(kept).toEqual([]);
 });
 
-it("a shortcut conditioned on rightPanelOpen sees the thread's open right panel", async () => {
-  await page.viewport(1280, 800);
+it("Chat hides the workspace, while panel shortcuts reveal it and see its visible state", async () => {
+  await page.viewport(1920, 1000);
   const thread = threadWithHistory("thread-panel-shortcut", 1);
-  using _environment = installFakeEnvironment([thread], {
-    keybindings: mergeWithDefaultKeybindings(
-      compileResolvedKeybindingsConfig([
-        { key: "ctrl+t", command: "rightPanel.new", when: "rightPanelOpen && !terminalFocus" },
-        { key: "ctrl+t", command: "rightPanel.toggle", when: "!rightPanelOpen" },
-      ]),
-    ),
-  });
+  const other = threadWithHistory("other-panel-shortcut", 1);
+  using _environment = installFakeEnvironment([thread, other]);
   __setClientSettingsForTests({
     ...DEFAULT_CLIENT_SETTINGS,
     onboardingCompletedAt: "2026-01-01T00:00:00.000Z",
+    panelAnimationDurationMs: 0,
   });
   const router = getRouter(
     createMemoryHistory({ initialEntries: [`/${ENVIRONMENT_ID}/${thread.id}`] }),
@@ -605,14 +596,124 @@ it("a shortcut conditioned on rightPanelOpen sees the thread's open right panel"
     router: false,
   });
   const composer = page.getByTestId("composer-editor");
+  const chat = page.getByRole("button", { name: "Chat", exact: true });
+  const code = page.getByRole("button", { name: "Code", exact: true });
   const toggle = page.getByRole("button", { name: "Toggle right panel", exact: true });
-  await expect.element(toggle).toHaveAttribute("aria-pressed", "false");
-  await toggle.click();
+  const terminalToggle = page.getByRole("button", { name: "Toggle terminal drawer" });
+  const detailsToggle = page.getByRole("button", { name: "Toggle thread details panel" });
+  const terminal = page.getByRole("region", { name: "Terminal", exact: true });
+  const details = page.getByLabelText("Thread details", { exact: true });
+  const panel = page.getByRole("region", { name: /^Workspace panel/ });
+  await expect.element(composer).toBeVisible();
+  for (const hidden of [panel, terminal, details, toggle, terminalToggle, detailsToggle]) {
+    await expect.element(hidden).not.toBeInTheDocument();
+  }
+  await expect.element(chat).toHaveAttribute("aria-pressed", "true");
+
+  await userEvent.keyboard("{ControlOrMeta>}{Alt>}b{/Alt}{/ControlOrMeta}");
+  await expect.element(code).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: /^Files/ }).click();
-  await composer.click();
-  await userEvent.keyboard("{Control>}t{/Control}");
-  await expect.element(page.getByRole("menuitem", { name: /Files/ })).toBeVisible();
+  await expect.element(details).toBeVisible();
   await expect.element(toggle).toHaveAttribute("aria-pressed", "true");
+
+  await chat.click();
+  for (const hidden of [panel, terminal, details, toggle, terminalToggle, detailsToggle]) {
+    await expect.element(hidden).not.toBeInTheDocument();
+  }
+  await code.click();
+  await expect.element(panel).toBeVisible();
+  await expect.element(details).toBeVisible();
+  await expect.element(page.getByRole("button", { name: "Files", exact: true })).toBeVisible();
+
+  await userEvent.keyboard("{ControlOrMeta>}t{/ControlOrMeta}");
+  await expect.element(page.getByRole("menuitem", { name: /Files/ })).toBeVisible();
+  await userEvent.keyboard("{Escape}");
+  await chat.click();
+  await userEvent.keyboard("{ControlOrMeta>}d{/ControlOrMeta}");
+  await expect.element(code).toHaveAttribute("aria-pressed", "true");
+  const diff = page.getByRole("region", { name: "Workspace panel: Diff", exact: true });
+  await expect.element(diff).toBeVisible();
+  await chat.click();
+  await userEvent.keyboard("{ControlOrMeta>}d{/ControlOrMeta}");
+  await expect.element(diff).toBeVisible();
+
+  await act(() =>
+    router.navigate({
+      to: "/$environmentId/$threadId",
+      params: { environmentId: ENVIRONMENT_ID, threadId: other.id },
+    }),
+  );
+  await expect.element(chat).toHaveAttribute("aria-pressed", "true");
+  await act(() =>
+    router.navigate({
+      to: "/$environmentId/$threadId",
+      params: { environmentId: ENVIRONMENT_ID, threadId: thread.id },
+    }),
+  );
+  await expect.element(code).toHaveAttribute("aria-pressed", "true");
+
+  const draftId = DraftId.make("draft-chat-code");
+  await act(async () => {
+    useComposerDraftStore
+      .getState()
+      .setProjectDraftThreadId(scopeProjectRef(ENVIRONMENT_ID, PROJECT_ID), draftId, {
+        threadId: ThreadId.make("draft-chat-code-thread"),
+      });
+    await router.navigate({ to: "/draft/$draftId", params: { draftId } });
+  });
+  await expect.element(chat).toHaveAttribute("aria-pressed", "true");
+  await expect.element(composer).toBeVisible();
+  await userEvent.keyboard("{ControlOrMeta>}j{/ControlOrMeta}");
+  await expect.element(code).toHaveAttribute("aria-pressed", "true");
+  await expect.element(terminal).toBeVisible();
+  await chat.click();
+  await expect.element(terminal).not.toBeInTheDocument();
+  await code.click();
+  await expect.element(terminal).toBeVisible();
+});
+
+it("switching modes preserves a details popover beside an open workspace panel", async () => {
+  await page.viewport(1250, 800);
+  const thread = threadWithHistory("thread-details-popover-mode", 1);
+  using _environment = installFakeEnvironment([thread]);
+  const threadRef = scopeThreadRef(ENVIRONMENT_ID, thread.id);
+  useRightPanelStore.getState().open(threadRef, "files");
+  __setClientSettingsForTests({
+    ...DEFAULT_CLIENT_SETTINGS,
+    onboardingCompletedAt: "2026-01-01T00:00:00.000Z",
+    panelAnimationDurationMs: 0,
+  });
+  const router = getRouter(
+    createMemoryHistory({ initialEntries: [`/${ENVIRONMENT_ID}/${thread.id}`] }),
+  );
+  await router.load();
+  await using screen = await render(
+    <>
+      <style>{`
+        [data-chat-canvas] > [aria-hidden="true"] { min-width: 640px; }
+        [data-chat-column]:has(+ [data-preview-panel-mode="inline"]) { width: calc(100% - 540px); }
+      `}</style>
+      <AppRoot router={router} />
+    </>,
+    {
+      // AppRoot brings its own router.
+      router: false,
+    },
+  );
+  const code = screen.getByRole("button", { name: "Code", exact: true });
+  const chat = screen.getByRole("button", { name: "Chat", exact: true });
+  const details = () => document.querySelector('[data-thread-details-panel="popover"]');
+  await expect.element(screen.getByTestId("composer-editor")).toBeVisible();
+  await code.click();
+  await expect
+    .element(screen.getByRole("button", { name: "Toggle thread details panel" }))
+    .toHaveAttribute("aria-haspopup", "dialog");
+  await act(() => useRightPanelStore.getState().setThreadPanelOpen(threadRef, "popover", true));
+  await vi.waitFor(() => expect(details()).toBeVisible());
+  await chat.click();
+  await vi.waitFor(() => expect(details()).toBeNull());
+  await code.click();
+  await vi.waitFor(() => expect(details()).toBeVisible());
 });
 
 it("selecting a side-chat tab focuses that side chat's composer", async () => {
@@ -643,6 +744,7 @@ it("selecting a side-chat tab focuses that side chat's composer", async () => {
     router: false,
   });
   using _focus = { [Symbol.dispose]: startWorkspaceFocus(router) };
+  await page.getByRole("button", { name: "Code", exact: true }).click();
   const mainEditor = screen.getByRole("textbox", { name: `Message ${parent.title}`, exact: true });
   const sideEditor = screen.getByRole("textbox", { name: `Message ${side.title}`, exact: true });
   await expect.element(sideEditor).toBeVisible();
