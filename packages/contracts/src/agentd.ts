@@ -276,7 +276,8 @@ export const AgentdPeople = Schema.Struct({
 export type AgentdPeople = typeof AgentdPeople.Type;
 
 const TaskText = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(4000));
-const AbsolutePath = Schema.String.check(Schema.isPattern(/^(?:\/|[A-Za-z]:[\\/])/));
+// POSIX, a Windows drive (C:\ or C:/) or a UNC share (\\host\share).
+const AbsolutePath = Schema.String.check(Schema.isPattern(/^(?:\/|[A-Za-z]:[\\/]|\\\\[^\\])/));
 const IssueRef = Schema.String.check(
   Schema.isPattern(/^[A-Za-z0-9][\w.-]{0,99}\/[\w.-]{1,100}#[1-9]\d{0,9}$/),
 );

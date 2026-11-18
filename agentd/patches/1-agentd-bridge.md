@@ -18,3 +18,11 @@ Upstream files changed:
 - `packages/client-runtime/package.json`: export `./state/agentd` (not in the task's file list; four lines, like every other state module).
 - `apps/web/src/lib/backgroundActivityReporter.ts`, `apps/mobile/src/connection/background-activity-scopes.ts`: a visible client watching the task list reports the `diagnostics` scope, so the server re-reads agentd only while someone looks.
 - `knip.jsonc`: `apps/web/src/lib/agentdState.ts` as an entry until the agentd screens import it (not in the task's file list; drop the line when they do).
+
+Windows and Linux:
+
+- agentd is found with the shared `resolveCommandPath` (`AGENTD_BIN`, then `PATH`), which applies `PATHEXT` on Windows, so `agentd.exe` is found; `AGENTD_BIN` may be a Windows path.
+- Every agentd command runs through `ProcessRunner` with an argument list, never a shell; the `joinTeam` ticket goes on stdin.
+- No path is built by hand: the worker log path is the one agentd reports, and the cwd and `who` target inputs accept POSIX, drive (`C:\` or `C:/`) and UNC paths.
+- agentd's output is trimmed before use, so CRLF line endings do not change a version or a message.
+- Not verified on Windows: no Windows machine was available. The tests use a stubbed process runner and pass on Linux; the live check ran agentd v0.1.13 on Linux.
