@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { ProviderDriverKind } from "@t3tools/contracts";
 import * as ModelCatalog from "@t3tools/provider-core/server/ModelCatalog";
+import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
@@ -258,9 +259,19 @@ const layerService = (input: {
   readonly prefix: string;
   readonly response: () => Response;
   readonly settings?: Parameters<typeof ServerSettings.layerTest>[0];
+  readonly manifestUrl?: string | null;
 }) =>
   ServerConfig.layerTest(process.cwd(), { prefix: input.prefix }).pipe(
     Layer.provideMerge(NodeServices.layer),
+    Layer.provideMerge(
+      ConfigProvider.layer(
+        ConfigProvider.fromUnknown(
+          input.manifestUrl === null
+            ? {}
+            : { T3CODE_MODEL_MANIFEST_URL: input.manifestUrl ?? "https://manifest.test/m.json" },
+        ),
+      ),
+    ),
     Layer.provideMerge(ServerSettings.layerTest(input.settings ?? {})),
     Layer.provideMerge(layerHttpClient(input.response)),
   );
@@ -403,7 +414,13 @@ describe("ModelManifest service", () => {
     ),
   );
 
-  it.effect("does not fetch when provider update checks are disabled", () =>
+  it.effect.each([
+    {
+      case: "provider update checks are disabled",
+      settings: { enableProviderUpdateChecks: false },
+    },
+    { case: "no manifest URL is configured", manifestUrl: null },
+  ] as const)("does not fetch when $case", (row) =>
     Effect.gen(function* () {
       let fetchCount = 0;
       const service = yield* ModelManifest.make.pipe(
@@ -423,7 +440,7 @@ describe("ModelManifest service", () => {
         layerService({
           prefix: "model-manifest-optout-test",
           response: () => Response.json(REMOTE_MANIFEST),
-          settings: { enableProviderUpdateChecks: false },
+          ...row,
         }),
       ),
     ),

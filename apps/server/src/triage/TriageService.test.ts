@@ -2,6 +2,7 @@ import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { GitCommandError } from "@t3tools/contracts";
 import { assert, it } from "@effect/vitest";
+import * as ConfigProvider from "effect/ConfigProvider";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -37,11 +38,15 @@ it("falls back to main when the server's version has no tag", () => {
   assert.isUndefined(pickSourceRef("", "0.1.1"));
 });
 
-const TestLayer = GitVcsDriver.layer.pipe(
-  Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-triage-service-" })),
-  Layer.provideMerge(VcsProcess.layer),
-  Layer.provideMerge(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)),
-);
+const makeTestLayer = (env: Record<string, string>) =>
+  GitVcsDriver.layer.pipe(
+    Layer.provideMerge(ConfigProvider.layer(ConfigProvider.fromUnknown(env))),
+    Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-triage-service-" })),
+    Layer.provideMerge(VcsProcess.layer),
+    Layer.provideMerge(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer)),
+  );
+
+const TestLayer = makeTestLayer({ T3CODE_TRIAGE_REPOSITORY: "https://example.test/t3" });
 
 const RELEASE_COMMIT = "7027b1f";
 
@@ -145,6 +150,19 @@ it.effect("still starts triage when the source lookup fails", () =>
     assert.include(prompt, "triage-playbook.md");
     assert.include(yield* readContext, "Could not resolve host: github.com");
   }).pipe(Effect.provide(TestLayer)),
+);
+
+it.effect("runs no git and names no repository when none is configured", () =>
+  Effect.gen(function* () {
+    const { triage, commands } = yield* makeTriage();
+
+    yield* triage.prepare({ client: {} });
+
+    assert.deepEqual(commands, []);
+    const context = yield* readContext;
+    assert.include(context, "- Repo: none configured");
+    assert.include(context, "no source repository is configured");
+  }).pipe(Effect.provide(makeTestLayer({}))),
 );
 
 it.effect("does not trust a folder without its own .git, even inside a repo at that commit", () =>
