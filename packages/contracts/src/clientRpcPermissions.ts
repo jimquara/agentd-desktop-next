@@ -83,6 +83,8 @@ export const CLIENT_GUARDED_RPC_SCOPES = {
   // Connecting an agent edits its config on this host; joining a team links the host to a server.
   [WS_METHODS.agentdConnectAgent]: AuthEnvironmentMaintainScope,
   [WS_METHODS.agentdJoinTeam]: AuthEnvironmentMaintainScope,
+  // Working for the team runs agents on this host for the team server.
+  [WS_METHODS.agentdSetTeamNode]: AuthEnvironmentMaintainScope,
   [ORCHESTRATION_V2_WS_METHODS.stopWorkflow]: AuthOrchestrationOperateScope,
   // Force stop kills agent processes, as Stop on a terminal does.
   [ORCHESTRATION_V2_WS_METHODS.forceStopThread]: AuthOrchestrationOperateScope,

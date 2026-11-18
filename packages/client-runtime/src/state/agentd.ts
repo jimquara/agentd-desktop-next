@@ -97,5 +97,20 @@ export function createAgentdEnvironmentAtoms<R, E>(
           registry.refresh(status({ environmentId: target.environmentId, input: {} })),
         ),
     }),
+    teamNode: createEnvironmentRpcSubscriptionAtomFamily(runtime, {
+      label: "environment-data:agentd:team-node",
+      tag: WS_METHODS.agentdSubscribeTeamNode,
+      idleTtlMs: 0,
+    }),
+    setTeamNode: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:agentd:set-team-node",
+      tag: WS_METHODS.agentdSetTeamNode,
+      scheduler,
+    }),
+    teamNodeForeground: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:agentd:team-node-foreground",
+      tag: WS_METHODS.agentdTeamNodeForeground,
+      scheduler,
+    }),
   };
 }

@@ -355,3 +355,30 @@ export type AgentdJoinTeamInput = typeof AgentdJoinTeamInput.Type;
 /** What agentd printed for a command with no JSON answer (connect, join). */
 export const AgentdCommandOutput = Schema.Struct({ output: Schema.String });
 export type AgentdCommandOutput = typeof AgentdCommandOutput.Type;
+
+/** This environment as a team node: `agentd worker --accept-server-work`, run by the server. */
+export const AgentdTeamNodeState = Schema.Literals(["off", "waiting", "working", "failed"]);
+export type AgentdTeamNodeState = typeof AgentdTeamNodeState.Type;
+
+export const AgentdTeamNodeStatus = Schema.Struct({
+  on: Schema.Boolean,
+  tool: Schema.NullOr(AgentdWorkerTool),
+  repo: Schema.NullOr(Schema.String),
+  state: AgentdTeamNodeState,
+  /** The task the node's worker leased, while working. */
+  task: Schema.NullOr(Schema.String),
+  /** What agentd said when the worker failed or ended. */
+  note: Schema.NullOr(Schema.String),
+  /** Installed agents among claude, codex and opencode. */
+  tools: Schema.Array(AgentdWorkerTool),
+});
+export type AgentdTeamNodeStatus = typeof AgentdTeamNodeStatus.Type;
+
+export const AgentdTeamNodeInput = Schema.Struct({
+  on: Schema.Boolean,
+  tool: AgentdWorkerTool,
+  repo: AbsolutePath,
+  /** A worker enrolment ticket, if agentd needs one; goes to agentd's stdin only. */
+  ticket: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(256))),
+});
+export type AgentdTeamNodeInput = typeof AgentdTeamNodeInput.Type;

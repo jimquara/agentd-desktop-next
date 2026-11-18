@@ -197,6 +197,7 @@ import * as ServerSelfUpdate from "./cloud/selfUpdate.ts";
 import * as DesktopAppUpdate from "./desktopUpdate/DesktopAppUpdate.ts";
 import * as ServiceLauncherClient from "./cloud/serviceLauncherClient.ts";
 import * as AgentdBridge from "./agentd/AgentdBridge.ts";
+import * as AgentdTeamNode from "./agentd/AgentdTeamNode.ts";
 import * as ProcessDiagnostics from "./diagnostics/ProcessDiagnostics.ts";
 import * as HostResources from "./resourceTelemetry/HostResources.ts";
 import * as ProcessResourceMonitor from "./diagnostics/ProcessResourceMonitor.ts";
@@ -328,7 +329,8 @@ const layerResourceDiagnostics = Layer.mergeAll(
   ProcessGroupMetrics.layer.pipe(Layer.provide(layerResourceTelemetry)),
 );
 
-const layerAgentd = AgentdBridge.layer.pipe(
+const layerAgentd = AgentdTeamNode.layer.pipe(
+  Layer.provideMerge(AgentdBridge.layer),
   Layer.provide(ProcessRunner.layer),
   Layer.provide(layerBackground),
 );

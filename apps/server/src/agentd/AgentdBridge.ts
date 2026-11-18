@@ -66,6 +66,10 @@ export class AgentdBridge extends Context.Service<
     readonly joinTeam: (
       input: AgentdJoinTeamInput,
     ) => Effect.Effect<AgentdCommandOutput, AgentdError>;
+    /** agentd's path, for the team node's long-lived worker. */
+    readonly binary: Effect.Effect<string, AgentdError>;
+    readonly enrolWorker: (server: string, ticket: string) => Effect.Effect<void, AgentdError>;
+    readonly foreground: (minutes: number) => Effect.Effect<void, AgentdError>;
   }
 >()("t3/agentd/AgentdBridge") {}
 
@@ -388,6 +392,15 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
       const argv = yield* args(() => agentdArgs.joinTeam(input.server));
       const ticket = yield* args(() => [agentdTicket(input.ticket)]);
       return { output: (yield* run(argv, { stdin: `${ticket[0]}\n` })).trim() };
+    }),
+    binary,
+    enrolWorker: Effect.fn("AgentdBridge.enrolWorker")(function* (server, ticket) {
+      const argv = yield* args(() => agentdArgs.enrolWorker(server));
+      const checked = yield* args(() => [agentdTicket(ticket)]);
+      yield* run(argv, { stdin: `${checked[0]}\n` });
+    }),
+    foreground: Effect.fn("AgentdBridge.foreground")(function* (minutes) {
+      yield* run(agentdArgs.foreground(minutes));
     }),
   });
 });

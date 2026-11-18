@@ -86,6 +86,14 @@ export function useAgentdPeople(target?: EnvironmentId | null, includeNodes = fa
   );
 }
 
+export function useAgentdTeamNode(target?: EnvironmentId | null) {
+  const environmentId = useAgentdEnvironment(target);
+  return useEnvironmentQuery(
+    environmentId === null ? null : agentdEnvironment.teamNode({ environmentId, input: {} }),
+    useMessages(),
+  );
+}
+
 /** Each takes `{ environmentId, input }`; failures are reported like any other command's. */
 export function useAgentdCommands() {
   return {
@@ -93,5 +101,6 @@ export function useAgentdCommands() {
     stopTask: useAtomCommand(agentdEnvironment.stopTask),
     connectAgent: useAtomCommand(agentdEnvironment.connectAgent),
     joinTeam: useAtomCommand(agentdEnvironment.joinTeam),
+    setTeamNode: useAtomCommand(agentdEnvironment.setTeamNode),
   };
 }
