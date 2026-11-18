@@ -51,3 +51,6 @@ node_modules/
 .pnpm-store/
 
 /packages/ssh/.ssh-launcher-test-*/
+
+# Worker notes belong in the handoff, not the tree
+PR-BODY.md
