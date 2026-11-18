@@ -95,6 +95,23 @@ export function useAgentdTeamNode(target?: EnvironmentId | null) {
   );
 }
 
+export function useAgentdEula(target: EnvironmentId | null) {
+  const environmentId = useAgentdEnvironment(target);
+  return useEnvironmentQuery(
+    environmentId === null ? null : agentdEnvironment.eula({ environmentId, input: {} }),
+    useMessages(),
+  );
+}
+
+/** The environment's `agentd init` run: its phase and output. */
+export function useAgentdSetup(target: EnvironmentId | null) {
+  const environmentId = useAgentdEnvironment(target);
+  return useEnvironmentQuery(
+    environmentId === null ? null : agentdEnvironment.setup({ environmentId, input: {} }),
+    useMessages(),
+  );
+}
+
 /** Each takes `{ environmentId, input }`; failures are reported like any other command's. */
 export function useAgentdCommands() {
   return {

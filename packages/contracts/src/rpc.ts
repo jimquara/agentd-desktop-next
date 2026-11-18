@@ -394,6 +394,8 @@ import {
   AgentdTask,
   AgentdTaskInput,
   AgentdTaskRow,
+  AgentdEula,
+  AgentdSetupState,
   AgentdCloudSetup,
   AgentdCloudSetupInput,
   AgentdCloudTaskInput,
@@ -710,6 +712,9 @@ export const WS_METHODS = {
   agentdSubscribeTeamNode: "agentd.subscribeTeamNode",
   agentdSetTeamNode: "agentd.setTeamNode",
   agentdTeamNodeForeground: "agentd.teamNodeForeground",
+  agentdEula: "agentd.eula",
+  agentdSetupStart: "agentd.setupStart",
+  agentdSubscribeSetup: "agentd.subscribeSetup",
 } as const;
 
 const WsServerUpsertKeybindingRpc = Rpc.make(WS_METHODS.serverUpsertKeybinding, {
@@ -2383,6 +2388,25 @@ const WsAgentdTeamNodeForegroundRpc = Rpc.make(WS_METHODS.agentdTeamNodeForegrou
   error: AgentdRpcError,
 });
 
+const WsAgentdEulaRpc = Rpc.make(WS_METHODS.agentdEula, {
+  payload: Schema.Struct({}),
+  success: AgentdEula,
+  error: AgentdRpcError,
+});
+
+const WsAgentdSetupStartRpc = Rpc.make(WS_METHODS.agentdSetupStart, {
+  payload: Schema.Struct({}),
+  success: AgentdSetupState,
+  error: AgentdRpcError,
+});
+
+const WsAgentdSubscribeSetupRpc = Rpc.make(WS_METHODS.agentdSubscribeSetup, {
+  payload: Schema.Struct({}),
+  success: AgentdSetupState,
+  error: AgentdRpcError,
+  stream: true,
+});
+
 export class RpcScopeAuthorization extends RpcMiddleware.Service<RpcScopeAuthorization>()(
   "t3/contracts/RpcScopeAuthorization",
   { error: EnvironmentAuthorizationError },
@@ -2616,6 +2640,9 @@ export const WsRpcGroup = RpcGroup.make(
   WsAgentdSubscribeTeamNodeRpc,
   WsAgentdSetTeamNodeRpc,
   WsAgentdTeamNodeForegroundRpc,
+  WsAgentdEulaRpc,
+  WsAgentdSetupStartRpc,
+  WsAgentdSubscribeSetupRpc,
   WsOrchestrationV2DispatchCommandRpc,
   WsOrchestrationV2GetWorkflowScriptRpc,
   WsOrchestrationV2GetNativeChildWorkRpc,

@@ -30,7 +30,33 @@ function nonEmpty(value: string | null | undefined): string | null {
   return value === undefined || value === null || value === "" ? null : value;
 }
 
-export function agentdStatus(version: string, doctor: AgentdDoctorJson): AgentdStatus {
+/** The EULA version doctor's activation check says is accepted; false: none is; null: it does not say. */
+export function acceptedEula(doctor: AgentdDoctorJson): string | false | null {
+  const detail = doctor.checks.find((check) => check.id === "activation")?.detail ?? "";
+  if (/\bEULA is not accepted\b/.test(detail)) return false;
+  return /\bEULA (\S+) accepted\b/.exec(detail)?.[1] ?? null;
+}
+
+/** The version `agentd eula` names in its text ("Version 3.5 of November 13, 2026."). */
+export function eulaVersion(text: string): string | null {
+  return /^Version (\S+) of\b/m.exec(text)?.[1] ?? null;
+}
+
+// agentd saves "eula-draft-3.5" for the agreement whose text says "Version 3.5"; compare the numbers.
+function sameEula(saved: string, carried: string | null): boolean {
+  const number = (value: string) => /(\d+(?:\.\d+)*)$/.exec(value)?.[1] ?? null;
+  const a = number(saved);
+  const b = carried === null ? null : number(carried);
+  return a === null || b === null || a === b;
+}
+
+/** Set up for the app: agentd's own answer, and the EULA this agentd carries accepted. */
+export function agentdStatus(
+  version: string,
+  doctor: AgentdDoctorJson,
+  carriedEula: string | null = null,
+): AgentdStatus {
+  const accepted = acceptedEula(doctor);
   const serverDetail = doctor.checks.find((check) => check.id === "server")?.detail;
   const teamServer = serverDetail?.startsWith("not joined to an agentd server:")
     ? null
@@ -38,7 +64,10 @@ export function agentdStatus(version: string, doctor: AgentdDoctorJson): AgentdS
   return {
     version: version.trim(),
     ok: doctor.ok ?? doctor.checks.every((check) => check.status !== "fail"),
-    setUp: doctor.set_up ?? true,
+    setUp:
+      (doctor.set_up ?? true) &&
+      accepted !== false &&
+      (accepted === null || sameEula(accepted, carriedEula)),
     ...(teamServer === undefined ? {} : { teamServer }),
     checks: doctor.checks.map((check) => ({
       id: check.id,

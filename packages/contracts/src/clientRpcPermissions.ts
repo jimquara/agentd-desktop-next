@@ -85,6 +85,8 @@ export const CLIENT_GUARDED_RPC_SCOPES = {
   [WS_METHODS.agentdJoinTeam]: AuthEnvironmentMaintainScope,
   // Working for the team runs agents on this host for the team server.
   [WS_METHODS.agentdSetTeamNode]: AuthEnvironmentMaintainScope,
+  // Setting agentd up accepts its EULA and writes its services on this host.
+  [WS_METHODS.agentdSetupStart]: AuthEnvironmentMaintainScope,
   [ORCHESTRATION_V2_WS_METHODS.stopWorkflow]: AuthOrchestrationOperateScope,
   // Force stop kills agent processes, as Stop on a terminal does.
   [ORCHESTRATION_V2_WS_METHODS.forceStopThread]: AuthOrchestrationOperateScope,

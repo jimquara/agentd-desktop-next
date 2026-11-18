@@ -481,3 +481,24 @@ export const AgentdTeamNodeInput = Schema.Struct({
   ticket: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(256))),
 });
 export type AgentdTeamNodeInput = typeof AgentdTeamNodeInput.Type;
+
+/** The agreement this agentd carries (`agentd eula`), shown before `agentd init` accepts it. */
+export const AgentdEula = Schema.Struct({
+  /** As the text names it ("3.5"); null when it names none. */
+  version: Schema.NullOr(Schema.String),
+  text: Schema.String,
+});
+export type AgentdEula = typeof AgentdEula.Type;
+
+/** The environment's `agentd init` run, started by the person's Accept. */
+export const AgentdSetupState = Schema.Struct({
+  phase: Schema.Literals(["idle", "running", "succeeded", "failed"]),
+  /** Counts the runs since the server started, so a client follows the run its click began. */
+  attempt: Schema.Number,
+  /** What init printed, escape sequences removed; the tail when long. */
+  output: Schema.String,
+  exitCode: Schema.NullOr(Schema.Number),
+  /** Why the app ended init: it asked something besides the EULA, ran too long, or did not start. */
+  stopped: Schema.NullOr(Schema.Literals(["prompt", "timeout", "spawn"])),
+});
+export type AgentdSetupState = typeof AgentdSetupState.Type;

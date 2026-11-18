@@ -238,6 +238,8 @@ export const RPC_REQUIRED_SCOPES = {
   // Using the app declares the person busy, so the team server leases this node nothing.
   [WS_METHODS.agentdSubscribeTeamNode]: AuthOrchestrationReadScope,
   [WS_METHODS.agentdTeamNodeForeground]: AuthOrchestrationReadScope,
+  [WS_METHODS.agentdEula]: AuthOrchestrationReadScope,
+  [WS_METHODS.agentdSubscribeSetup]: AuthOrchestrationReadScope,
 } as const satisfies Readonly<Record<WsRpcMethod, AuthEnvironmentScope>>;
 
 export function requiredScopeForRpcMethod(method: string): AuthEnvironmentScope {

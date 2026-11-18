@@ -241,6 +241,7 @@ import * as RpcAuthorization from "./auth/RpcAuthorization.ts";
 import { RpcInstrumentation, rpcInstrumentationLayer } from "./observability/RpcInstrumentation.ts";
 import * as AgentdBridge from "./agentd/AgentdBridge.ts";
 import * as AgentdTeamNode from "./agentd/AgentdTeamNode.ts";
+import * as AgentdInit from "./agentd/agentdInit.ts";
 import * as ProcessDiagnostics from "./diagnostics/ProcessDiagnostics.ts";
 import * as ProcessResourceMonitor from "./diagnostics/ProcessResourceMonitor.ts";
 import * as ResourceTelemetry from "./resourceTelemetry/ResourceTelemetry.ts";
@@ -1594,6 +1595,7 @@ export const layerWsRpc = (
       const processDiagnostics = yield* ProcessDiagnostics.ProcessDiagnostics;
       const agentd = yield* AgentdBridge.AgentdBridge;
       const teamNode = yield* AgentdTeamNode.AgentdTeamNode;
+      const agentdInit = yield* AgentdInit.AgentdInit;
       const triage = yield* TriageService.TriageService;
       const hostResources = yield* HostResources.HostResources;
       const processResourceMonitor = yield* ProcessResourceMonitor.ProcessResourceMonitor;
@@ -3606,6 +3608,9 @@ export const layerWsRpc = (
         [WS_METHODS.agentdSubscribeTeamNode]: (_input) => teamNode.subscribe,
         [WS_METHODS.agentdSetTeamNode]: (input) => teamNode.set(input),
         [WS_METHODS.agentdTeamNodeForeground]: (_input) => teamNode.foreground,
+        [WS_METHODS.agentdEula]: (_input) => agentd.eula,
+        [WS_METHODS.agentdSetupStart]: (_input) => agentdInit.start,
+        [WS_METHODS.agentdSubscribeSetup]: (_input) => agentdInit.subscribe,
       });
       const splitHandlers: Pick<typeof handlers, SplitWsRpc["_tag"]> = handlers;
       const otherHandlers: Pick<typeof handlers, Exclude<ServerWsRpc, SplitWsRpc>["_tag"]> =

@@ -167,4 +167,13 @@ export const agentdArgs = {
     "-",
   ],
   foreground: (minutes: number) => ["worker", "foreground", "on", "--for", `${minutes}m`],
+  eula: () => ["eula"],
+  initHelp: () => ["init", "--help"],
+  // Run in the home folder, so init registers no repository; the flag once agentd has one.
+  init: (acceptFlag: boolean) => [
+    "init",
+    "--route",
+    "on",
+    ...(acceptFlag ? ["--accept-eula"] : []),
+  ],
 } as const;

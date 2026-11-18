@@ -31,6 +31,7 @@ import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Button } from "../ui/button";
 import { AgentdNeedsYou, AgentdRead, AgentdSection, AgentdStatusDetails } from "./AgentdPageReads";
 import { AgentdPageWorkers } from "./AgentdPageWorkers";
+import { openAgentdSetupDialog, useCanSetUpAgentd } from "./AgentdSetupDialog";
 import { AgentdTeamNodeSwitch } from "./AgentdTeamNodeSwitch";
 
 const isHandoffId = Schema.is(AgentdHandoffId);
@@ -42,6 +43,7 @@ export function AgentdPage() {
   const environmentId = usePrimaryEnvironmentId();
   const canRead = useEnvironmentScope(environmentId, AuthOrchestrationReadScope);
   const status = useAgentdStatus(environmentId);
+  const canSetUp = useCanSetUpAgentd(environmentId);
   const notFound = isAgentdNotFoundError(status.failure) ? status.failure : null;
   const activeEnvironmentId = status.data?.setUp && notFound === null ? environmentId : null;
   const tasks = useAgentdTasks(activeEnvironmentId);
@@ -179,6 +181,11 @@ export function AgentdPage() {
                     {(data) => (
                       <AgentdStatusDetails
                         status={data}
+                        onSetUp={
+                          canSetUp && environmentId !== null
+                            ? () => openAgentdSetupDialog(environmentId)
+                            : undefined
+                        }
                         team={
                           activeEnvironmentId !== null ? (
                             <AgentdTeamNodeSwitch

@@ -262,6 +262,9 @@ const RPC_AGGREGATES = {
   [WS_METHODS.agentdSubscribeTeamNode]: "agentd",
   [WS_METHODS.agentdSetTeamNode]: "agentd",
   [WS_METHODS.agentdTeamNodeForeground]: "agentd",
+  [WS_METHODS.agentdEula]: "agentd",
+  [WS_METHODS.agentdSetupStart]: "agentd",
+  [WS_METHODS.agentdSubscribeSetup]: "agentd",
 } as const satisfies Readonly<Record<WsRpcMethod, string>>;
 
 const RPC_SPAN_PREFIX = "ws.rpc";
