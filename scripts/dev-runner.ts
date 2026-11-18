@@ -5,6 +5,11 @@ import * as NodeOS from "node:os";
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as NetService from "@t3tools/shared/Net";
+import {
+  configuredDesktopHome,
+  defaultDesktopHome,
+  DESKTOP_HOME_ENV,
+} from "@t3tools/shared/desktopIdentity";
 import { resolveGitWorktreePath, resolveWorktreeT3Home } from "@t3tools/shared/devHome";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import { resolveSpawnCommand } from "@t3tools/shared/shell";
@@ -68,7 +73,7 @@ function sharedBackendTargetHost(host: string | undefined): string {
 }
 
 export const DEFAULT_T3_HOME = Effect.map(Effect.service(Path.Path), (path) =>
-  path.join(NodeOS.homedir(), ".t3"),
+  defaultDesktopHome(NodeOS.homedir(), path.join),
 );
 
 const MODE_ARGS = {
@@ -329,6 +334,8 @@ export const createDevRunnerEnv = Effect.fn("dev-runner.createDevRunnerEnv")(fun
       `http://${isDesktopMode ? DESKTOP_DEV_LOOPBACK_HOST : "localhost"}:${webPort}`,
   };
 
+  // AGENTD_DESKTOP_HOME outranks T3CODE_HOME, so an inherited one must not override this choice.
+  delete output[DESKTOP_HOME_ENV];
   if (configuredBaseDir !== undefined) {
     output.T3CODE_HOME = resolvedBaseDir;
   } else {
@@ -639,7 +646,11 @@ const prepareFirstStart = Effect.fn("dev-runner.prepareFirstStart")(function* (i
         );
       }
     }
-    const source = path.join(yield* HostProcess.HomeDirectory, ".t3", "userdata", "statev2.sqlite");
+    const source = path.join(
+      defaultDesktopHome(yield* HostProcess.HomeDirectory, path.join),
+      "userdata",
+      "statev2.sqlite",
+    );
     // A V1 state.sqlite counts as data too: the server imports it only while
     // statev2.sqlite is missing, so seeding would hide it.
     if (
@@ -778,9 +789,7 @@ export const runDevRunnerWithInput = Effect.fn("dev-runner.runDevRunnerWithInput
   // as one would skip the worktree default and land on the shared home —
   // exactly the outcome this precedence exists to prevent.
   const resolvedT3Home =
-    (input.t3Home?.trim() || undefined) ??
-    worktreeHome ??
-    (hostEnvironment.T3CODE_HOME?.trim() || undefined);
+    (input.t3Home?.trim() || undefined) ?? worktreeHome ?? configuredDesktopHome(hostEnvironment);
   const env = yield* createDevRunnerEnv({
     mode: input.mode,
     baseEnv: hostEnvironment,

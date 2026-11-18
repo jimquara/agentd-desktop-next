@@ -264,8 +264,8 @@ describe("DesktopLifecycle", () => {
         Effect.provideService(HostProcess.Arguments, [
           "/opt/AgentD Desktop/t3code",
           "--no-sandbox",
-          "T3CODE://pair?token=spent",
-          "t3code://new?prompt=hello",
+          "AGENTD-DESKTOP://pair?token=spent",
+          "agentd-desktop://new?prompt=hello",
         ]),
       );
 

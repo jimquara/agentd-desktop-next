@@ -103,7 +103,7 @@ describe("link round trips", () => {
       model: "opus",
     });
     // Without a hosted app the link opens the desktop app.
-    expect(link.startsWith("t3code://new?")).toBe(true);
+    expect(link.startsWith("agentd-desktop://new?")).toBe(true);
     const path = promptLinkAppPath(link);
     expect(path).toBe(`/new${new URL(link).search}`);
     const parsed = parseNewThreadLink(new URL(link).search);
@@ -123,13 +123,15 @@ describe("link round trips", () => {
     const path = promptLinkAppPath(link, HOSTED);
     expect(path).toBe("/env-1/mcp%3A1");
     const deepLink = promptLinkDeepLink(path!);
-    expect(deepLink).toBe("t3code://threads/env-1/mcp%3A1");
+    expect(deepLink).toBe("agentd-desktop://threads/env-1/mcp%3A1");
     expect(promptLinkAppPath(deepLink)).toBe(path);
   });
 
   it("maps app scheme and hosted links to in-app paths, and nothing else", () => {
-    expect(promptLinkAppPath("t3code://new?prompt=hi")).toBe("/new?prompt=hi");
-    expect(promptLinkAppPath("t3code-dev://threads/env-1/thread-1")).toBe("/env-1/thread-1");
+    expect(promptLinkAppPath("agentd-desktop://new?prompt=hi")).toBe("/new?prompt=hi");
+    expect(promptLinkAppPath("agentd-desktop-dev://threads/env-1/thread-1")).toBe(
+      "/env-1/thread-1",
+    );
     expect(promptLinkAppPath("https://hosted.example/env-1/thread-1?prompt=go", HOSTED)).toBe(
       "/env-1/thread-1?prompt=go",
     );
@@ -146,7 +148,7 @@ describe("link round trips", () => {
     expect(promptLinkAppPath("https://evil.test/new?prompt=hi", HOSTED)).toBeNull();
     // This build has no hosted app, so no https link maps by default.
     expect(promptLinkAppPath("https://app.t3.codes/new?prompt=hi")).toBeNull();
-    expect(promptLinkAppPath("t3code://app/index.html")).toBeNull();
+    expect(promptLinkAppPath("agentd-desktop://app/index.html")).toBeNull();
   });
 
   it("maps links in browsers without URL.canParse, such as Safari before 17", () => {
