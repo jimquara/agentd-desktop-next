@@ -32,7 +32,7 @@ const openedFor = Atom.make<EnvironmentId | null>(null).pipe(
   Atom.keepAlive,
   Atom.withLabel("agentd:setup-dialog"),
 );
-const notNow = Atom.make<ReadonlySet<EnvironmentId>>(new Set()).pipe(
+const notNow = Atom.make<Readonly<Record<EnvironmentId, true>>>({}).pipe(
   Atom.keepAlive,
   Atom.withLabel("agentd:setup-not-now"),
 );
@@ -48,7 +48,7 @@ export function useCanSetUpAgentd(environmentId: EnvironmentId | null) {
 
 function closeDialog(environmentId: EnvironmentId) {
   appAtomRegistry.set(openedFor, null);
-  appAtomRegistry.set(notNow, new Set([...appAtomRegistry.get(notNow), environmentId]));
+  appAtomRegistry.set(notNow, { ...appAtomRegistry.get(notNow), [environmentId]: true });
 }
 
 /**
@@ -62,7 +62,7 @@ export function AgentdSetupDialogHost() {
   const status = useAgentdStatus(primary);
   const canSetUp = useCanSetUpAgentd(primary);
   const automatic =
-    primary !== null && status.data?.setUp === false && canSetUp && !dismissed.has(primary)
+    primary !== null && status.data?.setUp === false && canSetUp && dismissed[primary] !== true
       ? primary
       : null;
   const environmentId = opened ?? automatic;
