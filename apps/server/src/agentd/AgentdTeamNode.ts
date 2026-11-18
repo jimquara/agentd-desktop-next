@@ -163,6 +163,7 @@ const make = Effect.fn("AgentdTeamNode.make")(function* () {
             ChildProcess.make(spawn.command, spawn.args, {
               cwd: repo,
               shell: spawn.shell,
+              windowsHide: true,
               forceKillAfter: Duration.seconds(10),
             }),
           )

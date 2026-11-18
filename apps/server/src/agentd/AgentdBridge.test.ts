@@ -363,6 +363,15 @@ describe("AgentdBridge", () => {
       expect(failures.map((error) => error._tag)).toEqual(
         Array.from({ length: 11 }, () => "AgentdNotFoundError"),
       );
+      expect(failures[0]).not.toHaveProperty("bundled");
+      const bundled = yield* makeBridge(
+        { PATH: "", AGENTD_BIN: "/missing/agentd", AGENTD_DESKTOP_BUNDLED: "1" },
+        () => Effect.die("agentd must not run"),
+      );
+      expect(yield* Effect.flip(bundled.status)).toMatchObject({
+        _tag: "AgentdNotFoundError",
+        bundled: true,
+      });
     }),
   );
 

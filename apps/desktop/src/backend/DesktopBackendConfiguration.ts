@@ -579,7 +579,10 @@ const resolvePrimaryStartConfig = Effect.fn("desktop.backendConfiguration.resolv
         // Only set when bundled: an undefined value would unset the user's own AGENTD_BIN.
         ...Option.match(input.agentdBin, {
           onNone: () => ({}),
-          onSome: (agentdBin) => ({ [AgentdBinary.AGENTD_BIN_ENV]: agentdBin }),
+          onSome: (agentdBin) => ({
+            [AgentdBinary.AGENTD_BIN_ENV]: agentdBin,
+            [AgentdBinary.AGENTD_BUNDLED_ENV]: "1",
+          }),
         }),
         [AgentdInstall.AGENTD_INSTALL_RECORD_ENV]: AgentdInstall.installRecordPath(environment),
       },

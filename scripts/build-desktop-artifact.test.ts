@@ -51,6 +51,7 @@ import {
   LinuxPackagedAppMissingError,
   MacPackagedAppMissingError,
   stageAgentdCli,
+  AgentdCliMissingError,
   AgentdCliStageError,
   stageBrowserSecret,
   validateLinuxPackagedPayload,
@@ -818,7 +819,9 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
           verbose: false,
         }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env }))));
 
-      yield* stage({}, "win");
+      const missing = yield* stage({}, "win").pipe(Effect.flip);
+      assert.instanceOf(missing, AgentdCliMissingError);
+      yield* stage({ AGENTD_ALLOW_NO_BUNDLE: "1" }, "win");
       assert.isFalse(yield* fs.exists(path.join(stageResourcesDir, "agentd")));
 
       yield* stage({ AGENTD_DIST_DIR: distDir }, "win");
