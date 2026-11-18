@@ -394,6 +394,8 @@ import {
   AgentdTask,
   AgentdTaskInput,
   AgentdTaskRow,
+  AgentdTaskOther,
+  AgentdTaskOthersInput,
 } from "./agentd.ts";
 import {
   UsageLimitSourceError,
@@ -700,6 +702,7 @@ export const WS_METHODS = {
   agentdPeople: "agentd.people",
   agentdConnectAgent: "agentd.connectAgent",
   agentdJoinTeam: "agentd.joinTeam",
+  agentdTaskOthers: "agentd.taskOthers",
   agentdSubscribeTeamNode: "agentd.subscribeTeamNode",
   agentdSetTeamNode: "agentd.setTeamNode",
   agentdTeamNodeForeground: "agentd.teamNodeForeground",
@@ -2345,6 +2348,12 @@ const WsAgentdJoinTeamRpc = Rpc.make(WS_METHODS.agentdJoinTeam, {
   error: AgentdRpcError,
 });
 
+const WsAgentdTaskOthersRpc = Rpc.make(WS_METHODS.agentdTaskOthers, {
+  payload: AgentdTaskOthersInput,
+  success: Schema.Array(AgentdTaskOther),
+  error: AgentdRpcError,
+});
+
 const WsAgentdSubscribeTeamNodeRpc = Rpc.make(WS_METHODS.agentdSubscribeTeamNode, {
   payload: Schema.Struct({}),
   success: AgentdTeamNodeStatus,
@@ -2592,6 +2601,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsAgentdPeopleRpc,
   WsAgentdConnectAgentRpc,
   WsAgentdJoinTeamRpc,
+  WsAgentdTaskOthersRpc,
   WsAgentdSubscribeTeamNodeRpc,
   WsAgentdSetTeamNodeRpc,
   WsAgentdTeamNodeForegroundRpc,

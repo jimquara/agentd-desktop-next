@@ -156,10 +156,18 @@ export const AgentdWhoJson = Schema.Struct({
           path: NullableString,
           resource: NullableString,
           since: NullableString,
+          handoff: NullableString,
+          issue: NullableString,
+          activity: NullableString,
+          state: NullableString,
+          via: NullableString,
         }),
       ),
     ),
   ),
+  resource: NullableString,
+  server: NullableString,
+  server_note: NullableString,
 });
 
 export const AgentdDoctorCheck = Schema.Struct({
@@ -372,6 +380,19 @@ export type AgentdJoinTeamInput = typeof AgentdJoinTeamInput.Type;
 export const AgentdCommandOutput = Schema.Struct({ output: Schema.String });
 export type AgentdCommandOutput = typeof AgentdCommandOutput.Type;
 
+export const AgentdTaskOthersInput = Schema.Struct({
+  cwd: AbsolutePath,
+  issue: Schema.NullOr(IssueRef),
+});
+export type AgentdTaskOthersInput = typeof AgentdTaskOthersInput.Type;
+
+export const AgentdTaskOther = Schema.Struct({
+  person: Schema.NullOr(Schema.String),
+  work: Schema.NullOr(Schema.String),
+  activity: Schema.NullOr(Schema.String),
+  paths: Schema.Array(Schema.String),
+});
+export type AgentdTaskOther = typeof AgentdTaskOther.Type;
 /** This environment as a team node: `agentd worker --accept-server-work`, run by the server. */
 export const AgentdTeamNodeState = Schema.Literals(["off", "waiting", "working", "failed"]);
 export type AgentdTeamNodeState = typeof AgentdTeamNodeState.Type;

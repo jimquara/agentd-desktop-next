@@ -38,6 +38,7 @@ import { Label } from "../ui/label";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { Textarea } from "../ui/textarea";
 import { toastManager } from "../ui/toast";
+import { StartTaskOthers } from "./StartTaskOthers";
 import {
   conversationTaskDraft,
   EMPTY_TASK_FIELDS,
@@ -447,6 +448,14 @@ function StartTaskDialog({
             </div>
           )}
         </DialogPanel>
+        <StartTaskOthers
+          environmentId={environmentId}
+          input={
+            cwd !== null && canStart && !drafting && issueReason === null && offeredId === null
+              ? { cwd, issue: validation.input.issue }
+              : null
+          }
+        />
         <DialogFooter>
           <Button type="button" variant="outline" disabled={starting} onClick={onClose}>
             {offeredId === null ? <T>Cancel</T> : <T>Close</T>}

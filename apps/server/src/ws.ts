@@ -3601,6 +3601,7 @@ export const layerWsRpc = (
         [WS_METHODS.agentdPeople]: (input) => agentd.people(input),
         [WS_METHODS.agentdConnectAgent]: (input) => agentd.connectAgent(input),
         [WS_METHODS.agentdJoinTeam]: (input) => agentd.joinTeam(input),
+        [WS_METHODS.agentdTaskOthers]: (input) => agentd.taskOthers(input),
         [WS_METHODS.agentdSubscribeTeamNode]: (_input) => teamNode.subscribe,
         [WS_METHODS.agentdSetTeamNode]: (input) => teamNode.set(input),
         [WS_METHODS.agentdTeamNodeForeground]: (_input) => teamNode.foreground,

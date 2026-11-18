@@ -1,7 +1,12 @@
 import "~/index.css";
 
 import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environment";
-import { AgentdCommandError, type AgentdStartTaskResult, ThreadId } from "@t3tools/contracts";
+import {
+  AgentdCommandError,
+  type AgentdStartTaskResult,
+  type AgentdTaskOther,
+  ThreadId,
+} from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
 import { AsyncResult } from "effect/reactivity";
 import { expect, it, vi } from "vite-plus/test";
@@ -19,6 +24,7 @@ const state = vi.hoisted(() => ({
   start: vi.fn(),
   refresh: vi.fn(),
   branch: "feature/export",
+  others: [] as AgentdTaskOther[],
 }));
 
 vi.mock("~/lib/agentdState", async () => {
@@ -27,6 +33,7 @@ vi.mock("~/lib/agentdState", async () => {
   return {
     agentdEnvironment: { startTask: { permissionAtom: () => allowed } },
     useAgentdStatus: () => ({ data: { defaultWorker: "opencode" } }),
+    useAgentdTaskOthers: () => ({ data: state.others, isPending: false, isSuccess: true }),
   };
 });
 vi.mock("~/state/entities", () => ({
@@ -52,6 +59,7 @@ const parentKey = scopedThreadKey(parentRef);
 
 function setup(branch: string) {
   state.branch = branch;
+  state.others = [];
   state.start.mockReset();
   state.refresh
     .mockReset()
@@ -84,6 +92,7 @@ async function fillTask() {
 
 it("shows what is missing, displays a refusal in full, and opens the tasks pane on success", async () => {
   setup("feature/export");
+  state.others = [{ person: "Bob", work: "acme/app#42", activity: null, paths: ["src/export.ts"] }];
   const refusal = "Task refused: worker is not connected.\n  Run setup and try again.";
   state.start
     .mockResolvedValueOnce(
@@ -113,6 +122,9 @@ it("shows what is missing, displays a refusal in full, and opens the tasks pane 
     .toHaveValue("/repo/worktrees/export");
 
   await fillTask();
+  const notice = page.getByRole("status").filter({ hasText: "Others are working here" });
+  await expect.element(notice.getByText("Bob: acme/app#42")).toBeVisible();
+  await expect.element(notice.getByText("src/export.ts")).toBeVisible();
   await start.click();
   await expect.element(page.getByRole("alert")).toBeVisible();
   expect(page.getByRole("alert").element().textContent).toBe(refusal);

@@ -1,10 +1,13 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { describe, expect, it } from "@effect/vitest";
 import * as HostProcess from "@t3tools/shared/HostProcess";
+import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
+import * as Fiber from "effect/Fiber";
 import * as FileSystem from "effect/FileSystem";
 import * as Stream from "effect/Stream";
 import { ChildProcessSpawner } from "effect/process";
+import * as TestClock from "effect/testing/TestClock";
 
 import * as BackgroundPolicy from "../background/BackgroundPolicy.ts";
 import * as ProcessRunner from "../processRunner.ts";
@@ -349,5 +352,126 @@ describe("AgentdBridge", () => {
         ],
       ]);
     }),
+  );
+
+  it.effect("combines issue and repository holdings without naming the user or finished work", () =>
+    Effect.gen(function* () {
+      const cwd = "C:\\work\\app";
+      const issue = "acme/app#42";
+      const bob = { user: "Bob", via: "server", handoff: "hof-abcd42" };
+      const file = { ...bob, resource: "repo:github.com/acme/app#src/login.ts" };
+      const results = new Map([
+        [cwd, { resource: "tree:github.com/acme/app@feature", holders: [] }],
+        [
+          issue,
+          {
+            holders: [
+              { ...bob, resource: issue, activity: "Fix login", state: "claimed" },
+              file,
+              { user: "Les", via: "server", resource: issue, handoff: "hof-abcd43" },
+              { user: "Tess", resource: issue, handoff: "hof-abcd44", state: "done" },
+            ],
+          },
+        ],
+        [
+          "acme/app",
+          {
+            holders: [
+              { user: "work-account", resource: "tree:github.com/acme/app@elsewhere" },
+              { ...bob, path: "/work/app", resource: "tree:github.com/acme/app@elsewhere" },
+            ],
+          },
+        ],
+        [
+          "repo:github.com/acme/app#",
+          {
+            holders: [file, { user: "Ari", resource: "repo:github.com/acme/app#README.md" }],
+          },
+        ],
+      ]);
+      const bridge = yield* makeBridge(
+        { AGENTD_BIN: process.execPath, AGENTD_USER: "work-account" },
+        ({ args }) => {
+          if (args[0] === "doctor") return Effect.succeed(output(DOCTOR_JSON, 1));
+          const answer = args[0] === "who" && results.get(args[1]!);
+          return answer
+            ? Effect.succeed(output(JSON.stringify({ ...answer, server: "https://team.example" })))
+            : Effect.die(`unexpected agentd ${args.join(" ")}`);
+        },
+      );
+
+      expect(yield* bridge.taskOthers({ cwd, issue })).toEqual([
+        {
+          person: "Bob",
+          work: "hof-abcd42",
+          activity: "Fix login",
+          paths: ["src/login.ts", "/work/app"],
+        },
+        { person: "Ari", work: null, activity: null, paths: ["README.md"] },
+      ]);
+    }),
+  );
+
+  it.effect("does not ask who when the environment is off a team", () =>
+    Effect.gen(function* () {
+      const bridge = yield* makeBridge({ AGENTD_BIN: process.execPath }, ({ args }) =>
+        args[0] === "doctor"
+          ? Effect.succeed(
+              output(
+                '{"checks":[{"id":"server","status":"pass","detail":"not joined to an agentd server: local mode"}]}',
+              ),
+            )
+          : Effect.die(`unexpected agentd ${args.join(" ")}`),
+      );
+
+      expect(yield* bridge.taskOthers({ cwd: "/repo", issue: null })).toEqual([]);
+    }),
+  );
+
+  it.effect.each(["error", "server_note", "slow"] as const)(
+    "discards partial overlap answers when a who lookup returns %s",
+    (failure) =>
+      Effect.gen(function* () {
+        const issueStarted = yield* Deferred.make<void>();
+        const bridge = yield* makeBridge(
+          { AGENTD_BIN: process.execPath, AGENTD_USER: "work-account" },
+          ({ args }) => {
+            if (args[0] === "doctor") return Effect.succeed(output(DOCTOR_JSON, 1));
+            if (args[0] === "who" && args[1] === "/repo") {
+              return Effect.succeed(
+                output(
+                  '{"server":"https://team.example","holders":[{"user":"Bob","path":"/repo"}]}',
+                ),
+              );
+            }
+            if (args[0] === "who" && args[1] === "acme/app#42") {
+              switch (failure) {
+                case "error":
+                  return Effect.succeed(output("lookup failed", 1));
+                case "server_note":
+                  return Effect.succeed(
+                    output(
+                      '{"server":"https://team.example","server_note":"lookup failed","holders":[]}',
+                    ),
+                  );
+                case "slow":
+                  return Deferred.succeed(issueStarted, undefined).pipe(
+                    Effect.andThen(Effect.never),
+                  );
+              }
+            }
+            return Effect.die(`unexpected agentd ${args.join(" ")}`);
+          },
+        );
+
+        const result = yield* bridge
+          .taskOthers({ cwd: "/repo", issue: "acme/app#42" })
+          .pipe(Effect.forkScoped);
+        if (failure === "slow") {
+          yield* Deferred.await(issueStarted);
+          yield* TestClock.adjust("3 seconds");
+        }
+        expect(yield* Fiber.join(result)).toEqual([]);
+      }),
   );
 });

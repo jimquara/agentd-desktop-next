@@ -97,6 +97,12 @@ export function createAgentdEnvironmentAtoms<R, E>(
           registry.refresh(status({ environmentId: target.environmentId, input: {} })),
         ),
     }),
+    taskOthers: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:agentd:task-others",
+      tag: WS_METHODS.agentdTaskOthers,
+      idleTtlMs: 0,
+      staleTimeMs: 0,
+    }),
     teamNode: createEnvironmentRpcSubscriptionAtomFamily(runtime, {
       label: "environment-data:agentd:team-node",
       tag: WS_METHODS.agentdSubscribeTeamNode,
