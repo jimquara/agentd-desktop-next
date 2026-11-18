@@ -2,8 +2,6 @@ import { RegistryContext } from "@effect/atom-react";
 import {
   AuthOrchestrationOperateScope,
   AuthOrchestrationReadScope,
-  AuthRelayReadScope,
-  AuthRelayWriteScope,
   AuthTerminalOperateScope,
   EnvironmentId,
   ProjectId,
@@ -12,7 +10,6 @@ import {
   type AgentSessionProjectCandidate,
   type AuthEnvironmentScope,
   type AuthSessionState,
-  type EnvironmentCloudLinkStateResult,
   type ServerProvider,
 } from "@t3tools/contracts";
 import { AsyncResult, Atom } from "effect/reactivity";
@@ -41,11 +38,6 @@ const state = vi.hoisted(() => ({
   scan: vi.fn(),
   refreshScan: vi.fn(),
   waitForProject: vi.fn(),
-  cloud: false,
-  auth: { isLoaded: true, isSignedIn: false, userId: null as string | null },
-  linkState: null as unknown,
-  linkError: null as string | null,
-  refreshLinkState: vi.fn(),
   scanError: null as string | null,
   scanPending: false,
   runningTerminalIds: null as unknown,
@@ -61,34 +53,6 @@ vi.mock(import("@t3tools/client-runtime/state/session"), async (original) => {
     createEnvironmentSessionAtoms: ((runtime: never) => ({
       ...actual.createEnvironmentSessionAtoms(runtime),
       sessionStateAtom: (id: EnvironmentId) => state.sessions.get(id),
-    })) as never,
-  };
-});
-vi.mock(import("../../cloud/publicConfig"), async (original) => ({
-  ...(await original()),
-  hasCloudPublicConfig: () => state.cloud,
-}));
-vi.mock(import("@clerk/react"), async (original) => ({
-  ...(await original()),
-  useAuth: (() => state.auth) as never,
-}));
-vi.mock(import("../clerk/clerkLoadFailure"), async (original) => ({
-  ...(await original()),
-  useClerkLoadFailed: () => false,
-}));
-vi.mock(import("../clerk/useT3ConnectAuthPrompt"), async (original) => ({
-  ...(await original()),
-  useT3ConnectAuthPrompt: (() => ({ openAuthPrompt: () => {} })) as never,
-}));
-vi.mock(import("../../cloud/cloudLinkState"), async (original) => {
-  const { useAtomValue } = await import("@effect/atom-react");
-  return {
-    ...(await original()),
-    useCloudLinkState: (() => ({
-      data: useAtomValue(state.linkState as Atom.Atom<EnvironmentCloudLinkStateResult | null>),
-      error: state.linkError,
-      isPending: false,
-      refresh: state.refreshLinkState,
     })) as never,
   };
 });
@@ -208,6 +172,11 @@ const readyClaude: ServerProvider = {
   models: [],
   slashCommands: [],
   skills: [],
+};
+const openCode = {
+  ...readyClaude,
+  instanceId: ProviderInstanceId.make("opencode"),
+  driver: ProviderDriverKind.make("opencode"),
 };
 const permissionMessage = "This connection cannot import projects or thread history.";
 
@@ -356,11 +325,6 @@ function setup() {
   state.scan.mockReset();
   state.refreshScan.mockReset();
   state.waitForProject.mockReset().mockImplementation(waitForRecordedProject);
-  state.cloud = false;
-  state.auth = { isLoaded: true, isSignedIn: false, userId: null };
-  state.linkState = Atom.make<EnvironmentCloudLinkStateResult | null>(null).pipe(Atom.keepAlive);
-  state.linkError = null;
-  state.refreshLinkState.mockReset();
   state.scanError = null;
   state.scanPending = false;
   state.runningTerminalIds = Atom.make<ReadonlyArray<string>>([]).pipe(Atom.keepAlive);
@@ -379,7 +343,7 @@ it("rechecks after project creation and can retry its history without recreating
     return recordProject(input);
   });
   await using _screen = await mountWelcome();
-  await click("Import 2 projects and start");
+  await click("Continue");
   expect(state.createProject).toHaveBeenCalledOnce();
   await act(async () => {
     setGrant(primaryId, false);
@@ -393,7 +357,7 @@ it("rechecks after project creation and can retry its history without recreating
 
   await act(async () => setGrant(primaryId, true));
   // The first project now exists, so only the second counts as new.
-  await click("Import 1 project and start");
+  await click("Continue");
   expect(state.createProject).toHaveBeenCalledTimes(2);
   expect(state.importThreads).toHaveBeenCalledTimes(2);
   expect(state.onDone).toHaveBeenCalledOnce();
@@ -407,7 +371,7 @@ it("completes accepted imports when permission is revoked after the final server
     AsyncResult.success(await imported.promise),
   );
   await using _screen = await mountWelcome();
-  await click("Import 1 project and start");
+  await click("Continue");
   await act(async () => {
     setGrant(primaryId, false);
     imported.resolve({ importedCount: 1, skippedCount: 0 });
@@ -429,13 +393,13 @@ it("finishes setup without landing when the imported project never reaches the c
   await using _screen = await mountWelcome();
   using toastAdd = vi.spyOn(toastManager, "add");
 
-  await click("Import 1 project and start");
+  await click("Continue");
   await vi.waitFor(() => expect(state.completeOnboarding).toHaveBeenCalledOnce());
   // A failed completion hands the step back instead of leaving it importing.
-  await vi.waitFor(() => expect(button("Import 1 project and start").disabled).toBe(false));
+  await vi.waitFor(() => expect(button("Continue").disabled).toBe(false));
   expect(state.onDone).not.toHaveBeenCalled();
 
-  await click("Import 1 project and start");
+  await click("Continue");
   await vi.waitFor(() => expect(state.onDone).toHaveBeenCalledOnce());
   expect(state.onDone).toHaveBeenCalledWith(undefined);
   // The retry skips the project it already imported, but still counts its thread.
@@ -446,13 +410,41 @@ it("finishes setup without landing when the imported project never reaches the c
   );
 });
 
-it("waits for a ready agent to start, and Start without an agent still finishes setup", async () => {
+it("shows the three agents in order and enables Continue when one is ready", async () => {
   using _now = setup();
-  appAtomRegistry.set(state.providers as Atom.Writable<ReadonlyArray<ServerProvider>>, []);
-  await using _screen = await mountWelcome();
-  expect(button("Import 2 projects and start").disabled).toBe(true);
+  const codex: ServerProvider = {
+    ...readyClaude,
+    instanceId: ProviderInstanceId.make("codex"),
+    driver: ProviderDriverKind.make("codex"),
+    status: "error",
+    auth: { status: "unauthenticated" },
+  };
+  const missingOpenCode: ServerProvider = {
+    ...openCode,
+    installed: false,
+    status: "error",
+    auth: { status: "unknown" },
+  };
+  const providers = state.providers as Atom.Writable<ReadonlyArray<ServerProvider>>;
+  appAtomRegistry.set(providers, [missingOpenCode, codex]);
+  await using screen = await mountWelcome();
+  const rows = screen.getByRole("region", { name: "Agents" }).getByRole("listitem");
+  expect(rows.all()).toHaveLength(3);
+  const expected = [
+    ["Claude Code", "Checking…"],
+    ["Codex", "Needs sign-in"],
+    ["opencode", "Not installed"],
+  ] as const;
+  for (const [index, [name, status]] of expected.entries()) {
+    const row = rows.nth(index);
+    await expect.element(row.getByText(name, { exact: true })).toBeVisible();
+    await expect.element(row.getByText(status, { exact: true })).toBeVisible();
+  }
+  expect(button("Continue").disabled).toBe(true);
 
-  await click("Start without an agent");
+  await act(async () => appAtomRegistry.set(providers, [missingOpenCode, readyClaude, codex]));
+  await expect.element(rows.nth(0).getByText("Ready", { exact: true })).toBeVisible();
+  await click("Continue");
   await vi.waitFor(() => expect(state.onDone).toHaveBeenCalledOnce());
   expect(state.createProject).toHaveBeenCalledTimes(2);
 });
@@ -472,7 +464,7 @@ it("blocks leaving the page until the imported projects have landed", async () =
     },
   );
   await using screen = await mountWelcome();
-  await click("Import 2 projects and start");
+  await click("Continue");
 
   // A blocked navigation never settles, so it is not awaited.
   const leave = () =>
@@ -522,12 +514,12 @@ it("gives projects a later scan finds the default, unless the main box was unche
   await click("Review all 2");
   await click("Select none");
   await findProject("/projects/third");
-  await vi.waitFor(() => expect(button("Import 1 project and start").disabled).toBe(false));
+  await vi.waitFor(() => expect(button("Continue").disabled).toBe(false));
 
   const importProjects = document.querySelector<HTMLElement>('[role="checkbox"]');
   await act(async () => importProjects?.click());
   await findProject("/projects/fourth");
-  await vi.waitFor(() => expect(button("Start").disabled).toBe(false));
+  await vi.waitFor(() => expect(button("Continue").disabled).toBe(false));
 });
 
 it("keeps the project choice across a visit to Settings until setup finishes", async () => {
@@ -536,18 +528,18 @@ it("keeps the project choice across a visit to Settings until setup finishes", a
     await using _first = await mountWelcome();
     const importProjects = document.querySelector<HTMLElement>('[role="checkbox"]');
     await act(async () => importProjects?.click());
-    await vi.waitFor(() => expect(button("Start").disabled).toBe(false));
+    await vi.waitFor(() => expect(button("Continue").disabled).toBe(false));
   }
   // Coming back from Settings mounts the page again.
   {
     await using _second = await mountWelcome();
-    expect(button("Start").disabled).toBe(false);
-    await click("Start");
+    expect(button("Continue").disabled).toBe(false);
+    await click("Continue");
     await vi.waitFor(() => expect(state.onDone).toHaveBeenCalledOnce());
     expect(state.createProject).not.toHaveBeenCalled();
   }
   await using _third = await mountWelcome();
-  expect(button("Import 2 projects and start").disabled).toBe(false);
+  expect(button("Continue").disabled).toBe(false);
 });
 
 it("stays busy while setup saves after an import with nothing to open", async () => {
@@ -558,7 +550,7 @@ it("stays busy while setup saves after an import with nothing to open", async ()
   state.completeOnboarding.mockImplementationOnce(() => saved.promise);
   await using _screen = await mountWelcome();
 
-  await click("Import 1 project and start");
+  await click("Continue");
   await vi.waitFor(() => expect(state.completeOnboarding).toHaveBeenCalledOnce());
   expect(button("Importing…").disabled).toBe(true);
   await act(async () => {
@@ -594,7 +586,7 @@ it("leaves projects already in T3 Code out of the default import, unless the box
   const importProjects = document.querySelector<HTMLElement>('[role="checkbox"]');
   await act(async () => importProjects?.click());
   await vi.waitFor(() => expect(pageText()).toContain("Import 2 projects and their threads"));
-  expect(button("Import threads and start").disabled).toBe(false);
+  expect(button("Continue").disabled).toBe(false);
 });
 
 it("keeps the started projects checked when the page opens again after a quit", async () => {
@@ -605,7 +597,7 @@ it("keeps the started projects checked when the page opens again after a quit", 
   );
   {
     await using _first = await mountWelcome();
-    await click("Import 2 projects and start");
+    await click("Continue");
     await vi.waitFor(() => expect(state.importThreads).toHaveBeenCalledOnce());
   }
   // The app quit during the first project's history; it now exists in T3 Code.
@@ -626,7 +618,7 @@ it("keeps the project controls when a later scan fails", async () => {
     appAtomRegistry.set(candidatesAtom(), [...appAtomRegistry.get(candidatesAtom())]),
   );
   await vi.waitFor(() => expect(pageText()).toContain("Could not check projects again."));
-  expect(button("Import 2 projects and start").disabled).toBe(false);
+  expect(button("Continue").disabled).toBe(false);
   expect(button("Retry").disabled).toBe(false);
 });
 
@@ -637,7 +629,7 @@ it("keeps saved picks when Start comes before the project list loads", async () 
   state.scanPending = true;
   await using _screen = await mountWelcome();
 
-  await click("Start");
+  await click("Continue");
   await vi.waitFor(() => expect(state.onDone).toHaveBeenCalledOnce());
   // An import a quit cut short is still checked on the next visit.
   expect(localStorage.getItem(welcomeImportSelectionKey(primaryId))).toBe(saved);
@@ -662,10 +654,10 @@ it("offers Update for a signed-in agent whose version is broken, and keeps Start
     (element) => element.textContent?.trim() === "Update",
   );
   expect(update?.getAttribute("href")).toContain("/settings/providers");
-  expect(button("Import 2 projects and start").disabled).toBe(true);
+  expect(button("Continue").disabled).toBe(true);
 });
 
-it("checks an agent again once its install command finishes in the setup terminal", async () => {
+it("installs and signs in to opencode from its row, rechecking after the install command exits", async () => {
   using _now = setup();
   appAtomRegistry.set(
     sessionAtom(primaryId),
@@ -677,16 +669,18 @@ it("checks an agent again once its install command finishes in the setup termina
     keybindings: [],
     settings: { providerInstances: {}, projectSettingsOverrides: {} },
   });
-  appAtomRegistry.set(state.providers as Atom.Writable<ReadonlyArray<ServerProvider>>, [
-    { ...readyClaude, installed: false, status: "error", auth: { status: "unknown" } },
+  const providers = state.providers as Atom.Writable<ReadonlyArray<ServerProvider>>;
+  appAtomRegistry.set(providers, [
+    { ...openCode, installed: false, status: "error", auth: { status: "unknown" } },
   ]);
   await using _screen = await mountWelcome();
   await vi.waitFor(() => button("Install"));
   await click("Install");
   await vi.waitFor(() => expect(state.writeTerminal).toHaveBeenCalledOnce());
+  expect(state.writeTerminal.mock.calls[0]![0].input.data).toBe("npm install -g opencode-ai");
   const { terminalId } = state.openTerminal.mock.calls[0]![0].input;
   const runningTerminalIds = state.runningTerminalIds as Atom.Writable<ReadonlyArray<string>>;
-  const recheck = { environmentId: primaryId, input: { instanceId: readyClaude.instanceId } };
+  const recheck = { environmentId: primaryId, input: { instanceId: openCode.instanceId } };
 
   await act(async () => appAtomRegistry.set(runningTerminalIds, [terminalId]));
   expect(state.refreshProviders).not.toHaveBeenCalledWith(recheck);
@@ -694,6 +688,15 @@ it("checks an agent again once its install command finishes in the setup termina
   await act(async () => appAtomRegistry.set(runningTerminalIds, []));
   expect(state.refreshProviders).toHaveBeenCalledWith(recheck);
   expect(state.closeTerminal).not.toHaveBeenCalled();
+
+  await act(async () =>
+    appAtomRegistry.set(providers, [
+      { ...openCode, status: "warning", auth: { status: "unknown" } },
+    ]),
+  );
+  await click("Sign in");
+  await vi.waitFor(() => expect(state.writeTerminal).toHaveBeenCalledTimes(2));
+  expect(state.writeTerminal.mock.calls[1]![0].input.data).toBe("opencode auth login");
 });
 
 it("keeps an import opt-out on the page when storage cannot save it", async () => {
@@ -705,41 +708,41 @@ it("keeps an import opt-out on the page when storage cannot save it", async () =
   const importProjects = document.querySelector<HTMLElement>('[role="checkbox"]');
   await act(async () => importProjects?.click());
 
-  await click("Start");
+  await click("Continue");
   await vi.waitFor(() => expect(state.onDone).toHaveBeenCalledOnce());
   expect(state.createProject).not.toHaveBeenCalled();
 });
 
-it("opens the list of agents to add once the checks find none, even after a wrong first status", async () => {
+it("keeps other agents behind More agents, even when one of them is ready", async () => {
   using _now = setup();
   const pi = {
     ...readyClaude,
     instanceId: ProviderInstanceId.make("pi"),
     driver: ProviderDriverKind.make("pi"),
   };
-  // Pi's first status says installed before its check runs.
   appAtomRegistry.set(state.providers as Atom.Writable<ReadonlyArray<ServerProvider>>, [
-    { ...pi, status: "warning", auth: { status: "unknown" } },
+    { ...pi, displayName: "Pi" },
   ]);
-  await using _screen = await mountWelcome();
-  await act(async () =>
-    appAtomRegistry.set(state.providers as Atom.Writable<ReadonlyArray<ServerProvider>>, [
-      { ...pi, installed: false, status: "error", auth: { status: "unknown" } },
-    ]),
-  );
-  const fold = () =>
-    [...document.querySelectorAll("button")].find((element) =>
-      element.textContent?.startsWith("Set up an agent"),
-    );
-  await vi.waitFor(() => expect(fold()?.getAttribute("aria-expanded")).toBe("true"));
+  await using screen = await mountWelcome();
+  const more = screen.getByRole("button", { name: "More agents" });
+  await expect.element(more).toHaveAttribute("aria-expanded", "false");
+  expect(button("Continue").disabled).toBe(false);
+  await more.click();
+  await expect.element(screen.getByText("Pi", { exact: true })).toBeVisible();
+});
 
-  // Turning an agent on starts a new check; the open list stays where the user is working.
-  await act(async () =>
-    appAtomRegistry.set(state.providers as Atom.Writable<ReadonlyArray<ServerProvider>>, [
-      { ...pi, installed: false, status: "warning", auth: { status: "unknown" } },
-    ]),
-  );
-  expect(fold()?.getAttribute("aria-expanded")).toBe("true");
+it("opens both alternate setup screens and returns to the agent list", async () => {
+  using _now = setup();
+  await using screen = await mountWelcome();
+  const firstHeading = screen.getByRole("heading", { name: "Connect an agent you already use" });
+
+  for (const alternate of ["Use an API key or gateway", "Join a team"]) {
+    await screen.getByRole("link", { name: alternate }).click();
+    await expect.element(screen.getByRole("heading", { name: alternate })).toBeVisible();
+    await expect.element(firstHeading).not.toBeInTheDocument();
+    await screen.getByRole("link", { name: "Back" }).click();
+    await expect.element(firstHeading).toBeVisible();
+  }
 });
 
 it("starts without importing when this connection cannot import projects", async () => {
@@ -748,69 +751,7 @@ it("starts without importing when this connection cannot import projects", async
   await using _screen = await mountWelcome();
   expect(pageText()).not.toContain("Review all");
 
-  await click("Start");
+  await click("Continue");
   await vi.waitFor(() => expect(state.onDone).toHaveBeenCalledOnce());
   expect(state.createProject).not.toHaveBeenCalled();
-});
-
-it("says the phone is set up only once this computer is shared with the signed-in account", async () => {
-  using _now = setup();
-  state.cloud = true;
-  state.auth = { isLoaded: true, isSignedIn: true, userId: "user_1" };
-  appAtomRegistry.set(
-    sessionAtom(primaryId),
-    AsyncResult.success(
-      session([AuthOrchestrationOperateScope, AuthRelayReadScope, AuthRelayWriteScope]),
-    ),
-  );
-  state.linkError = "Could not read T3 Connect link state.";
-  await using _screen = await mountWelcome();
-  await click("Set up");
-  // A failed read says so instead of asking to share the computer again.
-  await vi.waitFor(() => expect(pageText()).toContain("Could not check T3 Connect."));
-  expect(pageText()).not.toContain("Set up T3 Connect");
-
-  state.linkError = null;
-  await act(async () =>
-    appAtomRegistry.set(state.linkState as Atom.Writable<EnvironmentCloudLinkStateResult | null>, {
-      linked: false,
-      cloudUserId: null,
-      relayUrl: null,
-      relayIssuer: null,
-      publishAgentActivity: false,
-    }),
-  );
-  // Signed in, but "Not now" on the share step left this computer unreachable.
-  await vi.waitFor(() => expect(pageText()).toContain("Set up T3 Connect"));
-
-  const share = (reachability: EnvironmentCloudLinkStateResult["reachability"]) =>
-    act(async () =>
-      appAtomRegistry.set(
-        state.linkState as Atom.Writable<EnvironmentCloudLinkStateResult | null>,
-        {
-          linked: true,
-          cloudUserId: "user_1",
-          relayUrl: null,
-          relayIssuer: null,
-          managedTunnelActive: true,
-          publishAgentActivity: true,
-          reachability,
-        },
-      ),
-    );
-  const checkedAt = "2026-01-01T00:00:00.000Z";
-  await share({
-    status: "unreachable",
-    checkedAt,
-    cause: "connector_not_running",
-    reason: "The tunnel is not running.",
-    hint: null,
-    fix: "Turn T3 Connect off and on.",
-  });
-  await vi.waitFor(() => expect(pageText()).toContain("Check T3 Connect"));
-  expect(pageText()).not.toContain("Your phone can reach this computer.");
-
-  await share({ status: "reachable", checkedAt, readyConnections: 4, protocol: "quic" });
-  await vi.waitFor(() => expect(pageText()).toContain("Your phone can reach this computer."));
-  expect(pageText()).not.toContain("Check T3 Connect");
 });

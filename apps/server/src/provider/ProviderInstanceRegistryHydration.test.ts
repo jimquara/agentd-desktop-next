@@ -3,6 +3,7 @@ import {
   ProjectId,
   ProviderDriverKind,
   ProviderInstanceId,
+  resolveProjectProviderInstanceEnabled,
   SecretProviderId,
   SecretProviderKind,
   type ServerSettings,
@@ -33,6 +34,25 @@ function settingsWith(overrides: Partial<ServerSettings>): ServerSettings {
 }
 
 describe("deriveProviderInstanceConfigMap", () => {
+  it("checks the default OpenCode installation unless explicitly turned off", () => {
+    const openCodeId = ProviderInstanceId.make("opencode");
+    const driver = ProviderDriverKind.make("opencode");
+    const defaults = settingsWith({});
+    const disabled = settingsWith({
+      providerInstances: { [openCodeId]: { driver, enabled: false } },
+    });
+    expect(deriveProviderInstanceConfigMap(defaults)[openCodeId]).toEqual({
+      driver,
+      enabled: true,
+    });
+    expect(resolveProjectProviderInstanceEnabled(defaults, null, openCodeId)).toBe(true);
+    expect(deriveProviderInstanceConfigMap(disabled)[openCodeId]).toEqual({
+      driver,
+      enabled: false,
+    });
+    expect(resolveProjectProviderInstanceEnabled(disabled, null, openCodeId)).toBe(false);
+  });
+
   it("turns a machine-disabled instance on when a project enables it", () => {
     const settings = settingsWith({
       providerInstances: {
