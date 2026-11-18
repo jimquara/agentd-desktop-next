@@ -103,7 +103,11 @@ const make = Effect.fn("AgentdInit.make")(function* () {
       })
       .pipe(Effect.option);
     if (spawned._tag === "None") {
-      yield* SubscriptionRef.update(state, (s) => ({ ...s, phase: "failed", stopped: "spawn" }));
+      yield* SubscriptionRef.update(state, (s): AgentdSetupState => ({
+        ...s,
+        phase: "failed",
+        stopped: "spawn",
+      }));
       return;
     }
     const proc = spawned.value;
