@@ -67,6 +67,19 @@ function applyLoginShellEnvironment(
   }
 }
 
+// Where agent CLIs install themselves (Claude Code's installer: ~/.local/bin). Appended so an app
+// opened from Finder still finds them when the login shell capture times out or misses them.
+function appendUserBinDirectories(env: NodeJS.ProcessEnv, platform: NodeJS.Platform): void {
+  const home = env.HOME;
+  const directories = [
+    ...(home ? [`${home}/.local/bin`, `${home}/.claude/local`, `${home}/bin`] : []),
+    ...(platform === "darwin" ? ["/opt/homebrew/bin"] : []),
+    "/usr/local/bin",
+  ];
+  const mergedPath = mergePathEntries(env.PATH, directories.join(":"), platform);
+  if (mergedPath) env.PATH = mergedPath;
+}
+
 function hydratePosixPath(env: NodeJS.ProcessEnv, platform: NodeJS.Platform): void {
   let shellEnvironment: Partial<Record<string, string>> = {};
   let waitedForSlowShell = false;
@@ -148,6 +161,7 @@ export const fixPath = Effect.fn("fixPath")(function* (options?: {
       }),
     ),
   );
+  appendUserBinDirectories(env, platform);
   if (options?.shellEnvironmentPrepared === true) return;
   yield* Effect.sync(() => hydratePosixPath(env, platform)).pipe(
     Effect.catchDefect((defect) =>
