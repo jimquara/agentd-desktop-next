@@ -67,6 +67,7 @@ export const agentdArgs = {
   approvals: () => ["approval", "list", "--state", "pending", "--json"],
   inbox: () => ["inbox", "list", "--mine", "--json"],
   users: () => ["user", "list", "--json"],
+  nodes: () => ["server", "nodes", "--json"],
   who: (target: string) => ["who", text("target", target), "--json"],
   cancel: (id: string, reason: string) => [
     "handoff",

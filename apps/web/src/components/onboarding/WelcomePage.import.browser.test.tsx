@@ -739,18 +739,69 @@ it("keeps other agents behind More agents, even when one of them is ready", asyn
   await expect.element(screen.getByText("Pi", { exact: true })).toBeVisible();
 });
 
-it("opens both alternate setup screens and returns to the agent list", async () => {
+it("shows only compatible endpoints and keeps the Gateway shortcut selected", async () => {
   using _now = setup();
   await using screen = await mountWelcome();
   const firstHeading = screen.getByRole("heading", { name: "Connect an agent you already use" });
+  const endpointHeading = screen.getByRole("heading", { name: "Use an API key or gateway" });
+  const options = screen.getByRole("list", { name: "Endpoint options" });
 
-  for (const alternate of ["Use an API key or gateway", "Join a team"]) {
-    await screen.getByRole("link", { name: alternate }).click();
-    await expect.element(screen.getByRole("heading", { name: alternate })).toBeVisible();
-    await expect.element(firstHeading).not.toBeInTheDocument();
-    await screen.getByRole("link", { name: "Back" }).click();
-    await expect.element(firstHeading).toBeVisible();
+  await screen.getByRole("link", { name: "Use an API key or gateway" }).click();
+  await expect.element(endpointHeading).toBeVisible();
+  await expect.element(options).not.toBeInTheDocument();
+  for (const [agent, expected] of [
+    [
+      "Claude Code",
+      ["LibraOS Gateway", "Anthropic API key", "AWS Bedrock", "Ollama", "Custom endpoint"],
+    ],
+    ["Codex", ["LibraOS Gateway", "OpenAI API key", "AWS Bedrock", "Ollama", "Custom endpoint"]],
+    [
+      "opencode",
+      [
+        "LibraOS Gateway",
+        "Anthropic API key",
+        "OpenAI API key",
+        "AWS Bedrock",
+        "Ollama",
+        "Custom endpoint",
+      ],
+    ],
+  ] as const) {
+    await screen.getByRole("radio", { name: agent, exact: true }).click();
+    await expect
+      .element(options.getByRole("button").first())
+      .toHaveAccessibleName("LibraOS Gateway");
+    expect(options.getByRole("button").elements()).toHaveLength(expected.length);
+    for (const name of expected) {
+      const option = options.getByRole("button", { name, exact: true });
+      await expect.element(option).toBeDisabled();
+      await expect.element(option).toHaveAccessibleDescription(/Not available yet/);
+    }
   }
+  await expect
+    .element(options.getByRole("button", { name: "LibraOS Gateway" }))
+    .toHaveAttribute("aria-pressed", "false");
+  await expect.element(options.getByText("Requires a LibraOS account.")).toBeVisible();
+  await screen.getByRole("link", { name: "Back" }).click();
+  await expect.element(firstHeading).toBeVisible();
+
+  await screen.getByRole("link", { name: "LibraOS Gateway" }).click();
+  await expect.element(endpointHeading).toBeVisible();
+  await expect
+    .element(screen.getByText("LibraOS Gateway selected. Requires a LibraOS account."))
+    .toBeVisible();
+  await screen.getByRole("radio", { name: "Codex", exact: true }).click();
+  await expect
+    .element(options.getByRole("button", { name: "LibraOS Gateway" }))
+    .toHaveAttribute("aria-pressed", "true");
+  expect(document.querySelector('input[type="password"]')).toBeNull();
+  await screen.getByRole("link", { name: "Back" }).click();
+  await expect.element(firstHeading).toBeVisible();
+
+  await screen.getByRole("link", { name: "Join a team" }).click();
+  await expect.element(screen.getByRole("heading", { name: "Join a team" })).toBeVisible();
+  await screen.getByRole("link", { name: "Back" }).click();
+  await expect.element(firstHeading).toBeVisible();
 });
 
 it("starts without importing when this connection cannot import projects", async () => {

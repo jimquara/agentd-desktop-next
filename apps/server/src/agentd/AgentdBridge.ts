@@ -6,6 +6,7 @@ import {
   AgentdHandoffListJson,
   AgentdHandoffShowJson,
   AgentdInboxListJson,
+  AgentdNode,
   AgentdNotFoundError,
   AgentdUserListJson,
   AgentdWhoJson,
@@ -108,6 +109,7 @@ const decodeShow = decodeJson(AgentdHandoffShowJson);
 const decodeApprovals = decodeJson(AgentdApprovalListJson);
 const decodeInbox = decodeJson(AgentdInboxListJson);
 const decodeUsers = decodeJson(AgentdUserListJson);
+const decodeNodes = decodeJson(Schema.Array(AgentdNode));
 const decodeWho = decodeJson(AgentdWhoJson);
 const isDefaultWorker = Schema.is(AgentdWorkerTool);
 
@@ -345,7 +347,14 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
         : AgentdJson.agentdHolders(
             yield* run(yield* args(() => agentdArgs.who(target))).pipe(Effect.flatMap(decodeWho)),
           );
-    return { people: AgentdJson.agentdPeople(users), holders };
+    const nodes = input.includeNodes
+      ? yield* run(agentdArgs.nodes()).pipe(Effect.flatMap(decodeNodes))
+      : undefined;
+    return {
+      people: AgentdJson.agentdPeople(users),
+      holders,
+      ...(nodes === undefined ? {} : { nodes }),
+    };
   });
 
   return AgentdBridge.of({
