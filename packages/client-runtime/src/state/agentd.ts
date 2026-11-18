@@ -97,6 +97,11 @@ export function createAgentdEnvironmentAtoms<R, E>(
           registry.refresh(status({ environmentId: target.environmentId, input: {} })),
         ),
     }),
+    cloudSetup: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:agentd:cloud-setup",
+      tag: WS_METHODS.agentdCloudSetup,
+      staleTimeMs: 0,
+    }),
     taskOthers: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:agentd:task-others",
       tag: WS_METHODS.agentdTaskOthers,

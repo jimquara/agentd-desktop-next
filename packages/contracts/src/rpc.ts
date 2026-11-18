@@ -394,6 +394,9 @@ import {
   AgentdTask,
   AgentdTaskInput,
   AgentdTaskRow,
+  AgentdCloudSetup,
+  AgentdCloudSetupInput,
+  AgentdCloudTaskInput,
   AgentdTaskOther,
   AgentdTaskOthersInput,
 } from "./agentd.ts";
@@ -702,6 +705,7 @@ export const WS_METHODS = {
   agentdPeople: "agentd.people",
   agentdConnectAgent: "agentd.connectAgent",
   agentdJoinTeam: "agentd.joinTeam",
+  agentdCloudSetup: "agentd.cloudSetup",
   agentdTaskOthers: "agentd.taskOthers",
   agentdSubscribeTeamNode: "agentd.subscribeTeamNode",
   agentdSetTeamNode: "agentd.setTeamNode",
@@ -2313,7 +2317,7 @@ const WsAgentdStopTaskRpc = Rpc.make(WS_METHODS.agentdStopTask, {
 });
 
 const WsAgentdStartTaskRpc = Rpc.make(WS_METHODS.agentdStartTask, {
-  payload: AgentdStartTaskInput,
+  payload: Schema.Union([AgentdCloudTaskInput, AgentdStartTaskInput]),
   success: AgentdStartTaskResult,
   error: AgentdRpcError,
 });
@@ -2345,6 +2349,12 @@ const WsAgentdConnectAgentRpc = Rpc.make(WS_METHODS.agentdConnectAgent, {
 const WsAgentdJoinTeamRpc = Rpc.make(WS_METHODS.agentdJoinTeam, {
   payload: AgentdJoinTeamInput,
   success: AgentdCommandOutput,
+  error: AgentdRpcError,
+});
+
+const WsAgentdCloudSetupRpc = Rpc.make(WS_METHODS.agentdCloudSetup, {
+  payload: AgentdCloudSetupInput,
+  success: AgentdCloudSetup,
   error: AgentdRpcError,
 });
 
@@ -2601,6 +2611,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsAgentdPeopleRpc,
   WsAgentdConnectAgentRpc,
   WsAgentdJoinTeamRpc,
+  WsAgentdCloudSetupRpc,
   WsAgentdTaskOthersRpc,
   WsAgentdSubscribeTeamNodeRpc,
   WsAgentdSetTeamNodeRpc,

@@ -13,6 +13,9 @@ import {
   AgentdWhoJson,
   AgentdWorkerTool,
   type AgentdApproval,
+  type AgentdCloudSetup,
+  type AgentdCloudSetupInput,
+  type AgentdCloudTaskInput,
   type AgentdCommandOutput,
   type AgentdConnectAgentInput,
   type AgentdInboxItem,
@@ -44,6 +47,7 @@ import * as Stream from "effect/Stream";
 
 import * as BackgroundPolicy from "../background/BackgroundPolicy.ts";
 import * as ProcessRunner from "../processRunner.ts";
+import { makeAgentdCloud } from "./agentdCloud.ts";
 import { AgentdArgumentError, agentdArgs, agentdTicket } from "./agentdCommands.ts";
 import * as AgentdJson from "./agentdJson.ts";
 import { joinedPerson, mergeTaskHolders, repositoryTargets } from "./taskOthers.ts";
@@ -59,7 +63,7 @@ export class AgentdBridge extends Context.Service<
     ) => Stream.Stream<OrchestrationV2CommandOutputFrame, AgentdError>;
     readonly stopTask: (input: AgentdStopTaskInput) => Effect.Effect<{}, AgentdError>;
     readonly startTask: (
-      input: AgentdStartTaskInput,
+      input: AgentdStartTaskInput | AgentdCloudTaskInput,
     ) => Effect.Effect<AgentdStartTaskResult, AgentdError>;
     readonly approvals: Effect.Effect<ReadonlyArray<AgentdApproval>, AgentdError>;
     readonly inbox: Effect.Effect<ReadonlyArray<AgentdInboxItem>, AgentdError>;
@@ -70,6 +74,9 @@ export class AgentdBridge extends Context.Service<
     readonly joinTeam: (
       input: AgentdJoinTeamInput,
     ) => Effect.Effect<AgentdCommandOutput, AgentdError>;
+    readonly cloudSetup: (
+      input: AgentdCloudSetupInput,
+    ) => Effect.Effect<AgentdCloudSetup, AgentdError>;
     readonly taskOthers: (
       input: AgentdTaskOthersInput,
     ) => Effect.Effect<ReadonlyArray<AgentdTaskOther>>;
@@ -166,9 +173,13 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
 
   const run = Effect.fn("AgentdBridge.run")(function* (
     argv: ReadonlyArray<string>,
-    options: { readonly stdin?: string; readonly jsonOnFailure?: boolean } = {},
+    options: {
+      readonly stdin?: string;
+      readonly jsonOnFailure?: boolean;
+      readonly command?: string;
+    } = {},
   ) {
-    const command = yield* binary;
+    const command = options.command ?? (yield* binary);
     const output = yield* runner
       .run({
         command,
@@ -198,6 +209,14 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
       return yield* commandError(said || `agentd exited with ${output.code}.`);
     }
     return output.stdout;
+  });
+
+  const cloud = yield* makeAgentdCloud({
+    binary,
+    run,
+    runProcess: runner.run,
+    isAbsolute: pathService.isAbsolute,
+    args,
   });
 
   const readShow = (id: string) =>
@@ -336,7 +355,10 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
       }),
     );
 
-  const startTask = Effect.fn("AgentdBridge.startTask")(function* (input: AgentdStartTaskInput) {
+  const startTask = Effect.fn("AgentdBridge.startTask")(function* (
+    input: AgentdStartTaskInput | AgentdCloudTaskInput,
+  ) {
+    if (input.cloud !== undefined) return yield* cloud.startCloudTask(input);
     const created = yield* run(yield* args(() => agentdArgs.new(input))).pipe(
       Effect.flatMap(
         decodeJson(
@@ -458,6 +480,7 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
       const ticket = yield* args(() => [agentdTicket(input.ticket)]);
       return { output: (yield* run(argv, { stdin: `${ticket[0]}\n` })).trim() };
     }),
+    cloudSetup: cloud.cloudSetup,
     taskOthers,
     binary,
     enrolWorker: Effect.fn("AgentdBridge.enrolWorker")(function* (server, ticket) {

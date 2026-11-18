@@ -3,6 +3,7 @@ import { describe, expect, it } from "@effect/vitest";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
+import * as Path from "effect/Path";
 import * as Fiber from "effect/Fiber";
 import * as FileSystem from "effect/FileSystem";
 import * as Stream from "effect/Stream";
@@ -274,9 +275,21 @@ describe("AgentdBridge", () => {
             return Effect.succeed(
               output(`[
               {"id":"hof-abc123","state":"claimed","goal":"Run tests","claimer":"wrk-build-box"},
-              {"id":"hof-abc456","state":"claimed","goal":"Check docs","claimer":"cloud","cloud_state":"running"}
+              {"id":"hof-abc456","state":"claimed","goal":"Check docs","claimer":"cloud","cloud_state":"running","cloud_usd":0.75}
             ]`),
             );
+          case "handoff show hof-abc456 --json":
+            return Effect.succeed(
+              output(`{
+              "id":"hof-abc456", "state":"done", "cloud_state":"failed",
+              "worker_branch":"agentd/hof-abc456",
+              "body":{"goal":"Check docs","model_access":"byok","anthropic_key_file":"/private/model-key"},
+              "cloud":{"state":"failed","worker_usd":0.75,"inference_usd":0,"total_usd":0.75,
+                "result":"the GitHub App is not installed on owner/fork: the repository's owner installs it once for that repository"}
+            }`),
+            );
+          case "handoff done hof-abc456 --cancel --reason Stopped from AgentD Desktop":
+            return Effect.succeed(output("{}"));
           default:
             return Effect.die(`unexpected agentd ${input.args.join(" ")}`);
         }
@@ -297,8 +310,25 @@ describe("AgentdBridge", () => {
       const first = yield* Stream.runHead(bridge.subscribeTasks);
       expect(first._tag === "Some" ? first.value : null).toMatchObject([
         { id: "hof-abc123", runsOn: "team", workerName: "build-box" },
-        { id: "hof-abc456", runsOn: "cloud", workerState: "running" },
+        { id: "hof-abc456", runsOn: "cloud", cloudState: "running", cloudUsd: 0.75 },
       ]);
+      const task = yield* bridge.task({ id: "hof-abc456" });
+      expect(task).toMatchObject({
+        runsOn: "cloud",
+        branch: "agentd/hof-abc456",
+        cloud: {
+          state: "failed",
+          modelAccess: "byok",
+          workerUsd: 0.75,
+          inferenceUsd: 0,
+          totalUsd: 0.75,
+        },
+        note: "The repository owner must install the Cloud Workers GitHub App on this repository.",
+      });
+      expect(JSON.stringify(task)).not.toContain("/private/model-key");
+      expect(
+        yield* bridge.stopTask({ id: "hof-abc456", reason: "Stopped from AgentD Desktop" }),
+      ).toEqual({});
     }),
   );
 
@@ -333,6 +363,154 @@ describe("AgentdBridge", () => {
       expect(failures.map((error) => error._tag)).toEqual(
         Array.from({ length: 11 }, () => "AgentdNotFoundError"),
       );
+    }),
+  );
+
+  it.effect("offers cloud jobs against origin and passes only absolute key file paths", () =>
+    Effect.gen(function* () {
+      const runs: Array<ProcessRunner.ProcessRunInput> = [];
+      let origin = "git@github.com:fork-owner/its-fork.git";
+      let version = "agentd v0.1.13";
+      let help = "usage: agentd handoff offer [--cloud]";
+      let receipt = '{"handoff":"hof-abc123","cloud":{"state":"queued"}}';
+      let balance = output('{"available_usd":"12.75","default_budget":"30m,$5"}');
+      const bridge = yield* makeBridge({ AGENTD_BIN: process.execPath }, (input) => {
+        runs.push(input);
+        switch (input.args.slice(0, 2).join(" ")) {
+          case "version":
+            return Effect.succeed(output(version));
+          case "remote get-url":
+            return Effect.succeed(output(origin));
+          case "cloud balance":
+            return Effect.succeed(balance);
+          case "session join":
+            return Effect.succeed(output("{}"));
+          case "handoff offer":
+            return Effect.succeed(output(input.args.includes("--help") ? help : receipt));
+          default:
+            return Effect.die("unexpected command");
+        }
+      });
+
+      const platform = yield* HostProcess.Platform;
+      const path = yield* Effect.provide(Path.Path, NodeServices.layer);
+      const cwd = platform === "win32" ? "C:\\work\\fork" : "/work/fork";
+      const keyFile = path.join(cwd, "private", "OpenAI key.txt");
+      const input = { cwd, goal: "Fix the check", accept: ["Pass it"], check: "pnpm test" };
+      expect(yield* bridge.cloudSetup({ cwd, includeBalance: true })).toEqual({
+        supported: true,
+        project: "fork-owner/its-fork",
+        balanceUsd: 12.75,
+        balanceText: null,
+        defaultBudget: "30m,$5",
+        problem: null,
+      });
+      expect(
+        yield* bridge.startTask({ ...input, cloud: { modelAccess: "libraos", budget: "$5" } }),
+      ).toEqual({ id: "hof-abc123", started: true, note: null });
+      const byok = { modelAccess: "byok", budget: "20m,$8", openaiKeyFile: keyFile } as const;
+      yield* bridge.startTask({ ...input, check: null, cloud: byok });
+      const offers = () =>
+        runs.filter(({ args }) => args.includes("--cloud")).map(({ args, stdin }) => [args, stdin]);
+      expect(offers()).toEqual([
+        [
+          [
+            "handoff",
+            "offer",
+            "--cloud",
+            "--to",
+            "any",
+            "--session",
+            "agentd-new",
+            "--budget",
+            "$5",
+            "--model-access",
+            "libraos",
+            "--project",
+            "fork-owner/its-fork",
+            "--goal",
+            "Fix the check",
+            "--accept",
+            "Pass it",
+            "--check",
+            "pnpm test",
+            "--json",
+          ],
+          undefined,
+        ],
+        [
+          [
+            "handoff",
+            "offer",
+            "--cloud",
+            "--to",
+            "any",
+            "--session",
+            "agentd-new",
+            "--budget",
+            "20m,$8",
+            "--model-access",
+            "byok",
+            "--openai-key-file",
+            keyFile,
+            "--project",
+            "fork-owner/its-fork",
+            "--goal",
+            "Fix the check",
+            "--accept",
+            "Pass it",
+            "--no-check",
+            "--json",
+          ],
+          undefined,
+        ],
+      ]);
+      expect(runs.filter(({ args }) => args.includes("--help"))).toHaveLength(1);
+      expect(
+        runs.filter(({ args }) => args[0] === "remote").map((run) => [run.args, run.cwd]),
+      ).toEqual(Array.from({ length: 3 }, () => [["remote", "get-url", "--", "origin"], cwd]));
+
+      const pastedKey = "sk-example-credential";
+      yield* Effect.flip(
+        bridge.startTask({ ...input, cloud: { ...byok, openaiKeyFile: pastedKey } }),
+      );
+      yield* Effect.flip(bridge.startTask({ ...input, cloud: { ...byok, budget: "20m" } }));
+      expect(JSON.stringify(runs)).not.toContain(pastedKey);
+
+      receipt =
+        '{"handoff":"hof-abc123","cloud":{"state":"submitting","error":"402: insufficient credit"}}';
+      expect(yield* bridge.startTask({ ...input, cloud: byok })).toEqual({
+        id: "hof-abc123",
+        started: false,
+        note: "There is not enough LibraOS credit for this dollar cap.",
+      });
+      origin = "https://git.example.net/fork-owner/its-fork.git";
+      expect(yield* bridge.cloudSetup({ cwd, includeBalance: false })).toMatchObject({
+        supported: true,
+        project: null,
+      });
+      yield* Effect.flip(bridge.startTask({ ...input, cloud: byok }));
+      expect(offers()).toHaveLength(3);
+
+      origin = "ssh://git@ssh.github.com:443/fork-owner/its-fork.git";
+      balance = output("LibraOS balance: $12.75\n");
+      expect(yield* bridge.cloudSetup({ cwd, includeBalance: true })).toMatchObject({
+        project: "fork-owner/its-fork",
+        balanceUsd: null,
+        balanceText: "LibraOS balance: $12.75",
+      });
+      balance = output("set [cloud] url and the account key in key_file", 1);
+      expect(yield* bridge.cloudSetup({ cwd, includeBalance: true })).toMatchObject({
+        problem: "setup",
+        balanceText: null,
+      });
+
+      version = "agentd v0.1.0";
+      help = "usage: agentd handoff offer [--goal G]";
+      expect(yield* bridge.cloudSetup({ cwd, includeBalance: false })).toMatchObject({
+        supported: false,
+      });
+      expect(runs.filter(({ args }) => args.includes("--help"))).toHaveLength(2);
     }),
   );
 

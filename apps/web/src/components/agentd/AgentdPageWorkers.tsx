@@ -3,9 +3,16 @@ import { T } from "gt-react";
 import { ArrowUpRightIcon } from "lucide-react";
 
 import type { useAgentdPeople, useAgentdTasks } from "../../lib/agentdState";
+import { usePrimaryEnvironmentId } from "../../state/environments";
 import { Badge } from "../ui/badge";
+import {
+  AgentdCloudTaskSummary,
+  StopTaskButton,
+  useAgentdTaskDetails,
+} from "./AgentdBackgroundTaskRow";
 import { groupWorkerActivity } from "./AgentdPage.logic";
 import { AgentdLoading, AgentdReadError, AgentdTimestamp } from "./AgentdPageReads";
+import { isFinishedAgentdTask } from "./backgroundTasks.logic";
 
 function AgentdWorkerTask({
   task,
@@ -40,6 +47,41 @@ function AgentdWorkerTask({
   );
 }
 
+function AgentdCloudWorkerTask({
+  row,
+  open,
+}: {
+  readonly row: AgentdTaskRow;
+  readonly open: (task: AgentdTaskRow) => void;
+}) {
+  const environmentId = usePrimaryEnvironmentId();
+  const { task, error } = useAgentdTaskDetails(row, environmentId);
+  const title = row.title || row.id;
+  return (
+    <li className="flex items-start gap-2">
+      <button
+        type="button"
+        className="flex min-w-0 flex-1 items-center gap-3 rounded-md p-2 text-left outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+        onClick={() => open(row)}
+      >
+        <span className="min-w-0 flex-1 space-y-1">
+          <span className="block break-words font-medium">{title}</span>
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            <AgentdCloudTaskSummary row={row} task={task} />
+          </span>
+          {task?.note || error ? (
+            <span className="block break-words text-xs">{task?.note ?? error}</span>
+          ) : null}
+        </span>
+        <ArrowUpRightIcon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+      </button>
+      {environmentId !== null && !isFinishedAgentdTask(row.state) ? (
+        <StopTaskButton id={row.id} title={title} environmentId={environmentId} />
+      ) : null}
+    </li>
+  );
+}
+
 export function AgentdPageWorkers({
   tasks,
   people,
@@ -50,6 +92,7 @@ export function AgentdPageWorkers({
   open: (task: AgentdTaskRow) => void;
 }) {
   const activity = groupWorkerActivity(tasks.data ?? [], people.data?.nodes ?? []);
+  const cloudTasks = tasks.data?.filter((task) => task.runsOn === "cloud") ?? [];
   return (
     <div className="space-y-4 text-sm">
       {tasks.error !== null ? <AgentdReadError error={tasks.error} /> : null}
@@ -122,23 +165,21 @@ export function AgentdPageWorkers({
           </ul>
         </div>
       ) : null}
-      {activity.cloud.length > 0 ? (
+      {cloudTasks.length > 0 ? (
         <div className="space-y-1">
           <h3 className="font-medium">
             <T>Cloud Workers</T>
           </h3>
           <ul>
-            {activity.cloud.map((task) => (
-              <li key={task.id}>
-                <AgentdWorkerTask task={task} open={open} />
-              </li>
+            {cloudTasks.map((task) => (
+              <AgentdCloudWorkerTask key={task.id} row={task} open={open} />
             ))}
           </ul>
         </div>
       ) : null}
       {tasks.data !== null &&
       people.data !== null &&
-      activity.local.length + activity.team.length + activity.cloud.length === 0 ? (
+      activity.local.length + activity.team.length + cloudTasks.length === 0 ? (
         <p className="text-muted-foreground">
           <T>No active workers or team nodes reported.</T>
         </p>

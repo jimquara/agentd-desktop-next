@@ -106,6 +106,20 @@ export function useAgentdCommands() {
   };
 }
 
+export function useAgentdCloudSetup(
+  cwd: string | null,
+  target: EnvironmentId,
+  includeBalance: boolean,
+) {
+  const environmentId = useAgentdEnvironment(target);
+  return useEnvironmentQuery(
+    environmentId === null || cwd === null
+      ? null
+      : agentdEnvironment.cloudSetup({ environmentId, input: { cwd, includeBalance } }),
+    useMessages(),
+  );
+}
+
 export function useAgentdTaskOthers(input: AgentdTaskOthersInput | null, target: EnvironmentId) {
   const environmentId = useAgentdEnvironment(target);
   return useEnvironmentQuery(
