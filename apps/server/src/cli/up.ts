@@ -148,7 +148,7 @@ const formatSetup = (setup: Setup, hints: Hints) => {
   // This home's access settings reach no service, so only the service is shown.
   if (service.otherBaseDir !== undefined) {
     return [
-      `  ${"Service".padEnd(15)}installed for another T3 home · ${service.otherBaseDir}`,
+      `  ${"Service".padEnd(15)}installed for another AgentD Desktop home · ${service.otherBaseDir}`,
       "",
       `Pass \`${BootService.formatBootServiceBaseDirOption(service.otherBaseDir)}\` to manage it.`,
     ].join("\n");
@@ -209,8 +209,8 @@ const formatNextSteps = (routes: Routes, serviceInstalled: boolean, hints: Hints
       ? []
       : [
           serviceInstalled
-            ? "Remote access is off. T3 Code still runs here in the background."
-            : `Remote access is off. Run \`${hints.run}\` to use T3 Code here.`,
+            ? "Remote access is off. AgentD Desktop still runs here in the background."
+            : `Remote access is off. Run \`${hints.run}\` to use AgentD Desktop here.`,
         ]),
   ].join("\n");
 
@@ -277,7 +277,7 @@ const setUp = Effect.fn("cli.up")(function* (flags: {
       cause: "routes",
       userMessage: `No terminal. Choose access with ${
         before.connect === null ? "--lan" : "--connect or --lan"
-      }, or use --yes for the default. See \`t3 up --help\`.`,
+      }, or use --yes for the default. See \`agentd-desktop up --help\`.`,
     });
   }
   if (routes.connect && !current.connect) yield* requireConnectAllowed;
@@ -314,7 +314,7 @@ const setUp = Effect.fn("cli.up")(function* (flags: {
     const confirmed = yield* Prompt.run(
       Prompt.Confirm({
         message: update
-          ? "Update and restart T3 Code? Running agent turns will stop."
+          ? "Update and restart AgentD Desktop? Running agent turns will stop."
           : "Apply changes and restart? Running agent turns will stop.",
         initial: true,
       }),
@@ -389,7 +389,7 @@ const setUp = Effect.fn("cli.up")(function* (flags: {
       yield* Console.log(`Keeping installed service version t3@${installedVersion}.`);
     }
     if (update && !interactive) {
-      yield* Console.log("Updating T3 Code. Running agent turns will stop.");
+      yield* Console.log("Updating AgentD Desktop. Running agent turns will stop.");
     }
     const result = newer
       ? ({ changed: false } as const)
@@ -427,7 +427,7 @@ const setUp = Effect.fn("cli.up")(function* (flags: {
         yield* Console.log(`Run \`${command}\` to turn T3 Connect off.`);
       } else {
         if (!interactive && !stopped) {
-          yield* Console.log("Restarting T3 Code. Running agent turns will stop.");
+          yield* Console.log("Restarting AgentD Desktop. Running agent turns will stop.");
         }
         const outcome = yield* service.restart.pipe(Effect.tapError(() => rollBack));
         if (outcome === "queued") {
@@ -435,7 +435,7 @@ const setUp = Effect.fn("cli.up")(function* (flags: {
         }
         if (outcome === "skipped") {
           yield* Console.log(
-            "The installed service was not restarted. Run `t3 service status` to see why.",
+            "The installed service was not restarted. Run `agentd-desktop service status` to see why.",
           );
         }
         started = outcome === "restarted";
@@ -477,17 +477,20 @@ export const upCommand = Command.make("up", {
   ),
   headless: headlessFlag,
 }).pipe(
-  Command.withShortDescription("Set up remote access and the T3 Code background service."),
+  Command.withShortDescription("Set up remote access and the AgentD Desktop background service."),
   Command.withDescription(
-    "Set up remote access and the T3 Code background service. Access flags skip the question, and routes not named keep their settings. Without a terminal, a needed restart runs without asking and stops running agent turns.",
+    "Set up remote access and the AgentD Desktop background service. Access flags skip the question, and routes not named keep their settings. Without a terminal, a needed restart runs without asking and stops running agent turns.",
   ),
   Command.withExamples([
-    { command: "t3 up", description: "Choose remote access." },
-    { command: "t3 up --connect", description: "Turn on T3 Connect. Keep other settings." },
-    { command: "t3 up --lan", description: "Allow LAN access with pairing codes." },
-    { command: "t3 up --no-lan", description: "Stop LAN access." },
-    { command: "t3 up --yes", description: "Take the defaults with no questions." },
-    { command: "t3 status --json", description: "Read the settings from a script." },
+    { command: "agentd-desktop up", description: "Choose remote access." },
+    {
+      command: "agentd-desktop up --connect",
+      description: "Turn on T3 Connect. Keep other settings.",
+    },
+    { command: "agentd-desktop up --lan", description: "Allow LAN access with pairing codes." },
+    { command: "agentd-desktop up --no-lan", description: "Stop LAN access." },
+    { command: "agentd-desktop up --yes", description: "Take the defaults with no questions." },
+    { command: "agentd-desktop status --json", description: "Read the settings from a script." },
   ]),
   Command.withHandler((flags) => runCloudCommand(flags, setUp(flags), { quietLogs: true })),
 );
@@ -496,7 +499,9 @@ export const connectCommand = Command.make("connect", {
   ...projectLocationFlags,
   headless: headlessFlag,
 }).pipe(
-  Command.withDescription("Set up T3 Connect for this machine. Same as `t3 up --connect`."),
+  Command.withDescription(
+    "Set up T3 Connect for this machine. Same as `agentd-desktop up --connect`.",
+  ),
   Command.withHandler((flags) =>
     runCloudCommand(
       flags,
@@ -538,8 +543,8 @@ export const statusCommand = Command.make("status", {
 }).pipe(
   Command.withDescription("Show service setup and remote access settings."),
   Command.withExamples([
-    { command: "t3 status", description: "Show the settings." },
-    { command: "t3 status --json", description: "Print them for scripts and agents." },
+    { command: "agentd-desktop status", description: "Show the settings." },
+    { command: "agentd-desktop status --json", description: "Print them for scripts and agents." },
   ]),
   Command.withHandler(
     Effect.fn("cli.status")(function* (flags) {

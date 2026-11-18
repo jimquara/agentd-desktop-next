@@ -226,7 +226,7 @@ describe("t3 server command safety", () => {
             ),
             Effect.flip,
           );
-          expect(String(error)).toContain("A T3 Code server is already running");
+          expect(String(error)).toContain("An AgentD Desktop server is already running");
           expect(yield* Effect.promise(() => NodeFSP.readFile(statePath, "utf8"))).toBe(record);
           expect(yield* pathExists(newDirectory)).toBe(false);
           expect(yield* Effect.promise(() => NodeFSP.readdir(stateDir))).toEqual([
@@ -238,7 +238,7 @@ describe("t3 server command safety", () => {
   );
 });
 
-describe("t3 app", () => {
+describe("agentd-desktop app", () => {
   it.live.each(["permissions", "owner", "symlink", "missing owner"] as const)(
     "rejects unsafe %s on the socket directory before sending",
     (unsafe) =>

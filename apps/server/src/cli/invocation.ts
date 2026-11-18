@@ -133,6 +133,8 @@ function suggestedPackageSpec(version: string): string {
   return channel === undefined ? "t3" : `t3@${channel}`;
 }
 
+const CLI_COMMAND = "agentd-desktop";
+
 function formatCliCommand(input: {
   readonly subcommand: string;
   readonly entryPath: string;
@@ -140,7 +142,7 @@ function formatCliCommand(input: {
 }): string {
   const runner = detectCliRunner(input.entryPath);
   if (runner === null) {
-    return `t3 ${input.subcommand}`;
+    return `${CLI_COMMAND} ${input.subcommand}`;
   }
   return `${runner} ${suggestedPackageSpec(input.version)} ${input.subcommand}`;
 }
@@ -188,8 +190,9 @@ export const resolveHostCliCommand = Effect.fn("invocation.resolveHostCliCommand
     // An empty subcommand names the root `t3` command.
     [prefix.trimEnd(), ...args.map((arg) => hostShellWord(platform, arg))].join(" ");
   const command = yield* resolveCliCommand(subcommand);
-  if (command !== `t3 ${subcommand}`) return { command: withArgs(command), launcher: false };
-  const onPath = yield* resolveCommandPath("t3");
+  if (command !== `${CLI_COMMAND} ${subcommand}`)
+    return { command: withArgs(command), launcher: false };
+  const onPath = yield* resolveCommandPath(CLI_COMMAND);
   if (onPath !== null) {
     const shim = (yield* HostProcess.Environment).T3CODE_CLI_PATH?.trim();
     const fs = yield* FileSystem.FileSystem;

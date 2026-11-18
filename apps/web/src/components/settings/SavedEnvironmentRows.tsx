@@ -761,13 +761,15 @@ function ConfiguredCloudLinkRow({
         <SettingsRow
           title={setting("t3-connect").title}
           description={gt(
-            "This environment was removed from T3 Connect. Run `t3 connect link` on the host to link it again.",
+            "This environment was removed from T3 Connect. Run `agentd-desktop connect link` on the host to link it again.",
           )}
         />
       ) : isElectron ? (
         <SettingsRow
           title={setting("t3-connect").title}
-          description={gt("Run `t3 connect link` on the host, then restart AgentD Desktop there.")}
+          description={gt(
+            "Run `agentd-desktop connect link` on the host, then restart AgentD Desktop there.",
+          )}
         />
       ) : null}
       {signedOut && showSwitch ? null : (
