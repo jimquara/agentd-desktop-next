@@ -16,6 +16,7 @@ import {
   movedSettingsPath,
   searchSettings,
   SETTINGS_NAV_GROUPS,
+  SETTINGS_SECTION_LABELS,
   SETTINGS_SEARCH_ITEMS,
   sourceControlHostSearchItems,
   sourceControlHostSettingsSearchId,
@@ -81,11 +82,29 @@ describe("searchSettings", () => {
     expect(searchSettings("1password").map((item) => item.to)).not.toContain("/settings/secrets");
   });
 
-  it("finds the Scheduled tasks page", () => {
-    expect(searchSettings("scheduled tasks")[0]).toMatchObject({
-      id: "scheduled-tasks",
-      to: "/settings/scheduled-tasks",
-    });
+  it("keeps disabled product areas out of navigation and search", () => {
+    const paths = SETTINGS_NAV_GROUPS.flatMap((group) => group.paths);
+    expect(paths).not.toContain("/settings/scheduled-tasks");
+    expect(paths).not.toContain("/settings/access");
+    expect(paths).toContain("/settings/source-control");
+    expect(paths).toContain("/settings/diffs");
+    expect(paths).toContain("/settings/voice");
+    expect(paths).toContain("/settings/browser");
+    expect(decodeMsg(SETTINGS_SECTION_LABELS["/settings/source-control"])).toBe("Source control");
+    expect(decodeMsg(SETTINGS_SECTION_LABELS["/settings/diffs"])).toBe("Diffs");
+
+    for (const [query, hiddenId] of [
+      ["scheduled tasks", "scheduled-tasks"],
+      ["sharing & access", "network-access"],
+      ["guest links", "guest-links"],
+      ["mobile app", "mobile-app"],
+      ["issue trackers", "issue-trackers"],
+      ["open pull requests", "pull-request-links-open-in-app"],
+      ["pull request sharing", "pull-request-routing"],
+    ] as const) {
+      expect(searchSettings(query).map((item) => item.id)).not.toContain(hiddenId);
+    }
+    expect(searchSettings("word wrap").map((item) => item.id)).toContain("word-wrap");
   });
 
   it("matches normalized title substrings", () => {
@@ -107,11 +126,15 @@ describe("searchSettings", () => {
     expect(searchSettings("pairing remote", ITEMS).map((item) => item.id)).toEqual([
       "network-access",
     ]);
+    const additionalItem = {
+      id: "environment-pairing",
+      title: "Environment pairing",
+      to: "/settings/connections",
+      searchTerms: ["pairing settings for a remote computer"],
+    } as const;
     expect(
-      searchSettings("remote pairing")
-        .slice(0, 2)
-        .map((item) => item.id),
-    ).toEqual(["network-access", "connections-environment"]);
+      searchSettings("remote pairing", [...ITEMS, additionalItem]).map((item) => item.id),
+    ).toEqual(["network-access", "environment-pairing"]);
   });
 
   it("hides desktop-only settings from browser search", () => {

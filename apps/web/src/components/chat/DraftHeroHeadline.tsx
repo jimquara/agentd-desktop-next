@@ -48,6 +48,7 @@ import { InlineButton } from "../ui/button";
 import { DraftProjectName } from "./DraftProjectName";
 import { DraftHeroProjectHeading } from "./DraftHeroProjectHeading";
 import { TriageDraftHero } from "./TriageDraftHero";
+import { productProfile } from "~/productProfile";
 
 const ADD_PROJECT_VALUE = "add-project";
 
@@ -345,7 +346,7 @@ export function DraftHeroHeadline({
       </Tooltip>
     ) : null;
 
-  if (isScratchDraft && isTriageDraftPrompt) {
+  if (productProfile.triage && isScratchDraft && isTriageDraftPrompt) {
     const environment = environments.find(
       (entry) => entry.environmentId === activeProject.environmentId,
     );
