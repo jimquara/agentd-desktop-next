@@ -7,6 +7,7 @@ import {
 } from "@t3tools/contracts";
 import { useEnvironmentScope, readEnvironmentScope } from "../../state/session";
 import { useAtomValue } from "@effect/atom-react";
+import { Link } from "@tanstack/react-router";
 import { connectionErrorText, connectionStatusTitle } from "@t3tools/client-runtime/connection";
 import {
   errorDisplayMessage,
@@ -84,6 +85,7 @@ import {
   type ProviderSettingsUpdateCandidate,
 } from "../ProviderUpdateLaunchNotification.logic";
 import { ProviderUpdatesAction } from "../ProviderUpdatesAction";
+import { ConnectEndpointScreen } from "../onboarding/ConnectEndpointScreen";
 import { Button } from "../ui/button";
 import {
   Empty,
@@ -330,15 +332,40 @@ interface ProviderSettingsTarget {
   readonly scoped?: boolean;
   readonly environmentIds?: readonly EnvironmentId[];
   readonly projectIds?: readonly ProjectId[];
+  readonly setupEndpoint?: boolean;
 }
 
 export function ProviderSettingsPanel(target: ProviderSettingsTarget) {
   return (
     <SettingsPageContainer className="@container/providers gap-8">
-      <ProviderSettingsPanelContent
-        key={`${target.environmentId ?? ""}:${target.instanceId ?? ""}`}
-        {...target}
-      />
+      {target.setupEndpoint ? (
+        <ConnectEndpointScreen
+          back={
+            <Link
+              to="/settings/providers"
+              search={({ setupEndpoint: _closed, ...search }) => search}
+            >
+              <T>Back</T>
+            </Link>
+          }
+        />
+      ) : (
+        <>
+          <div>
+            <Link
+              to="/settings/providers"
+              search={(search) => ({ ...search, setupEndpoint: true })}
+              className="text-sm underline underline-offset-4"
+            >
+              <T>Use an API key or gateway</T>
+            </Link>
+          </div>
+          <ProviderSettingsPanelContent
+            key={`${target.environmentId ?? ""}:${target.instanceId ?? ""}`}
+            {...target}
+          />
+        </>
+      )}
     </SettingsPageContainer>
   );
 }

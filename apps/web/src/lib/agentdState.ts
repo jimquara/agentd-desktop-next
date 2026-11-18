@@ -76,10 +76,12 @@ export function useAgentdInbox(target?: EnvironmentId | null) {
   );
 }
 
-export function useAgentdPeople(target?: EnvironmentId | null) {
+export function useAgentdPeople(target?: EnvironmentId | null, includeNodes = false) {
   const environmentId = useAgentdEnvironment(target);
   return useEnvironmentQuery(
-    environmentId === null ? null : agentdEnvironment.people({ environmentId, input: {} }),
+    environmentId === null
+      ? null
+      : agentdEnvironment.people({ environmentId, input: includeNodes ? { includeNodes } : {} }),
     useMessages(),
   );
 }

@@ -30,11 +30,12 @@ import {
   Settings2Icon,
   ShieldCheckIcon,
   SmartphoneIcon,
+  UsersIcon,
   WrenchIcon,
   XIcon,
 } from "lucide-react";
 import { resolveEventKeys } from "@t3tools/shared/keybindings";
-import { useLocation, useNavigate } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { T, useGT, useMessages } from "gt-react";
 
 import { cn } from "../../lib/utils";
@@ -424,6 +425,19 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
                       </div>
                     </div>
                   ))}
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        data-settings-section="/welcome"
+                        render={<Link to="/welcome" search={{ screen: "team" }} />}
+                      >
+                        <UsersIcon />
+                        <span className="truncate max-md:sr-only">
+                          <T>Join a team</T>
+                        </span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
                 </div>
               </div>
             )}
