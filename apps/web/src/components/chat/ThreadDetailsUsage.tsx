@@ -11,7 +11,7 @@ import {
   remainingPercent,
 } from "@t3tools/shared/usageLimits";
 import { formatDuration, limitsNotice } from "@t3tools/shared/usageLimitsCopy";
-import { msg, useGT, useLocale, useMessages } from "gt-react";
+import { msg, T, useGT, useLocale, useMessages } from "gt-react";
 import type { ReactNode } from "react";
 
 import { usePrimarySettings } from "../../hooks/useSettings";
@@ -84,8 +84,22 @@ export function ThreadDetailsUsage({
   );
 }
 
-/** The thread's context window. The bar fills as context is used; the tick marks auto-compaction. */
-export function ThreadDetailsContext({ usage }: { readonly usage: ContextWindowSnapshot }) {
+export function ThreadDetailsContext({ usage }: { readonly usage: ContextWindowSnapshot | null }) {
+  const gt = useGT();
+  return (
+    <ThreadDetailsSection headingId="thread-details-context-heading" title={gt("Context")}>
+      {usage ? (
+        <ContextUsageRow usage={usage} />
+      ) : (
+        <div className="px-2.5 text-xs text-muted-foreground">
+          <T>Not reported by this agent</T>
+        </div>
+      )}
+    </ThreadDetailsSection>
+  );
+}
+
+function ContextUsageRow({ usage }: { readonly usage: ContextWindowSnapshot }) {
   const maxTokens = usage.maxTokens != null && usage.maxTokens > 0 ? usage.maxTokens : null;
   const used =
     maxTokens !== null && usage.usedPercentage !== null
@@ -100,54 +114,34 @@ export function ThreadDetailsContext({ usage }: { readonly usage: ContextWindowS
   const m = useMessages();
   const locale = useLocale();
   const usedTokens = formatContextWindowTokens(usage.usedTokens);
+  const maxTokenLabel = maxTokens !== null ? formatContextWindowTokens(maxTokens) : null;
+  const exactTokens = usage.usedTokens.toLocaleString(locale);
+  const tokenSummary =
+    maxTokens !== null
+      ? gt("{used} of {max} tokens", { used: exactTokens, max: maxTokens.toLocaleString(locale) })
+      : gt("{usedTokens} tokens used", { usedTokens: exactTokens });
   return (
-    <ThreadDetailsSection
-      headingId="thread-details-context-heading"
-      title={gt("Context window")}
-      showHeading={false}
-    >
-      <div className="grid grid-cols-[auto_minmax(3rem,1fr)_auto] gap-x-3 text-xs">
-        <UsageRow
-          label={gt("Context", { $context: "context window row label" })}
-          fill={used}
-          tone={used === null ? null : used >= 90 ? "error" : used >= 80 ? "warning" : null}
-          tick={tick}
-          muted
-          value={
-            maxTokens !== null
-              ? `${usedTokens} / ${formatContextWindowTokens(maxTokens)}`
-              : usedTokens
-          }
-          ariaValue={
-            used !== null
-              ? gt("{used}% used", { used })
-              : gt("{usedTokens} tokens used", { usedTokens })
-          }
-          tooltip={
-            <>
-              <span className="text-foreground">
-                {used !== null
-                  ? gt("Context: {used}% used", { used })
-                  : gt("Context: {usedTokens} tokens used", { usedTokens })}
+    <div className="grid grid-cols-[auto_minmax(3rem,1fr)_auto] gap-x-3 text-xs">
+      <UsageRow
+        label={used !== null ? gt("{used}% used", { used }) : gt("Tokens used")}
+        fill={used}
+        tone={used === null ? null : used >= 90 ? "error" : used >= 80 ? "warning" : null}
+        tick={tick}
+        muted
+        value={maxTokenLabel !== null ? `${usedTokens} / ${maxTokenLabel}` : usedTokens}
+        ariaValue={tokenSummary}
+        tooltip={
+          <>
+            <span className="text-foreground">{tokenSummary}</span>
+            {threshold !== null && threshold > 0 ? (
+              <span className="text-muted-foreground">
+                {formatContextWindowCompactionMessage(threshold, m)}
               </span>
-              {maxTokens !== null ? (
-                <span className="text-muted-foreground">
-                  {gt("{used} of {max} tokens", {
-                    used: usage.usedTokens.toLocaleString(locale),
-                    max: maxTokens.toLocaleString(locale),
-                  })}
-                </span>
-              ) : null}
-              {threshold !== null && threshold > 0 ? (
-                <span className="text-muted-foreground">
-                  {formatContextWindowCompactionMessage(threshold, m)}
-                </span>
-              ) : null}
-            </>
-          }
-        />
-      </div>
-    </ThreadDetailsSection>
+            ) : null}
+          </>
+        }
+      />
+    </div>
   );
 }
 
