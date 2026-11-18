@@ -3050,6 +3050,7 @@
   "9b5bce65d53a1bd8": "No environment is connected.",
   "d6822cceebb0012d": "AgentD status requires read access to this environment.",
   "10d611a07d695c7d": "AgentD not found",
+  "0b345855ad18695d": "AgentD Desktop carries its own agentd, and it could not be run. Reinstall AgentD Desktop to restore it.",
   "7bda04b10c99117f": [
     "Follow the",
     " ",
