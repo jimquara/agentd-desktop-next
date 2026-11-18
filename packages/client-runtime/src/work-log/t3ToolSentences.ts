@@ -242,50 +242,50 @@ const T3_TOOL_SENTENCES: ReadonlyMap<string, T3ToolSentence> = new Map<string, T
     },
   ],
   [
-    "Create\nCreating\nCreated\nT3 threads",
+    "Create\nCreating\nCreated\nAgentD Desktop threads",
     {
       detail: msg(
-        "{status, select, inProgress {Creating T3 threads} completed {Created T3 threads} failed {Failed to create T3 threads} declined {Declined to create T3 threads} stopped {Stopped creating T3 threads} other {Creating T3 threads}}",
+        "{status, select, inProgress {Creating AgentD Desktop threads} completed {Created AgentD Desktop threads} failed {Failed to create AgentD Desktop threads} declined {Declined to create AgentD Desktop threads} stopped {Stopped creating AgentD Desktop threads} other {Creating AgentD Desktop threads}}",
       ),
     },
   ],
   [
-    "Start\nStarting\nStarted\na T3 thread",
+    "Start\nStarting\nStarted\na AgentD Desktop thread",
     {
       detail: msg(
-        "{status, select, inProgress {Starting a T3 thread} completed {Started a T3 thread} failed {Failed to start a T3 thread} declined {Declined to start a T3 thread} stopped {Stopped starting a T3 thread} other {Starting a T3 thread}}",
+        "{status, select, inProgress {Starting a AgentD Desktop thread} completed {Started a AgentD Desktop thread} failed {Failed to start a AgentD Desktop thread} declined {Declined to start a AgentD Desktop thread} stopped {Stopped starting a AgentD Desktop thread} other {Starting a AgentD Desktop thread}}",
       ),
     },
   ],
   [
-    "List\nListing\nListed\nT3 threads",
+    "List\nListing\nListed\nAgentD Desktop threads",
     {
       detail: msg(
-        "{status, select, inProgress {Listing T3 threads} completed {Listed T3 threads} failed {Failed to list T3 threads} declined {Declined to list T3 threads} stopped {Stopped listing T3 threads} other {Listing T3 threads}}",
+        "{status, select, inProgress {Listing AgentD Desktop threads} completed {Listed AgentD Desktop threads} failed {Failed to list AgentD Desktop threads} declined {Declined to list AgentD Desktop threads} stopped {Stopped listing AgentD Desktop threads} other {Listing AgentD Desktop threads}}",
       ),
     },
   ],
   [
-    "Read\nReading\nRead\na T3 thread",
+    "Read\nReading\nRead\na AgentD Desktop thread",
     {
       detail: msg(
-        "{status, select, inProgress {Reading a T3 thread} completed {Read a T3 thread} failed {Failed to read a T3 thread} declined {Declined to read a T3 thread} stopped {Stopped reading a T3 thread} other {Reading a T3 thread}}",
+        "{status, select, inProgress {Reading a AgentD Desktop thread} completed {Read a AgentD Desktop thread} failed {Failed to read a AgentD Desktop thread} declined {Declined to read a AgentD Desktop thread} stopped {Stopped reading a AgentD Desktop thread} other {Reading a AgentD Desktop thread}}",
       ),
     },
   ],
   [
-    "Send\nSending\nSent\nto a T3 thread",
+    "Send\nSending\nSent\nto a AgentD Desktop thread",
     {
       detail: msg(
-        "{status, select, inProgress {Sending to a T3 thread} completed {Sent to a T3 thread} failed {Failed to send to a T3 thread} declined {Declined to send to a T3 thread} stopped {Stopped sending to a T3 thread} other {Sending to a T3 thread}}",
+        "{status, select, inProgress {Sending to a AgentD Desktop thread} completed {Sent to a AgentD Desktop thread} failed {Failed to send to a AgentD Desktop thread} declined {Declined to send to a AgentD Desktop thread} stopped {Stopped sending to a AgentD Desktop thread} other {Sending to a AgentD Desktop thread}}",
       ),
     },
   ],
   [
-    "Wait\nWaiting\nWaited\nfor a T3 thread",
+    "Wait\nWaiting\nWaited\nfor a AgentD Desktop thread",
     {
       detail: msg(
-        "{status, select, inProgress {Waiting for a T3 thread} completed {Waited for a T3 thread} failed {Failed to wait for a T3 thread} declined {Declined to wait for a T3 thread} stopped {Stopped waiting for a T3 thread} other {Waiting for a T3 thread}}",
+        "{status, select, inProgress {Waiting for a AgentD Desktop thread} completed {Waited for a AgentD Desktop thread} failed {Failed to wait for a AgentD Desktop thread} declined {Declined to wait for a AgentD Desktop thread} stopped {Stopped waiting for a AgentD Desktop thread} other {Waiting for a AgentD Desktop thread}}",
       ),
     },
   ],
@@ -306,10 +306,10 @@ const T3_TOOL_SENTENCES: ReadonlyMap<string, T3ToolSentence> = new Map<string, T
     },
   ],
   [
-    "Interrupt\nInterrupting\nRequested an interrupt of\na T3 thread",
+    "Interrupt\nInterrupting\nRequested an interrupt of\na AgentD Desktop thread",
     {
       detail: msg(
-        "{status, select, inProgress {Interrupting a T3 thread} completed {Requested an interrupt of a T3 thread} failed {Failed to interrupt a T3 thread} declined {Declined to interrupt a T3 thread} stopped {Stopped interrupting a T3 thread} other {Interrupting a T3 thread}}",
+        "{status, select, inProgress {Interrupting a AgentD Desktop thread} completed {Requested an interrupt of a AgentD Desktop thread} failed {Failed to interrupt a AgentD Desktop thread} declined {Declined to interrupt a AgentD Desktop thread} stopped {Stopped interrupting a AgentD Desktop thread} other {Interrupting a AgentD Desktop thread}}",
       ),
     },
   ],
@@ -682,10 +682,10 @@ const T3_TOOL_SENTENCES: ReadonlyMap<string, T3ToolSentence> = new Map<string, T
     },
   ],
   [
-    "Update\nUpdating\nUpdated\nT3 thread metadata",
+    "Update\nUpdating\nUpdated\nAgentD Desktop thread metadata",
     {
       detail: msg(
-        "{status, select, inProgress {Updating T3 thread metadata} completed {Updated T3 thread metadata} failed {Failed to update T3 thread metadata} declined {Declined to update T3 thread metadata} stopped {Stopped updating T3 thread metadata} other {Updating T3 thread metadata}}",
+        "{status, select, inProgress {Updating AgentD Desktop thread metadata} completed {Updated AgentD Desktop thread metadata} failed {Failed to update AgentD Desktop thread metadata} declined {Declined to update AgentD Desktop thread metadata} stopped {Stopped updating AgentD Desktop thread metadata} other {Updating AgentD Desktop thread metadata}}",
       ),
     },
   ],
