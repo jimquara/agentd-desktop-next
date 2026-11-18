@@ -55,7 +55,7 @@ const fail = (message: string) => new LibraosGatewayError({ message });
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
-const make = Effect.fn("LibraosGateway.make")(function* () {
+export const make = Effect.fn("LibraosGateway.make")(function* () {
   const secrets = yield* ServerSecretStore.ServerSecretStore;
   const settings = yield* ServerSettingsService;
   const bridge = yield* AgentdBridge;
