@@ -49,7 +49,7 @@ effectIt.effect("hydrates PATH when the desktop handoff is absent", () =>
     ),
     (probe) =>
       Effect.gen(function* () {
-        const env: NodeJS.ProcessEnv = { SHELL: "/bin/bash", PATH: "/usr/bin" };
+        const env: NodeJS.ProcessEnv = { SHELL: "/bin/bash", PATH: "/usr/bin", HOME: "/home/u" };
 
         yield* fixPath().pipe(
           Effect.provideService(HostProcess.Platform, "linux"),
@@ -58,7 +58,10 @@ effectIt.effect("hydrates PATH when the desktop handoff is absent", () =>
         );
 
         assert.equal(probe.mock.calls.length, 1);
-        assert.equal(env.PATH, "/opt/tools/bin:/usr/bin");
+        assert.equal(
+          env.PATH,
+          "/opt/tools/bin:/usr/bin:/home/u/.local/bin:/home/u/.claude/local:/home/u/bin:/usr/local/bin",
+        );
       }),
     (probe) => Effect.sync(() => probe.mockRestore()),
   ),
@@ -78,7 +81,7 @@ effectIt.effect("waits longer for a login shell that times out at startup", () =
     ),
     () =>
       Effect.gen(function* () {
-        const env: NodeJS.ProcessEnv = { SHELL: "/bin/zsh", PATH: "/usr/bin" };
+        const env: NodeJS.ProcessEnv = { SHELL: "/bin/zsh", PATH: "/usr/bin", HOME: "/home/u" };
 
         yield* fixPath().pipe(
           Effect.provideService(HostProcess.Platform, "linux"),
@@ -86,7 +89,10 @@ effectIt.effect("waits longer for a login shell that times out at startup", () =
           Effect.provide(NodeServices.layer),
         );
 
-        assert.equal(env.PATH, "/opt/tools/bin:/usr/bin");
+        assert.equal(
+          env.PATH,
+          "/opt/tools/bin:/usr/bin:/home/u/.local/bin:/home/u/.claude/local:/home/u/bin:/usr/local/bin",
+        );
       }),
     (probe) => Effect.sync(() => probe.mockRestore()),
   ),
@@ -101,7 +107,7 @@ effectIt.effect("waits longer for only one hung login shell", () =>
     ),
     (probe) =>
       Effect.gen(function* () {
-        const env: NodeJS.ProcessEnv = { SHELL: "/bin/zsh", PATH: "/usr/bin" };
+        const env: NodeJS.ProcessEnv = { SHELL: "/bin/zsh", PATH: "/usr/bin", HOME: "/home/u" };
 
         yield* fixPath().pipe(
           Effect.provideService(HostProcess.Platform, "linux"),
@@ -111,7 +117,11 @@ effectIt.effect("waits longer for only one hung login shell", () =>
 
         const timeouts = probe.mock.calls.map(([, , options]) => options?.timeout);
         assert.equal(timeouts.filter((timeout) => (timeout ?? 0) > 5_000).length, 1);
-        assert.equal(env.PATH, "/usr/bin");
+        // Agent CLI folders stay reachable even when every login shell hangs.
+        assert.equal(
+          env.PATH,
+          "/usr/bin:/home/u/.local/bin:/home/u/.claude/local:/home/u/bin:/usr/local/bin",
+        );
       }),
     (probe) => Effect.sync(() => probe.mockRestore()),
   ),
