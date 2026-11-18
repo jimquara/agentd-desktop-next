@@ -159,4 +159,12 @@ export const agentdArgs = {
     ...(input.check === null ? ["--no-check"] : ["--check", text("check", input.check)]),
     "--json",
   ],
+  enrolWorker: (server: string) => [
+    "worker",
+    "--server",
+    agentdServerUrl(server),
+    "--ticket-file",
+    "-",
+  ],
+  foreground: (minutes: number) => ["worker", "foreground", "on", "--for", `${minutes}m`],
 } as const;

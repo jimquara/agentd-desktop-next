@@ -2,6 +2,7 @@ import { createAgentdEnvironmentAtoms } from "@t3tools/client-runtime/state/agen
 import {
   AuthOrchestrationReadScope,
   type AgentdHandoffId,
+  type AgentdTaskOthersInput,
   type EnvironmentId,
 } from "@t3tools/contracts";
 import { useMessages } from "gt-react";
@@ -86,6 +87,14 @@ export function useAgentdPeople(target?: EnvironmentId | null, includeNodes = fa
   );
 }
 
+export function useAgentdTeamNode(target?: EnvironmentId | null) {
+  const environmentId = useAgentdEnvironment(target);
+  return useEnvironmentQuery(
+    environmentId === null ? null : agentdEnvironment.teamNode({ environmentId, input: {} }),
+    useMessages(),
+  );
+}
+
 /** Each takes `{ environmentId, input }`; failures are reported like any other command's. */
 export function useAgentdCommands() {
   return {
@@ -93,6 +102,7 @@ export function useAgentdCommands() {
     stopTask: useAtomCommand(agentdEnvironment.stopTask),
     connectAgent: useAtomCommand(agentdEnvironment.connectAgent),
     joinTeam: useAtomCommand(agentdEnvironment.joinTeam),
+    setTeamNode: useAtomCommand(agentdEnvironment.setTeamNode),
   };
 }
 
@@ -106,6 +116,16 @@ export function useAgentdCloudSetup(
     environmentId === null || cwd === null
       ? null
       : agentdEnvironment.cloudSetup({ environmentId, input: { cwd, includeBalance } }),
+    useMessages(),
+  );
+}
+
+export function useAgentdTaskOthers(input: AgentdTaskOthersInput | null, target: EnvironmentId) {
+  const environmentId = useAgentdEnvironment(target);
+  return useEnvironmentQuery(
+    environmentId === null || input === null
+      ? null
+      : agentdEnvironment.taskOthers({ environmentId, input }),
     useMessages(),
   );
 }

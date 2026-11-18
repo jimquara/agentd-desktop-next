@@ -1,0 +1,67 @@
+import type { AgentdStatus } from "@t3tools/contracts";
+import * as Schema from "effect/Schema";
+import { T, Var } from "gt-react";
+
+import { useLocalStorage } from "../../hooks/useLocalStorage";
+import { Alert, AlertAction, AlertDescription, AlertTitle } from "../ui/alert";
+import { Button } from "../ui/button";
+
+const PATH_NOTICE_KEY = "agentd:path-notice-dismissed";
+const DismissedFolder = Schema.NullOr(Schema.String);
+
+/** Which agentd the app runs, where the desktop app installed it, and a missing PATH folder once. */
+export function AgentdInstallStatus({ status }: { status: AgentdStatus }) {
+  const install = status.install ?? null;
+  // The folder the notice was dismissed for; a different folder is reported again.
+  const [dismissed, setDismissed] = useLocalStorage(PATH_NOTICE_KEY, null, DismissedFolder);
+  if (status.binary === undefined && install === null) return null;
+  const pathLine = install?.pathLine ?? null;
+  return (
+    <div className="space-y-2 border-t border-border pt-3 text-sm">
+      {status.binary !== undefined ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="font-medium">
+            <T>Uses</T>
+          </span>
+          <span className="break-all text-muted-foreground">{status.binary}</span>
+        </div>
+      ) : null}
+      {install !== null ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="font-medium">
+            <T>Installed for the terminal</T>
+          </span>
+          <span className="break-all text-muted-foreground">
+            {install.action === "kept-newer" || install.action === "kept-unknown" ? (
+              <T>
+                <Var>{install.path}</Var> (your own agentd, kept)
+              </T>
+            ) : (
+              install.path
+            )}
+          </span>
+        </div>
+      ) : null}
+      {install !== null && pathLine !== null && dismissed !== install.directory ? (
+        <Alert variant="info">
+          <AlertTitle>
+            <T>
+              <Var>{install.directory}</Var> is not on your PATH
+            </T>
+          </AlertTitle>
+          <AlertDescription>
+            <T>To run agentd in a terminal, add this line to your shell profile:</T>
+            <code className="block whitespace-pre-wrap break-words rounded-md bg-muted px-2 py-1 text-xs">
+              {pathLine}
+            </code>
+          </AlertDescription>
+          <AlertAction>
+            <Button size="sm" variant="outline" onClick={() => setDismissed(install.directory)}>
+              <T>Got it</T>
+            </Button>
+          </AlertAction>
+        </Alert>
+      ) : null}
+    </div>
+  );
+}

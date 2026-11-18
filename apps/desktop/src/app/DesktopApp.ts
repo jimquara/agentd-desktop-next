@@ -22,6 +22,8 @@ import * as DesktopWindow from "../window/DesktopWindow.ts";
 import * as PreviewPasskeys from "../preview/Passkeys.ts";
 import * as DesktopBackendManager from "../backend/DesktopBackendManager.ts";
 import * as DesktopBackendPool from "../backend/DesktopBackendPool.ts";
+import { installAgentdAfterConsent } from "../backend/agentdInstall.ts";
+import * as DesktopClientSettings from "../settings/DesktopClientSettings.ts";
 import * as DesktopHomeOwner from "../backend/DesktopHomeOwner.ts";
 import * as DesktopLocalEnvironmentAuth from "../backend/DesktopLocalEnvironmentAuth.ts";
 import * as DesktopEnvironment from "./DesktopEnvironment.ts";
@@ -300,6 +302,21 @@ const bootstrap = Effect.fn("desktop.bootstrap")(function* (backendStarted: bool
           ? installCli
           : logBootstrapInfo("skipped installing the t3 command without the shell PATH"),
       ),
+    ),
+  );
+
+  // agentd and its Skills, only once the person continued past first run; then at every launch.
+  const clientSettings = yield* DesktopClientSettings.DesktopClientSettings;
+  const shellDiscovery = (yield* DesktopShellEnvironment.DesktopShellEnvironment)
+    .awaitUserShellDiscovery;
+  yield* Effect.forkScoped(
+    Effect.suspend(() => clientSettings.get).pipe(
+      Effect.flatMap((stored) =>
+        Option.isSome(stored) && stored.value.onboardingCompletedAt != null
+          ? shellDiscovery.pipe(Effect.andThen(installAgentdAfterConsent()))
+          : Effect.void,
+      ),
+      Effect.ignoreCause,
     ),
   );
 

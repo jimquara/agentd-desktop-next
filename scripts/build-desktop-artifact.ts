@@ -2469,7 +2469,10 @@ export function agentdReleaseAssets(
   return cpus.map((cpu) => `agentd-${os}-${cpu}${platform === "win" ? ".exe" : ""}`);
 }
 
-/** Copies the prebuilt agentd for the target into resources/agentd, each asset checked against the release's SHA256SUMS. */
+/** The agentd Skills a release ships beside its binaries; installed into each agent client after consent. */
+export const AGENTD_SKILL_ASSETS = ["SKILL.md", "SKILL-agentd.md"] as const;
+
+/** Copies the prebuilt agentd for the target and its Skills into resources/agentd, each asset checked against the release's SHA256SUMS. */
 export const stageAgentdCli = Effect.fn("stageAgentdCli")(function* (input: {
   readonly stageResourcesDir: string;
   readonly platform: typeof BuildPlatform.Type;
@@ -2501,7 +2504,7 @@ export const stageAgentdCli = Effect.fn("stageAgentdCli")(function* (input: {
       .map((match) => [match[2]!, match[1]!.toLowerCase()] as const),
   );
   const sources: string[] = [];
-  for (const asset of assets) {
+  for (const asset of [...assets, ...AGENTD_SKILL_ASSETS]) {
     const source = path.join(dir, asset);
     const bytes = yield* fs
       .readFile(source)
@@ -2532,11 +2535,15 @@ export const stageAgentdCli = Effect.fn("stageAgentdCli")(function* (input: {
   );
   yield* fs.remove(destinationDirectory, { recursive: true, force: true }).pipe(Effect.ignore);
   yield* fs.makeDirectory(destinationDirectory, { recursive: true });
-  if (sources.length === 1) {
-    yield* fs.copyFile(sources[0]!, destinationPath);
+  const binaries = sources.slice(0, assets.length);
+  for (const skill of AGENTD_SKILL_ASSETS) {
+    yield* fs.copyFile(path.join(dir, skill), path.join(destinationDirectory, skill));
+  }
+  if (binaries.length === 1) {
+    yield* fs.copyFile(binaries[0]!, destinationPath);
   } else {
     yield* runCommand(
-      ChildProcess.make("lipo", ["-create", ...sources, "-output", destinationPath]),
+      ChildProcess.make("lipo", ["-create", ...binaries, "-output", destinationPath]),
       {
         label: "lipo agentd universal binary",
         verbose: input.verbose,

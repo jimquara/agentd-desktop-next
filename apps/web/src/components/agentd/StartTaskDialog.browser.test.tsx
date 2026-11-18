@@ -5,6 +5,7 @@ import {
   AgentdCommandError,
   type AgentdCloudSetup,
   type AgentdStartTaskResult,
+  type AgentdTaskOther,
   ThreadId,
 } from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
@@ -25,6 +26,7 @@ const state = vi.hoisted(() => ({
   refresh: vi.fn(),
   branch: "feature/export",
   cloud: null as AgentdCloudSetup | null,
+  others: [] as AgentdTaskOther[],
 }));
 
 vi.mock("~/lib/agentdState", async () => {
@@ -34,6 +36,7 @@ vi.mock("~/lib/agentdState", async () => {
     agentdEnvironment: { startTask: { permissionAtom: () => allowed } },
     useAgentdStatus: () => ({ data: { defaultWorker: "opencode" } }),
     useAgentdCloudSetup: (cwd: string | null) => ({ data: cwd ? state.cloud : null, error: null }),
+    useAgentdTaskOthers: () => ({ data: state.others, isPending: false, isSuccess: true }),
   };
 });
 vi.mock("~/state/entities", () => ({
@@ -60,6 +63,7 @@ const parentKey = scopedThreadKey(parentRef);
 function setup(branch: string) {
   state.branch = branch;
   state.cloud = null;
+  state.others = [];
   state.start.mockReset();
   state.refresh
     .mockReset()
@@ -92,6 +96,7 @@ async function fillTask() {
 
 it("shows what is missing, displays a refusal in full, and opens the tasks pane on success", async () => {
   setup("feature/export");
+  state.others = [{ person: "Bob", work: "acme/app#42", activity: null, paths: ["src/export.ts"] }];
   const refusal = "Task refused: worker is not connected.\n  Run setup and try again.";
   state.start
     .mockResolvedValueOnce(
@@ -124,6 +129,9 @@ it("shows what is missing, displays a refusal in full, and opens the tasks pane 
     .toHaveValue("/repo/worktrees/export");
 
   await fillTask();
+  const notice = page.getByRole("status").filter({ hasText: "Others are working here" });
+  await expect.element(notice.getByText("Bob: acme/app#42")).toBeVisible();
+  await expect.element(notice.getByText("src/export.ts")).toBeVisible();
   await start.click();
   await expect.element(page.getByRole("alert")).toBeVisible();
   expect(page.getByRole("alert").element().textContent).toBe(refusal);
