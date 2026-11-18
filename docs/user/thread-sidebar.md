@@ -6,7 +6,7 @@ need a separate branch and working directory.
 ## Start a thread
 
 On web and desktop, **New thread** opens the project picker when you have more than one
-open project in the default or project-grouped sidebar. Archived projects don't count. **Shift-click** to start in
+open project. Archived projects don't count. **Shift-click** to start in
 the current project, or use a project's own new-thread action. A new thread carries
 your model and mode selections, unless the destination project has its own model default.
 Its branch and workspace mode come from your configured defaults. To continue in
@@ -141,24 +141,24 @@ there. A thread returns to the top of the active list when it finishes, fails, o
 answer. The Working section lists the thread you last sent work to first. Pinned threads stay in
 the pinned section.
 
-This is on by default. Turn it off with **Settings → General → Working section** on web and desktop,
-or **Settings → General → Working section** on iOS and Android. Each device keeps its own
-choice.
+This is on by default on iOS and Android, and in the flat sidebar on web and desktop.
+Change it in **Settings → General → Working section**. Each device keeps its own choice.
 
 While this is on, the active list is ordered by when each thread last came back to you, so you
 cannot drag or move threads within it. Your saved order returns when you turn it off.
 
-### Group threads by project (beta)
+### Group sessions by project
 
-Turn on **Settings → Labs → Boring sidebar (group by project)** on web and desktop to put active
-threads in a folder for each project. Pinned projects come first. A project with no active
-threads has no folder unless it is pinned or you pick it in the project filter. An archived
-project's folder comes last and shows only while it has active threads. Click a folder to open or
-close it. A closed folder shows how many threads it holds, and a dot when one of them
-needs you. Use the pen button on a folder, or right-click it, to start a thread in that project.
+On web and desktop, active threads are grouped under projects by default. Each heading shows
+where the project runs, and pinned projects come first. You can start a thread with the heading's
+**New session** action even if the project is empty. An archived project's heading comes last and
+shows only while it has active threads. Click a heading to collapse or expand it; the sidebar
+remembers your choice after reload. A collapsed heading shows how many threads it hides and a dot
+when one of them needs you.
 Pinned threads stay above the folders, and Snoozed and Settled stay below them. In this mode you
 can drag a thread onto the composer to mention it, but not within the sidebar, and the Working
-section is off. Each device keeps its own choice.
+section is off. To switch to a flat list, turn off **Group sessions by project** in **Settings → Labs**.
+Each device keeps its own choice.
 
 ## Settle finished work
 

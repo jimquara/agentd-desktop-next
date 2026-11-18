@@ -33,13 +33,13 @@ export function LabsSettingsPanel() {
 }
 
 function BoringSidebarRow() {
-  const searchableSetting = useSearchableSetting();
+  const groupingSetting = useSearchableSetting()("boring-sidebar");
   const settings = useScopedSettings();
   const updateSettings = useUpdateScopedSettings();
   const gt = useGT();
   return (
     <SettingsRow
-      {...searchableSetting("boring-sidebar")}
+      {...groupingSetting}
       description={gt(
         "Group sidebar threads into project folders. Pinned threads stay on top, and Snoozed and Settled stay below the folders.",
       )}
@@ -47,7 +47,7 @@ function BoringSidebarRow() {
         <Switch
           checked={settings.boringSidebarEnabled}
           onCheckedChange={(checked) => updateSettings({ boringSidebarEnabled: Boolean(checked) })}
-          aria-label={gt("Boring sidebar (group by project)")}
+          aria-label={groupingSetting.title}
         />
       }
     >

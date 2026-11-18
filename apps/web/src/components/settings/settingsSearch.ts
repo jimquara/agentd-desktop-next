@@ -489,7 +489,7 @@ export const SETTINGS_SEARCH_ITEMS = [
   },
   {
     id: "boring-sidebar",
-    title: msg("Boring sidebar (group by project)"),
+    title: msg("Group sessions by project"),
     to: "/settings/labs",
     searchTerms: [msg("beta folders project tree classic sidebar")],
   },
