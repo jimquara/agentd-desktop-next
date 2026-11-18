@@ -53,17 +53,26 @@ jobs:
   test:
     name: Unit tests (${{ matrix.part.name }})
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 45
     # Split so a slow or flaky part neither starves nor hides the others' results.
+    # Server test files run one at a time (fileParallelism: false), so its shards go to
+    # separate runners; weightedShardSequencer.ts splits files by recorded duration.
     strategy:
       fail-fast: false
       matrix:
         part:
-          - { name: web, filter: "--filter @t3tools/web" }
-          - { name: server, filter: "--filter t3" }
+          - { name: web 1/2, filter: "--filter @t3tools/web", shard: "--shard 1/2" }
+          - { name: web 2/2, filter: "--filter @t3tools/web", shard: "--shard 2/2" }
+          - { name: server 1/6, filter: "--filter t3", shard: "--shard 1/6" }
+          - { name: server 2/6, filter: "--filter t3", shard: "--shard 2/6" }
+          - { name: server 3/6, filter: "--filter t3", shard: "--shard 3/6" }
+          - { name: server 4/6, filter: "--filter t3", shard: "--shard 4/6" }
+          - { name: server 5/6, filter: "--filter t3", shard: "--shard 5/6" }
+          - { name: server 6/6, filter: "--filter t3", shard: "--shard 6/6" }
           - {
               name: other,
               filter: "--filter '!@t3tools/monorepo' --filter '!@t3tools/web' --filter '!t3'",
+              shard: "",
             }
     steps:
       # The server tests ran the runner's 14 GB disk full; these preinstalled SDKs are unused here.
@@ -90,7 +99,7 @@ jobs:
           node apps/server/node_modules/playwright-core/cli.js install --only-shell chromium
       - name: Test
         # Every package's own test task; the root `test` script would recurse.
-        run: vp run ${{ matrix.part.filter }} test
+        run: vp run ${{ matrix.part.filter }} test ${{ matrix.part.shard }}
       - name: Disk left
         if: always()
         run: df -h /
