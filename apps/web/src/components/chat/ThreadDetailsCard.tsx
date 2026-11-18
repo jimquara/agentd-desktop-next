@@ -2,6 +2,7 @@ import { useGT } from "gt-react";
 import { workspaceAreaProps } from "../../lib/workspaceFocus";
 import {
   useLayoutEffect,
+  useRef,
   useState,
   type MouseEventHandler,
   type ReactNode,
@@ -60,13 +61,16 @@ export function ThreadDetailsCard({
   const density = resolveThreadDetailsCardDensity(height, contentHeights);
   const measureDetailsCard = canvas?.measureDetailsCard;
   const cardWidth = preferredPlacement?.width;
+  const previousMode = useRef(mode);
   // The mode derives from canvas measurements, the preview frame and the
   // inline flag, which live in three stores, so no single write site sees the
   // card leave popover mode. A flag left set would reopen the popover unasked
   // when the card returns to popover mode.
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- closes the popover flag in the right panel store when the derived mode turns inline
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- closes the popover flag when a mounted card switches to inline
   useLayoutEffect(() => {
-    if (mode === "inline" && popoverOpen)
+    const wasPopover = previousMode.current === "popover";
+    previousMode.current = mode;
+    if (wasPopover && mode === "inline" && popoverOpen)
       useRightPanelStore.getState().setThreadPanelOpen(threadRef, "popover", false);
   }, [mode, popoverOpen, threadRef]);
   const [contentElement, setContentElement] = useState<HTMLDivElement | null>(null);
@@ -141,7 +145,11 @@ export function ThreadDetailsCard({
             : details.reason === "outside-press"
               ? details.event.target
               : null;
-        if (!open && target instanceof Element && target.closest("[data-thread-find-bar]")) {
+        if (
+          !open &&
+          target instanceof Element &&
+          target.closest("[data-thread-find-bar], [data-chat-code-switch]")
+        ) {
           details.cancel();
           return;
         }
