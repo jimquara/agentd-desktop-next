@@ -168,17 +168,11 @@ export function buildSidebarProjectSnapshots(input: {
           member.id === group.representative.id,
       ) ?? members[0]!;
 
-    const hasLocal =
-      input.primaryEnvironmentId !== null &&
-      members.some((member) => member.environmentId === input.primaryEnvironmentId);
-    const hasRemote =
-      input.primaryEnvironmentId !== null
-        ? members.some((member) => member.environmentId !== input.primaryEnvironmentId)
-        : false;
+    const hasLocal = members.some((member) => member.environmentId === input.primaryEnvironmentId);
     const remoteMembers = members.filter(
-      (member) =>
-        input.primaryEnvironmentId !== null && member.environmentId !== input.primaryEnvironmentId,
+      (member) => member.environmentId !== input.primaryEnvironmentId,
     );
+    const hasRemote = remoteMembers.length > 0;
     const remoteEnvironmentLabels = remoteMembers
       .flatMap((member) => (member.environmentLabel ? [member.environmentLabel] : []))
       .filter((label, index, labels) => labels.indexOf(label) === index);

@@ -23,6 +23,7 @@ import { useNowMinute } from "../hooks/useNowMinute";
 import { __setClientSettingsForTests, getClientSettings } from "../hooks/useSettings";
 import { useThreadRouteTarget } from "../hooks/useThreadRouteTarget";
 import { useProjects, useServerConfigs, useQuietThreadShells } from "../state/entities";
+import { useEnvironmentIdentities, usePrimaryEnvironmentId } from "../state/environments";
 import { readEnvironmentScope, useEnvironmentScope } from "../state/session";
 import { useOrchestrationCommand } from "../state/use-orchestration-command";
 import { useTerminalUiStateStore } from "../terminalUiStateStore";
@@ -38,6 +39,7 @@ vi.mock(import("../state/olderSettledShelf"), async (original) => {
   return { ...actual, useOlderSettledShelf: vi.fn(actual.useOlderSettledShelf) };
 });
 vi.mock("../state/entities", { spy: true });
+vi.mock("../state/environments", { spy: true });
 vi.mock("../hooks/useHandleNewThread", { spy: true });
 vi.mock("../hooks/useNowMinute", { spy: true });
 vi.mock("../hooks/useThreadRouteTarget", { spy: true });
@@ -137,6 +139,52 @@ function threadShell(projectId: ProjectId, index: number): EnvironmentThreadShel
     title: `Thread ${index}`,
   });
 }
+
+it("groups sessions under project and machine headings with default settings", async () => {
+  using stack = new DisposableStack();
+  const previousSettings = getClientSettings();
+  stack.defer(() => __setClientSettingsForTests(previousSettings));
+  __setClientSettingsForTests(DEFAULT_CLIENT_SETTINGS);
+  const local = project("Local project");
+  const remote = { ...project("Remote project"), environmentId: EnvironmentId.make("remote") };
+  const startThread = vi.fn().mockResolvedValue(null);
+  vi.mocked(usePrimaryEnvironmentId).mockReturnValue(local.environmentId);
+  vi.mocked(useEnvironmentIdentities).mockReturnValue([
+    { environmentId: local.environmentId, label: "Local host" },
+    { environmentId: remote.environmentId, label: "Build server" },
+  ]);
+  vi.mocked(useProjects).mockReturnValue([local, remote]);
+  vi.mocked(useQuietThreadShells).mockReturnValue([threadShell(local.id, 1)]);
+  vi.mocked(useHandleNewThread).mockReturnValue({
+    activeDraftThread: null,
+    activeThread: null,
+    defaultProjectRef: null,
+    defaultProjectFallbackReady: true,
+    handleNewThread: startThread,
+    routeDraftId: null,
+    routeThreadRef: null,
+  });
+  await using screen = await render(
+    <SidebarProvider>
+      <Sidebar routeReveal={{ observedKey: null, pendingKey: null }} />
+    </SidebarProvider>,
+  );
+
+  await expect
+    .element(screen.getByRole("heading", { name: "Local project This computer" }))
+    .toBeVisible();
+  await expect
+    .element(screen.getByRole("heading", { name: "Remote project Build server" }))
+    .toBeVisible();
+  await expect
+    .element(screen.getByRole("button", { name: "Thread 1, Local project", exact: true }))
+    .toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "New session in Remote project" }));
+  expect(startThread).toHaveBeenCalledExactlyOnceWith({
+    environmentId: remote.environmentId,
+    projectId: remote.id,
+  });
+});
 
 describe("sidebar render isolation", () => {
   // regression: #33100 Cmd+J re-rendered every sidebar row, which took hundreds of ms with many threads
