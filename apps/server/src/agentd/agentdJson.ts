@@ -60,6 +60,7 @@ export function agentdTaskRow(row: AgentdHandoffListJsonRow): AgentdTaskRow {
     workerRunning: row.worker_running === true,
     workerTool: toolOfSession(row.claimer),
     ...(workerName === null || runsOn === "cloud" ? {} : { workerName }),
+    ...(nonEmpty(row.worker_cwd) === null ? {} : { workerCwd: nonEmpty(row.worker_cwd) }),
     runsOn,
     project: nonEmpty(row.project),
     issue: nonEmpty(row.issue),

@@ -3,6 +3,29 @@ import { msg } from "gt-react";
 
 import { m, type MessageResolver } from "../../i18n/messages";
 
+function comparablePath(path: string): string {
+  const slashed = path.replaceAll("\\", "/").replace(/\/+$/u, "");
+  // Windows paths compare without case; a drive letter or a UNC prefix marks one.
+  return /^([A-Za-z]:|\/\/)/u.test(slashed) ? slashed.toLowerCase() : slashed;
+}
+
+/**
+ * Whether a task belongs to a project: its checkout is the project's folder or inside it,
+ * else (no checkout reported) its agentd project names the project's repository.
+ */
+export function agentdTaskBelongsToProject(
+  task: Pick<AgentdTaskRow, "workerCwd" | "project">,
+  workspaceRoot: string | null,
+  repository: string | null,
+): boolean {
+  if (task.workerCwd && workspaceRoot) {
+    const cwd = comparablePath(task.workerCwd);
+    const root = comparablePath(workspaceRoot);
+    return cwd === root || cwd.startsWith(`${root}/`);
+  }
+  return repository !== null && task.project?.toLowerCase() === repository;
+}
+
 export function isFinishedAgentdTask(state: string): boolean {
   return state === "done" || state === "delivered" || state === "cancelled" || state === "declined";
 }

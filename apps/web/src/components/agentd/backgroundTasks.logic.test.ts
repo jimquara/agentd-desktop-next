@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  agentdTaskBelongsToProject,
   finishedAgentdTaskLabel,
   isFinishedAgentdTask,
   runningAgentdTaskLabel,
@@ -53,4 +54,46 @@ describe("background task states", () => {
       );
     },
   );
+});
+
+describe("agentdTaskBelongsToProject", () => {
+  it("matches a fork by its checkout even when the project resolves to upstream", () => {
+    const task = {
+      workerCwd: "/home/me/agentd-desktop-next",
+      project: "libraos/agentd-desktop-next",
+    };
+    expect(
+      agentdTaskBelongsToProject(task, "/home/me/agentd-desktop-next", "pingdotgg/t3code"),
+    ).toBe(true);
+    expect(agentdTaskBelongsToProject(task, "/home/me/agentd-desktop-next/apps/web", null)).toBe(
+      false,
+    );
+    expect(agentdTaskBelongsToProject(task, "/home/me/agentd-desktop", null)).toBe(false);
+  });
+
+  it("matches a checkout inside the project folder, and Windows paths without case", () => {
+    expect(
+      agentdTaskBelongsToProject(
+        { workerCwd: "/home/me/mono/pkg", project: null },
+        "/home/me/mono/",
+        null,
+      ),
+    ).toBe(true);
+    expect(
+      agentdTaskBelongsToProject(
+        { workerCwd: "C:\\Users\\Me\\Repo", project: null },
+        "c:/users/me/repo",
+        null,
+      ),
+    ).toBe(true);
+  });
+
+  it("falls back to the repository when agentd reports no checkout", () => {
+    expect(
+      agentdTaskBelongsToProject({ project: "LibraOS/Site" }, "/home/me/site", "libraos/site"),
+    ).toBe(true);
+    expect(agentdTaskBelongsToProject({ project: "libraos/site" }, "/home/me/site", null)).toBe(
+      false,
+    );
+  });
 });

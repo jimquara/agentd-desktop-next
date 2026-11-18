@@ -14,6 +14,7 @@ import { LayersIcon, SquareIcon, TerminalSquareIcon } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 
 import { revealCodeMode } from "../../chatCodeModeStore";
+import { agentdTaskBelongsToProject, isFinishedAgentdTask } from "../agentd/backgroundTasks.logic";
 import { useNowSecond } from "../../hooks/useNowSecond";
 import {
   agentdEnvironment,
@@ -128,9 +129,11 @@ function AgentdRunningTaskRow({
 export function ThreadDetailsBackgroundTasks({
   threadRef,
   repositoryIdentity,
+  workspaceRoot,
 }: {
   readonly threadRef: ScopedThreadRef;
   readonly repositoryIdentity: RepositoryIdentity | null;
+  readonly workspaceRoot: string | null;
 }) {
   const gt = useGT();
   const headingId = useId();
@@ -143,14 +146,14 @@ export function ThreadDetailsBackgroundTasks({
         (task.sourceThreadId === undefined || task.sourceThreadId === threadRef.threadId),
     )
     .slice(0, MAX_RUNNING_TASKS);
-  const repository = repositoryIdentity?.canonicalKey
-    .toLowerCase()
-    .match(/^github\.com\/([^/]+\/[^/]+)$/)?.[1];
+  const repository =
+    repositoryIdentity?.canonicalKey.toLowerCase().match(/^github\.com\/([^/]+\/[^/]+)$/)?.[1] ??
+    null;
   const running: AgentdTaskRow[] = [];
   let finished = 0;
   for (const task of tasks ?? []) {
-    if (repository === undefined || task.project?.toLowerCase() !== repository) continue;
-    if (task.state === "done" || task.state === "cancelled") finished += 1;
+    if (!agentdTaskBelongsToProject(task, workspaceRoot, repository)) continue;
+    if (isFinishedAgentdTask(task.state)) finished += 1;
     else if (task.workerRunning && running.length + commands.length < MAX_RUNNING_TASKS)
       running.push(task);
   }
