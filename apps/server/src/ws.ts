@@ -3599,6 +3599,7 @@ export const layerWsRpc = (
         [WS_METHODS.agentdPeople]: (input) => agentd.people(input),
         [WS_METHODS.agentdConnectAgent]: (input) => agentd.connectAgent(input),
         [WS_METHODS.agentdJoinTeam]: (input) => agentd.joinTeam(input),
+        [WS_METHODS.agentdTaskOthers]: (input) => agentd.taskOthers(input),
       });
       const splitHandlers: Pick<typeof handlers, SplitWsRpc["_tag"]> = handlers;
       const otherHandlers: Pick<typeof handlers, Exclude<ServerWsRpc, SplitWsRpc>["_tag"]> =

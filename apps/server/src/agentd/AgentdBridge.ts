@@ -25,6 +25,8 @@ import {
   type AgentdTask,
   type AgentdTaskInput,
   type AgentdTaskRow,
+  type AgentdTaskOther,
+  type AgentdTaskOthersInput,
   type OrchestrationV2CommandOutputFrame,
 } from "@t3tools/contracts";
 import * as HostProcess from "@t3tools/shared/HostProcess";
@@ -43,6 +45,7 @@ import * as BackgroundPolicy from "../background/BackgroundPolicy.ts";
 import * as ProcessRunner from "../processRunner.ts";
 import { AgentdArgumentError, agentdArgs, agentdTicket } from "./agentdCommands.ts";
 import * as AgentdJson from "./agentdJson.ts";
+import { joinedPerson, mergeTaskHolders, repositoryTargets } from "./taskOthers.ts";
 
 export class AgentdBridge extends Context.Service<
   AgentdBridge,
@@ -66,6 +69,9 @@ export class AgentdBridge extends Context.Service<
     readonly joinTeam: (
       input: AgentdJoinTeamInput,
     ) => Effect.Effect<AgentdCommandOutput, AgentdError>;
+    readonly taskOthers: (
+      input: AgentdTaskOthersInput,
+    ) => Effect.Effect<ReadonlyArray<AgentdTaskOther>>;
   }
 >()("t3/agentd/AgentdBridge") {}
 
@@ -357,6 +363,55 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
     };
   });
 
+  const readTaskWho = Effect.fn("AgentdBridge.readTaskWho")(function* (target: string) {
+    const who = yield* run(yield* args(() => agentdArgs.who(target))).pipe(
+      Effect.flatMap(decodeWho),
+    );
+    if (!who.server || who.server_note) {
+      return yield* commandError("agentd could not look up team holdings.");
+    }
+    return who;
+  });
+
+  const taskOthers = Effect.fn("AgentdBridge.taskOthers")(
+    function* ({ cwd, issue }: AgentdTaskOthersInput) {
+      const doctor = yield* run(agentdArgs.doctor(), { jsonOnFailure: true }).pipe(
+        Effect.flatMap(decodeDoctor),
+      );
+      const team = joinedPerson(doctor);
+      if (doctor.set_up === false || team === null) return [];
+      const namedUser = env.AGENTD_USER?.trim();
+      const [checkout, onIssue, local] = yield* Effect.all(
+        [
+          readTaskWho(cwd),
+          issue === null ? Effect.succeed(null) : readTaskWho(issue),
+          namedUser
+            ? Effect.succeed([namedUser])
+            : Effect.gen(function* () {
+                const username = env.USER?.trim() || (yield* HostProcess.Username);
+                const users = yield* run(agentdArgs.users()).pipe(Effect.flatMap(decodeUsers));
+                const owner =
+                  users.length === 1 && users[0]?.role === "owner" ? users[0].name : null;
+                return [username, owner];
+              }),
+        ],
+        { concurrency: "unbounded" },
+      );
+      const onRepository = yield* Effect.forEach(repositoryTargets(checkout), readTaskWho, {
+        concurrency: "unbounded",
+      });
+      return mergeTaskHolders(
+        onIssue === null ? [checkout, ...onRepository] : [onIssue, checkout, ...onRepository],
+        {
+          local: [team, ...local],
+          team,
+        },
+      );
+    },
+    Effect.timeout("3 seconds"),
+    Effect.orElseSucceed(() => []),
+  );
+
   return AgentdBridge.of({
     status,
     subscribeTasks,
@@ -389,6 +444,7 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
       const ticket = yield* args(() => [agentdTicket(input.ticket)]);
       return { output: (yield* run(argv, { stdin: `${ticket[0]}\n` })).trim() };
     }),
+    taskOthers,
   });
 });
 

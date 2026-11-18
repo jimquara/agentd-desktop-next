@@ -392,6 +392,8 @@ import {
   AgentdTask,
   AgentdTaskInput,
   AgentdTaskRow,
+  AgentdTaskOther,
+  AgentdTaskOthersInput,
 } from "./agentd.ts";
 import {
   UsageLimitSourceError,
@@ -698,6 +700,7 @@ export const WS_METHODS = {
   agentdPeople: "agentd.people",
   agentdConnectAgent: "agentd.connectAgent",
   agentdJoinTeam: "agentd.joinTeam",
+  agentdTaskOthers: "agentd.taskOthers",
 } as const;
 
 const WsServerUpsertKeybindingRpc = Rpc.make(WS_METHODS.serverUpsertKeybinding, {
@@ -2340,6 +2343,12 @@ const WsAgentdJoinTeamRpc = Rpc.make(WS_METHODS.agentdJoinTeam, {
   error: AgentdRpcError,
 });
 
+const WsAgentdTaskOthersRpc = Rpc.make(WS_METHODS.agentdTaskOthers, {
+  payload: AgentdTaskOthersInput,
+  success: Schema.Array(AgentdTaskOther),
+  error: AgentdRpcError,
+});
+
 export class RpcScopeAuthorization extends RpcMiddleware.Service<RpcScopeAuthorization>()(
   "t3/contracts/RpcScopeAuthorization",
   { error: EnvironmentAuthorizationError },
@@ -2568,6 +2577,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsAgentdPeopleRpc,
   WsAgentdConnectAgentRpc,
   WsAgentdJoinTeamRpc,
+  WsAgentdTaskOthersRpc,
   WsOrchestrationV2DispatchCommandRpc,
   WsOrchestrationV2GetWorkflowScriptRpc,
   WsOrchestrationV2GetNativeChildWorkRpc,
