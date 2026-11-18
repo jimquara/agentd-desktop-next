@@ -36,6 +36,12 @@ Confirmed by reading the code (no adapter change needed):
 - opencode (`provider-opencode/src/server/adapter.ts`): `client.mcp.add("t3-code")` runs only
   when an MCP session exists; the user's `opencode.json` servers are loaded by opencode itself.
 
+## Windows
+
+Nothing platform-specific: the change is a settings field, a capability set and an MCP
+`tools/list` filter. No paths, binaries, processes or shell commands are involved. Not run on
+Windows; the tests are platform-neutral.
+
 ## Open
 
 - With browser access on (the default) the session still gets `t3-code` with preview tools,
