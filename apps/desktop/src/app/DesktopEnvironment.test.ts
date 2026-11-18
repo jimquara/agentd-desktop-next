@@ -72,4 +72,24 @@ describe("DesktopEnvironment", () => {
       assert.equal(production.stateDir, "/Users/alice/.t3/userdata");
     }),
   );
+
+  it.effect("uses the AgentD Desktop identity without dropping channel labels", () =>
+    Effect.gen(function* () {
+      const stable = yield* makeEnvironment({ platform: "win32", isPackaged: true });
+      const nightly = yield* makeEnvironment({
+        platform: "linux",
+        isPackaged: true,
+        appVersion: "0.1.1-nightly.20261019.1",
+      });
+
+      assert.deepStrictEqual(stable.branding, {
+        baseName: "AgentD Desktop",
+        stageLabel: "Beta",
+        displayName: "AgentD Desktop (Beta)",
+      });
+      assert.equal(stable.appUserModelId, "ai.libraos.agentd-desktop");
+      assert.equal(nightly.displayName, "AgentD Desktop (Nightly)");
+      assert.equal(nightly.linuxDesktopEntryName, "ai.libraos.agentd-desktop.desktop");
+    }),
+  );
 });

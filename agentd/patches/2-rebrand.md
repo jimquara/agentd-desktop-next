@@ -1,0 +1,75 @@
+# Rebrand to AgentD Desktop
+
+- `apps/desktop/gnome-extension/captureService.js`: trust the renamed desktop's stable and dev D-Bus clients without widening the allowlist.
+- `apps/desktop/gnome-extension/captureService.test.js`: assert capture authorization against the new stable D-Bus name.
+- `apps/desktop/package.json`: set the packaged product name.
+- `apps/desktop/resources/dmg/dmg-background-latest.svg`: replace the installer wordmark and product name.
+- `apps/desktop/resources/dmg/dmg-background-nightly.svg`: replace the nightly installer wordmark and product name.
+- `apps/desktop/resources/installer.nsh`: recognize the renamed Windows executables during install and uninstall.
+- `apps/desktop/resources/linux/com.t3tools.t3code.metainfo.xml`: move the old metadata file to the new application ID.
+- `apps/desktop/resources/linux/ai.libraos.agentd-desktop.metainfo.xml`: describe the new package, executable, launcher, and project URLs.
+- `apps/desktop/scripts/electron-launcher.mjs`: use the new product name and bundle ID for local Electron launches.
+- `apps/desktop/src/app/DesktopEarlyElectronStartup.ts`: keep the runtime Linux desktop entry ID aligned with packaging, with a distinct dev ID.
+- `apps/desktop/src/app/DesktopEnvironment.ts`: update the injected base name and the Windows taskbar identity.
+- `apps/desktop/src/app/DesktopEnvironment.test.ts`: verify desktop names, channel labels, and platform IDs.
+- `apps/desktop/src/app/DesktopPreReadyPlatform.test.ts`: verify the early Linux entry uses the new launcher, name, and icon path.
+- `apps/desktop/src/permissions/MacPermissionHelper.ts`: interpolate the desktop name into the permission helper and its error.
+- `apps/desktop/src/permissions/MacPermissionHelper.test.ts`: verify that the permission helper renders the new product name.
+- `apps/web/index.html`: brand the initial tab title and splash screen.
+- `apps/web/public/apple-touch-icon.png`: replace the splash and Apple touch icon.
+- `apps/web/public/favicon-16x16.png`: replace the 16px favicon.
+- `apps/web/public/favicon-32x32.png`: replace the 32px favicon.
+- `apps/web/public/favicon.ico`: replace the multi-resolution tab favicon.
+- `apps/web/public/icon-192x192.png`: replace the 192px install icon.
+- `apps/web/public/icon-512x512.png`: replace the 512px install icon.
+- `apps/web/public/manifest.webmanifest`: name the installed web app AgentD Desktop.
+- `apps/web/src/branding.ts`: set the web base name and route both download links to the AgentD repository.
+- `apps/web/src/components/T3AppIcon.tsx`: retain the production icon slot and remove its upstream-only description.
+- `apps/web/src/components/T3Wordmark.tsx`: provide the AgentD symbol for icon-only slots and the text wordmark for headers.
+- `apps/web/src/components/sidebar/SidebarChrome.tsx`: use the text wordmark in the sidebar header and its width probe.
+- `apps/web/src/components/ui/standalone-page.tsx`: use the same text wordmark on standalone pages.
+- `apps/web/vite.config.ts`: read the base title from the HTML and preserve channel labels.
+- `assets/README.md`: document the Linux-compatible regeneration path and the native macOS export distinction.
+- `assets/dev/app-icon.icon/Assets/annotations.svg`: remove the blueprint measurements tied to the upstream logo.
+- `assets/dev/app-icon.icon/Assets/text.svg`: import the AgentD vector symbol for dev assets.
+- `assets/dev/app-icon.icon/icon.json`: compose the AgentD colorway for dev assets.
+- `assets/dev/blueprint-ios-1024.png`: replace the dev iOS bitmap in its existing slot.
+- `assets/dev/blueprint-macos-1024.png`: replace the dev macOS icon with an inset AgentD bitmap.
+- `assets/dev/blueprint-universal-1024.png`: replace the dev universal bitmap used by Linux.
+- `assets/dev/blueprint-web-apple-touch-180.png`: replace the dev splash and Apple touch export.
+- `assets/dev/blueprint-web-favicon-16x16.png`: replace the dev 16px favicon export.
+- `assets/dev/blueprint-web-favicon-32x32.png`: replace the dev 32px favicon export.
+- `assets/dev/blueprint-web-favicon.ico`: replace the dev multi-resolution favicon export.
+- `assets/dev/blueprint-web-icon-192x192.png`: replace the dev 192px manifest icon export.
+- `assets/dev/blueprint-web-icon-512x512.png`: replace the dev 512px manifest icon export.
+- `assets/dev/blueprint-windows.ico`: replace the dev Windows icon export.
+- `assets/nightly/app-icon.icon/Assets/text.svg`: import the AgentD vector symbol for nightly assets.
+- `assets/nightly/app-icon.icon/icon.json`: compose the AgentD colorway for nightly assets.
+- `assets/nightly/nightly-ios-1024.png`: replace the nightly iOS bitmap in its existing slot.
+- `assets/nightly/nightly-macos-1024.png`: replace the nightly macOS icon with an inset AgentD bitmap.
+- `assets/nightly/nightly-universal-1024.png`: replace the nightly universal bitmap used by Linux packaging.
+- `assets/nightly/nightly-web-apple-touch-180.png`: replace the nightly splash and Apple touch export.
+- `assets/nightly/nightly-web-favicon-16x16.png`: replace the nightly 16px favicon export.
+- `assets/nightly/nightly-web-favicon-32x32.png`: replace the nightly 32px favicon export.
+- `assets/nightly/nightly-web-favicon.ico`: replace the nightly multi-resolution favicon export.
+- `assets/nightly/nightly-web-icon-192x192.png`: replace the nightly 192px manifest icon export.
+- `assets/nightly/nightly-web-icon-512x512.png`: replace the nightly 512px manifest icon export.
+- `assets/nightly/nightly-windows.ico`: replace the nightly NSIS and Windows application icon export.
+- `assets/prod/app-icon.icon/Assets/text.svg`: import the AgentD vector symbol for production assets and in-app icon slots.
+- `assets/prod/app-icon.icon/icon.json`: compose the AgentD colorway for production assets.
+- `assets/prod/black-ios-1024.png`: replace the production iOS bitmap in its existing slot.
+- `assets/prod/black-macos-1024.png`: replace the production macOS icon with an inset AgentD bitmap.
+- `assets/prod/black-universal-1024.png`: replace the production universal bitmap used by AppImage and deb packaging.
+- `assets/prod/logo.svg`: remove the unused upstream logo.
+- `assets/prod/t3-black-web-apple-touch-180.png`: replace the production app icon and splash/Apple touch export.
+- `assets/prod/t3-black-web-favicon-16x16.png`: replace the production 16px favicon export.
+- `assets/prod/t3-black-web-favicon-32x32.png`: replace the production 32px favicon export.
+- `assets/prod/t3-black-web-favicon.ico`: replace the production multi-resolution favicon export.
+- `assets/prod/t3-black-web-icon-192x192.png`: replace the production 192px manifest icon export.
+- `assets/prod/t3-black-web-icon-512x512.png`: replace the production 512px manifest icon export.
+- `assets/prod/t3-black-windows.ico`: replace the production NSIS and Windows application icon export.
+- `scripts/build-desktop-artifact.ts`: brand installer metadata, macOS permission prompts, and Linux registration; keep versionless names only for updatable AppImages so the updater replaces them in place.
+- `scripts/build-desktop-artifact.test.ts`: verify the package and launcher IDs, versioned names, AppImage names, and macOS entitlements.
+- `scripts/export-android-icons.ts`: keep the existing exporter compatible with the new mark's dimensions and grouped layers without touching native mobile assets.
+
+`agentd/scripts/regenerate-brand-icons.mjs` reads the existing AgentD Desktop PNGs and multi-size ICO and writes the existing asset slots, including the public web copies. It runs on Linux with Node and the workspace's Sharp dependency, and relies on no shell utilities. All requested Windows, Linux, and web slots are filled. There is no tracked macOS ICNS slot here: the existing macOS packager creates ICNS from the replacement 1024px PNG, whose icon body is inset by 100px. The native Mac export was not run on Linux.

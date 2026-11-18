@@ -15,7 +15,7 @@ type IconVariant = "dev" | "nightly" | "prod";
 
 const ADAPTIVE_CANVAS = 432;
 const SPLASH_CANVAS = 1152;
-const TEXT = { x: 15.53, y: 37, width: 94.5, height: 57 };
+const MARK = { x: 28, y: 14, width: 139, height: 174 };
 const WORDMARK_FRACTION = 0.48;
 const COMPOSER_CANVAS_PT = 1024;
 const SVG_DENSITY = 300;
@@ -28,14 +28,16 @@ export class AndroidIconRenderError extends Schema.TaggedError<AndroidIconRender
 ) {}
 
 const wordmarkTransform = (size: number) => {
-  const scale = (size * WORDMARK_FRACTION) / TEXT.width;
-  const tx = (size - TEXT.width * scale) / 2 - TEXT.x * scale;
-  const ty = (size - TEXT.height * scale) / 2 - TEXT.y * scale;
+  const scale = (size * WORDMARK_FRACTION) / MARK.height;
+  const tx = (size - MARK.width * scale) / 2 - MARK.x * scale;
+  const ty = (size - MARK.height * scale) / 2 - MARK.y * scale;
   return `translate(${tx.toFixed(3)} ${ty.toFixed(3)}) scale(${scale.toFixed(4)})`;
 };
 
 const canvasSvg = (size: number, inner: string) =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" fill="none">${inner}</svg>`;
+
+const svgBody = (svg: string) => svg.replace(/^<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "");
 
 // Remove the iOS 10pt corner clip; Android's own mask needs full bleed.
 const fullBleed = (svg: string) =>
@@ -87,11 +89,10 @@ const renderForeground = Effect.fn("androidIcons.renderForeground")(function* (
   repositoryRoot: string,
   size: number,
 ) {
-  const text = yield* readLayerSource(repositoryRoot, "prod", "text.svg");
-  const paths = text.match(/<path[^>]*\/>/g) ?? [];
+  const mark = yield* readLayerSource(repositoryRoot, "prod", "text.svg");
   return yield* rasterize(
     "foreground",
-    canvasSvg(size, `<g transform="${wordmarkTransform(size)}">${paths.join("")}</g>`),
+    canvasSvg(size, `<g transform="${wordmarkTransform(size)}">${svgBody(mark)}</g>`),
     size,
   );
 });
@@ -99,13 +100,11 @@ const renderForeground = Effect.fn("androidIcons.renderForeground")(function* (
 const renderDevelopmentBackground = Effect.fn("androidIcons.renderDevelopmentBackground")(
   function* (repositoryRoot: string, size: number) {
     const annotations = yield* readLayerSource(repositoryRoot, "dev", "annotations.svg");
-    const defs = annotations.match(/<defs>[\s\S]*?<\/defs>/)?.[0] ?? "";
-    const body = annotations.replace(/^[\s\S]*?<\/defs>/, "").replace(/<\/svg>\s*$/, "");
     const paper = yield* readLayerSource(repositoryRoot, "dev", "background.svg");
     const background = yield* rasterize("dev-background", fullBleed(paper), size);
     const overlay = yield* rasterize(
       "dev-annotations",
-      canvasSvg(size, `${defs}<g transform="${wordmarkTransform(size)}">${body}</g>`),
+      canvasSvg(size, `<g transform="${wordmarkTransform(size)}">${svgBody(annotations)}</g>`),
       size,
     );
     return yield* composite("dev-background", background, [{ input: overlay }]);
@@ -116,7 +115,6 @@ const renderNightlyBackground = Effect.fn("androidIcons.renderNightlyBackground"
   repositoryRoot: string,
   size: number,
 ) {
-  // Match assets/nightly/app-icon.icon/icon.json; omit blur, which Icon Composer ignores and rasterization smears.
   const clouds = [
     { file: "cloud-lower-left.svg", scale: 25, translation: [-309.6375, 268.66077693836917] },
     {

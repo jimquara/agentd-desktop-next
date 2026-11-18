@@ -59,7 +59,8 @@ vi.mock("electron", async () => {
   }
   return {
     app: {
-      getPath: () => "/Applications/T3 Code (Nightly).app/Contents/MacOS/T3 Code",
+      getPath: () =>
+        "/Applications/AgentD Desktop (Nightly).app/Contents/MacOS/AgentD Desktop (Nightly)",
     },
     nativeImage: { createFromPath: mocks.createFromPath },
     BrowserWindow: class extends MockWindow {},
@@ -118,6 +119,8 @@ it("does not reopen a superseded helper when its initial probe completes", async
     () => pending.promise,
   );
   await open();
+  const pageUrl = new URL(mocks.loadURL.mock.calls[0]![0] as string);
+  expect(decodeURIComponent(pageUrl.pathname)).toContain("Drag AgentD Desktop into the list above");
   pending.resolve(false);
   await first;
   expect(windows).toHaveLength(1);
