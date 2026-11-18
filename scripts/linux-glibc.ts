@@ -62,11 +62,16 @@ export async function scanGlibcNeeds(appOutDir: string): Promise<{
       if (!isElf) continue;
       elfCount++;
       try {
-        // readelf inspects either release architecture without executing the binary.
-        const { stdout, stderr } = await readelf("readelf", ["--wide", "--version-info", file], {
-          env: { ...process.env, LC_ALL: "C" },
-          maxBuffer: 16 * 1024 * 1024,
-        });
+        // readelf inspects either release architecture without executing the binary; -wN keeps
+        // binutils 2.38 from warning about the split-debug links in Electron's libraries.
+        const { stdout, stderr } = await readelf(
+          "readelf",
+          ["--wide", "--version-info", "-wN", file],
+          {
+            env: { ...process.env, LC_ALL: "C" },
+            maxBuffer: 16 * 1024 * 1024,
+          },
+        );
         if (stderr.trim()) throw new Error(stderr.trim());
         const required = parseGlibcNeeds(stdout);
         if (required && compareVersions(required, GLIBC_BUILD_CEILING) > 0) {
