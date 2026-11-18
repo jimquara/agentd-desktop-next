@@ -20,6 +20,7 @@ import {
   CommandId,
   AuthOrchestrationOperateScope,
   isManagedDriverAllowed,
+  isProviderAvailable,
   ProviderDriverKind,
   ThreadId,
 } from "@t3tools/contracts";
@@ -442,16 +443,23 @@ function AgentsSection({
 
   const acpAllowed = isManagedDriverAllowed(serverConfig?.managedPolicy, ACP_REGISTRY_DRIVER_KIND);
   const stateOf = (provider: ServerProvider) => welcomeAgentState(provider, serverConfig?.settings);
-  const needsInstallOrSignIn = (provider: ServerProvider) => {
+  const setupStepFor = (provider: ServerProvider) => {
     const state = stateOf(provider);
-    return (
-      isInstallableDriver(provider.driver) &&
-      !isBrokenVersion(provider) &&
-      provider.setup?.canAuthenticate !== true &&
-      (state === "install" || state === "signIn")
-    );
+    if (
+      !isInstallableDriver(provider.driver) ||
+      isBrokenVersion(provider) ||
+      provider.setup?.canAuthenticate === true
+    )
+      return null;
+    if (state === "install" || state === "signIn") return state;
+    return state === "attention" &&
+      provider.installed &&
+      provider.auth.status === "unknown" &&
+      isProviderAvailable(provider)
+      ? "signIn"
+      : null;
   };
-  const openTerminal = (provider: ServerProvider) => {
+  const openTerminal = (provider: ServerProvider, step: AgentTerminalSession["step"]) => {
     if (
       !isInstallableDriver(provider.driver) ||
       serverConfig === null ||
@@ -461,19 +469,20 @@ function AgentsSection({
     setTerminalSession({
       environmentId,
       driver: provider.driver,
-      step: provider.installed ? "signIn" : "install",
+      step,
       providerInstanceId: provider.instanceId,
       cwd: serverConfig.cwd,
-      command: provider.installed
-        ? resolveOnboardingProviderLoginCommand(
-            provider,
-            serverConfig.settings,
-            serverConfig.environment.platform.os,
-          )
-        : resolveOnboardingProviderInstallCommand(
-            provider.driver,
-            serverConfig.environment.platform.os,
-          ),
+      command:
+        step === "signIn"
+          ? resolveOnboardingProviderLoginCommand(
+              provider,
+              serverConfig.settings,
+              serverConfig.environment.platform.os,
+            )
+          : resolveOnboardingProviderInstallCommand(
+              provider.driver,
+              serverConfig.environment.platform.os,
+            ),
       keybindings: serverConfig.keybindings,
     });
   };
@@ -537,18 +546,19 @@ function AgentsSection({
     // Settings updates a broken CLI the way it was installed, including a custom binary path.
     if (isBrokenVersion(provider))
       return settingsAction(gt("Update", { $context: "verb, updates an agent CLI" }));
-    if (needsInstallOrSignIn(provider)) {
+    const step = setupStepFor(provider);
+    if (step !== null) {
       return (
         <TerminalAction
           name={name}
-          signIn={state === "signIn"}
+          signIn={step === "signIn"}
           disabled={
             (terminalSession?.providerInstanceId === provider.instanceId &&
-              terminalSession.step === state) ||
+              terminalSession.step === step) ||
             serverConfig === null ||
             !canOperateTerminal
           }
-          onClick={() => openTerminal(provider)}
+          onClick={() => openTerminal(provider, step)}
         />
       );
     }
@@ -562,7 +572,7 @@ function AgentsSection({
     ...more,
   ];
   const notes = [
-    !canOperateTerminal && visibleProviders.some(needsInstallOrSignIn)
+    !canOperateTerminal && visibleProviders.some((provider) => setupStepFor(provider) !== null)
       ? gt("This connection cannot control terminals.")
       : null,
     !canManageProviders &&

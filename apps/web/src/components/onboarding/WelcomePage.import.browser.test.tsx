@@ -442,8 +442,16 @@ it("shows the three agents in order and enables Continue when one is ready", asy
   }
   expect(button("Continue").disabled).toBe(true);
 
-  await act(async () => appAtomRegistry.set(providers, [missingOpenCode, readyClaude, codex]));
+  await act(async () =>
+    appAtomRegistry.set(providers, [
+      missingOpenCode,
+      readyClaude,
+      { ...codex, auth: { status: "unknown" }, message: "Could not check this CLI." },
+    ]),
+  );
   await expect.element(rows.nth(0).getByText("Ready", { exact: true })).toBeVisible();
+  await expect.element(rows.nth(1).getByText("Could not check this CLI.")).toBeVisible();
+  expect(rows.nth(1).getByRole("button", { name: "Sign in: Codex" }).all()).toHaveLength(1);
   await click("Continue");
   await vi.waitFor(() => expect(state.onDone).toHaveBeenCalledOnce());
   expect(state.createProject).toHaveBeenCalledTimes(2);
