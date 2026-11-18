@@ -28,7 +28,7 @@ import { Link, useBlocker, useLocation } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
 import { CheckIcon, ChevronDownIcon, ChevronRightIcon, TerminalIcon } from "lucide-react";
 import { msg, T, useGT, useLocale, useMessages, Var } from "gt-react";
-import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
+import { useEffect, useEffectEvent, useId, useRef, useState, type ReactNode } from "react";
 
 import { TYPOGRAPHY_ADVANCED_STORAGE_KEY } from "../../appearanceFonts";
 import { isElectron } from "../../env";
@@ -85,6 +85,7 @@ import { useDesktopCliCommand } from "../settings/CliCommandSettingsRow";
 import { TerminalViewport } from "../ThreadTerminalDrawer";
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 import { ACPRegistryIcon } from "../Icons";
+import { T3Wordmark } from "../T3Wordmark";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
@@ -251,8 +252,16 @@ export function WelcomePage({
         <div className="min-h-0 flex-1 overflow-y-auto scrollbar-gutter-both">
           <div className="flex min-h-full flex-col px-6 py-10 sm:py-16">
             <div className="m-auto w-full max-w-xl">
-              {screen === "endpoint" ? (
-                <ConnectEndpointScreen />
+              {screen === "endpoint" || screen === "gateway" ? (
+                <ConnectEndpointScreen
+                  key={screen}
+                  gatewayChosen={screen === "gateway"}
+                  back={
+                    <Link to="." search={{ screen: undefined }} hash={true}>
+                      <T>Back</T>
+                    </Link>
+                  }
+                />
               ) : screen === "team" ? (
                 <JoinTeamScreen />
               ) : (
@@ -426,7 +435,9 @@ function AgentsSection({
   readonly onImportSourceEnabled: () => void;
 }) {
   const { serverConfig, primary, more } = agents;
+  const gatewayDescriptionId = useId();
   const gt = useGT();
+  const gatewayName = gt("LibraOS Gateway");
   const refreshProviders = useAtomCommand(serverEnvironment.refreshProviders, {
     reportFailure: false,
   });
@@ -595,6 +606,33 @@ function AgentsSection({
           />
         ))}
       </ul>
+      <div className="mt-2.5">
+        <Button
+          variant="secondary"
+          size="multiline"
+          className="w-full justify-start"
+          render={
+            <Link
+              to="."
+              search={{ screen: "gateway" }}
+              hash={true}
+              aria-label={gatewayName}
+              aria-describedby={gatewayDescriptionId}
+            />
+          }
+        >
+          <T3Wordmark className="size-6 shrink-0" />
+          <span className="space-y-0.5 text-left">
+            <span className="block">{gatewayName}</span>
+            <span
+              id={gatewayDescriptionId}
+              className="block text-xs font-normal text-muted-foreground"
+            >
+              <T>Models for all the agents above with one LibraOS account.</T>
+            </span>
+          </span>
+        </Button>
+      </div>
       {notes.map((note) => (
         <p key={note} className="mt-2 text-center text-xs text-muted-foreground">
           {note}

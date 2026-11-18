@@ -1,1 +1,3 @@
-The desktop bundle builds, and the Linux/Windows icon inputs and packaging configuration are verified. Final installer smoke tests need a build host with Rust and the target toolchain; Linux packaging also needs libsecret development headers, pkg-config, and ImageMagick. This worker does not expose Browser-panel tools, so the sidebar wordmark was verified with the rendered component and the title and icons with the isolated dev server.
+Welcome and Providers settings now show which API keys and gateways each agent can use. Welcome also has a dedicated LibraOS Gateway shortcut.
+
+Applying a choice is blocked: AgentD cannot yet write an endpoint into an agent's own configuration. Its worker-only Gateway command does not make the agent ready in Welcome. Compatible choices are shown as unavailable, and no credentials are collected.
