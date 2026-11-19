@@ -6389,9 +6389,12 @@
   "152184c4aefef5d1": "Deine Einstellungen konnten nicht gespeichert werden. Versuche es erneut.",
   "23ec0110d2170502": "Willkommen",
   "fd8f75f97a5c0e6d": "Wird importiert…",
+  "fbf8f62fea6f116f": "{count, plural, one {Import {count} project and continue} other {Import {count} projects and continue}}",
   "7be0671bbdf907c3": "Continue",
   "9877b52c6722fe99": "{agent} konnte nicht aktiviert werden",
+  "e2bc27598e7e40ab": "Could not turn off {agent}",
   "15903f7ea6a43f95": "{action}: {agent}",
+  "07f7bd1f79847a9e": "Turn off: {agent}",
   "82e9b02a3e95e425": "Aktivieren: {agent}",
   "72fc7ba5bac9e666": "Aktualisieren",
   "4681c4c9541539a4": "Anmelden",
@@ -6404,7 +6407,7 @@
   "e6bcf138d25188d7": "{count, plural, one {{count} Projekt mit seinen Threads importieren} other {{count} Projekte mit ihren Threads importieren}}",
   "d72f296745294c3a": "Projekte mit ihren Threads importieren",
   "18d144bcd97f0371": "Ausblenden",
-  "54fc1526df1c0cce": "{count, plural, one {Alle {count} prüfen} other {Alle {count} prüfen}}",
+  "4a89e13f852f2193": "{count, plural, one {Choose from {count} project} other {Choose from {count} projects}}",
   "bd2304f25f6f999e": "{selected, plural, one {{selected} von {total} ausgewählt} other {{selected} von {total} ausgewählt}}",
   "228cd9fd55a55070": "Projekte konnten nicht erneut geprüft werden. {error}",
   "346a69e1c8e0849b": "Ready",
@@ -6443,6 +6446,7 @@
     },
     "."
   ],
+  "a780192787ba0339": "Turn off",
   "f77d000c0710f066": "Aktivieren",
   "b13d2f57c213cbe3": "Models for all the agents above with one LibraOS account.",
   "602a8b205e7ab83d": "More agents",
@@ -6457,14 +6461,14 @@
     },
     "-Verlauf…"
   ],
-  "45194b35dc6d858a": [
-    "Aus deinem ",
+  "caf6128745705cc9": [
+    "Found in your ",
     {
       "i": 1,
       "k": "_gt_value_1",
       "v": "v"
     },
-    "-Verlauf"
+    " history. Nothing is imported unless you choose it."
   ],
   "5c6a6009aedbf1d0": "Alles auswählen",
   "24c98c5086b8e76e": "Keine auswählen",

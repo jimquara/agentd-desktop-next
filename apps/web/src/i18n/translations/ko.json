@@ -6371,9 +6371,12 @@
   "152184c4aefef5d1": "설정을 저장할 수 없습니다. 다시 시도하세요.",
   "23ec0110d2170502": "환영합니다",
   "fd8f75f97a5c0e6d": "가져오는 중…",
+  "fbf8f62fea6f116f": "{count, plural, one {Import {count} project and continue} other {Import {count} projects and continue}}",
   "7be0671bbdf907c3": "Continue",
   "9877b52c6722fe99": "{agent}을(를) 켤 수 없습니다",
+  "e2bc27598e7e40ab": "Could not turn off {agent}",
   "15903f7ea6a43f95": "{action}: {agent}",
+  "07f7bd1f79847a9e": "Turn off: {agent}",
   "82e9b02a3e95e425": "켜기: {agent}",
   "72fc7ba5bac9e666": "업데이트",
   "4681c4c9541539a4": "로그인",
@@ -6386,7 +6389,7 @@
   "e6bcf138d25188d7": "{count, plural, other {프로젝트 {count}개와 해당 스레드 가져오기}}",
   "d72f296745294c3a": "프로젝트와 해당 스레드 가져오기",
   "18d144bcd97f0371": "숨기기",
-  "54fc1526df1c0cce": "{count, plural, other {{count}개 모두 검토}}",
+  "4a89e13f852f2193": "{count, plural, one {Choose from {count} project} other {Choose from {count} projects}}",
   "bd2304f25f6f999e": "{selected, plural, other {{total}개 중 {selected}개 선택됨}}",
   "228cd9fd55a55070": "프로젝트를 다시 확인할 수 없습니다. {error}",
   "346a69e1c8e0849b": "Ready",
@@ -6423,6 +6426,7 @@
     },
     "을 확인하세요."
   ],
+  "a780192787ba0339": "Turn off",
   "f77d000c0710f066": "켜기",
   "b13d2f57c213cbe3": "Models for all the agents above with one LibraOS account.",
   "602a8b205e7ab83d": "More agents",
@@ -6436,13 +6440,14 @@
     },
     " 기록에서 프로젝트를 찾는 중…"
   ],
-  "45194b35dc6d858a": [
+  "caf6128745705cc9": [
+    "Found in your ",
     {
       "i": 1,
       "k": "_gt_value_1",
       "v": "v"
     },
-    " 기록에서"
+    " history. Nothing is imported unless you choose it."
   ],
   "5c6a6009aedbf1d0": "모두 선택",
   "24c98c5086b8e76e": "모두 선택 해제",
