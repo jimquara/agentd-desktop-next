@@ -3,7 +3,17 @@ import * as DateTime from "effect/DateTime";
 import { expect, it } from "vite-plus/test";
 
 import { makeStreamingTimelineFixture } from "~/test-fixtures";
-import { conversationTaskDraft, EMPTY_TASK_FIELDS, prepareTaskFields } from "./startTask.logic";
+import {
+  autoBudget,
+  budgetMinutes,
+  conversationTaskDraft,
+  defaultModelAccess,
+  EMPTY_TASK_FIELDS,
+  prepareTaskFields,
+  TASK_DRAFT_PROMPT,
+  taskDraftReply,
+  taskStartProblem,
+} from "./startTask.logic";
 
 it("validates the handoff fields before sending the trimmed CLI inputs", () => {
   const fields = {
@@ -55,6 +65,7 @@ it("fills the form only from a completed reply to this draft request", () => {
       worker: "opencode",
       budget: "",
       issue: "",
+      size: "feature",
     });
   const fixture = makeStreamingTimelineFixture(`\`\`\`json\n${format("Fix export")}\n\`\`\``);
   const date = DateTime.makeUnsafe("2026-11-18T10:00:00Z");
@@ -105,6 +116,73 @@ it("fills the form only from a completed reply to this draft request", () => {
       worker: "opencode",
       budget: "",
       issue: "",
+      size: "feature",
     },
   });
+
+  // The reply to the draft prompt, and only that, renders as a task card in the conversation.
+  const finished = { ...reply, streaming: false, status: "completed" as const };
+  const asked = turnItems.map((item) =>
+    item.type === "user_message" && item.runId === reply.runId
+      ? { ...item, text: TASK_DRAFT_PROMPT }
+      : item,
+  );
+  expect(taskDraftReply(asked, finished)).toMatchObject({ goal: "Fix export", size: "feature" });
+  expect(taskDraftReply(turnItems, finished)).toBeNull();
+  expect(taskDraftReply(asked, { ...finished, phase: "commentary" })).toBeNull();
+  const noSize = { ...finished, text: format("Fix export").replace(',"size":"feature"', "") };
+  expect(taskDraftReply(asked, noSize)).toMatchObject({ size: "" });
+});
+
+it("fills the budget from agentd's estimate, capped by the cloud balance", () => {
+  const estimate = { high: 4.98 };
+  expect(autoBudget({ estimate, defaultMinutes: null, balanceUsd: null })).toEqual({
+    minutes: 60,
+    dollars: 5,
+  });
+  expect(autoBudget({ estimate: { high: 5 }, defaultMinutes: 30, balanceUsd: null })).toEqual({
+    minutes: 30,
+    dollars: 5,
+  });
+  expect(autoBudget({ estimate: { high: 7.01 }, defaultMinutes: null, balanceUsd: 3.456 })).toEqual(
+    { minutes: 60, dollars: 3.45 },
+  );
+  expect(autoBudget({ estimate: null, defaultMinutes: null, balanceUsd: null })).toEqual({
+    minutes: 60,
+    dollars: 5,
+  });
+  expect(budgetMinutes("45m,$5")).toBe(45);
+  expect(budgetMinutes("$5")).toBeNull();
+});
+
+it("defaults model access to LibraOS when signed in or the Gateway is connected", () => {
+  expect(defaultModelAccess(true, false)).toBe("libraos");
+  expect(defaultModelAccess(false, true)).toBe("libraos");
+  expect(defaultModelAccess(false, false)).toBe("byok");
+});
+
+it("names the first problem that stops a Start", () => {
+  const ok = {
+    cloud: false,
+    balanceUsd: null,
+    creditProblem: false,
+    modelAccess: "libraos" as const,
+    signedIn: false,
+    gatewayConnected: false,
+    worker: "claude" as const,
+    hasDirectory: true,
+    branch: null,
+  };
+  expect(taskStartProblem(ok)).toBeNull();
+  expect(taskStartProblem({ ...ok, worker: null })).toBe("worker");
+  expect(taskStartProblem({ ...ok, branch: "protected" })).toBe("protected");
+  expect(taskStartProblem({ ...ok, branch: "not-repo" })).toBe("not-repo");
+  expect(taskStartProblem({ ...ok, hasDirectory: false })).toBe("no-directory");
+  const cloud = { ...ok, cloud: true, signedIn: true, branch: "protected" as const };
+  expect(taskStartProblem(cloud)).toBeNull();
+  expect(taskStartProblem({ ...cloud, balanceUsd: 0 })).toBe("balance");
+  expect(taskStartProblem({ ...cloud, creditProblem: true })).toBe("balance");
+  expect(taskStartProblem({ ...cloud, signedIn: false })).toBe("sign-in");
+  expect(taskStartProblem({ ...cloud, signedIn: false, gatewayConnected: true })).toBeNull();
+  expect(taskStartProblem({ ...cloud, signedIn: false, modelAccess: "byok" })).toBeNull();
 });

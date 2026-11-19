@@ -118,6 +118,13 @@ export const agentdArgs = {
   ],
   cloudHelp: () => ["handoff", "offer", "--help"],
   cloudBalance: () => ["cloud", "balance", "--json"],
+  estimate: (type: "small" | "feature" | "complex" | "implement") => [
+    "handoff",
+    "estimate",
+    "--type",
+    type,
+    "--json",
+  ],
   cloudSession: (cwd: string) => [
     "session",
     "join",

@@ -3,6 +3,7 @@ import {
   AuthOrchestrationReadScope,
   type AgentdHandoffId,
   type AgentdTaskOthersInput,
+  type AgentdTaskSize,
   type EnvironmentId,
 } from "@t3tools/contracts";
 import { useMessages } from "gt-react";
@@ -133,6 +134,21 @@ export function useAgentdCloudSetup(
     environmentId === null || cwd === null
       ? null
       : agentdEnvironment.cloudSetup({ environmentId, input: { cwd, includeBalance } }),
+    useMessages(),
+  );
+}
+
+/** agentd's estimate for a task of this size and a check suggested from the project's files. */
+export function useAgentdTaskDefaults(
+  cwd: string | null,
+  target: EnvironmentId,
+  size: AgentdTaskSize,
+) {
+  const environmentId = useAgentdEnvironment(target);
+  return useEnvironmentQuery(
+    environmentId === null || cwd === null
+      ? null
+      : agentdEnvironment.taskDefaults({ environmentId, input: { cwd, size } }),
     useMessages(),
   );
 }
