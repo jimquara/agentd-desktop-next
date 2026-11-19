@@ -37,6 +37,8 @@ import { MESSAGE_HEADING_LEVEL, MessageAuthorHeading } from "./TimelineRowParts"
 import { useAtomValue } from "@effect/atom-react";
 import { AsyncResult, Atom } from "effect/reactivity";
 import { vcsEnvironment } from "../../state/vcs";
+import { taskDraftReply } from "../agentd/startTask.logic";
+import { TaskDraftCard } from "../agentd/TaskDraftCard";
 
 const NO_VCS_STATUS = Atom.make(AsyncResult.initial());
 
@@ -51,6 +53,14 @@ export function AssistantTimelineRow({ row }: { row: Extract<TimelineRow, { kind
   const text = liveText ?? row.message.text;
   const messageText =
     text || (row.message.streaming || row.suppressEmptyResponse ? "" : gt("(empty response)"));
+  // agentd: a reply to "Draft from this conversation" is a task to confirm, not text to read.
+  const taskDraft =
+    ctx.threadRef && row.projectedItem && !row.message.streaming
+      ? taskDraftReply(
+          readThreadTurnItems(ctx.threadRef).map(({ item }) => item),
+          { ...row.projectedItem.item, text },
+        )
+      : null;
 
   return (
     <>
@@ -64,24 +74,28 @@ export function AssistantTimelineRow({ row }: { row: Extract<TimelineRow, { kind
             request={ctx.citationRequest}
             listRef={ctx.listRef}
           >
-            <ChatMarkdown
-              text={messageText}
-              renderInsights
-              cwd={ctx.markdownCwd}
-              agentDirectories={() =>
-                ctx.threadRef && row.projectedItem
-                  ? agentWorkingDirectories(readThreadTurnItems(ctx.threadRef), row.projectedItem)
-                  : []
-              }
-              threadRef={ctx.threadRef ?? undefined}
-              isStreaming={Boolean(row.message.streaming)}
-              lineBreaks={shouldPreserveAssistantLineBreaks(messageText)}
-              skills={ctx.skills}
-              headingLevelOffset={MESSAGE_HEADING_LEVEL}
-              onUseArtifactTemplate={ctx.onUseArtifactTemplate}
-              onRunShellCommand={ctx.onRunShellCommand}
-              onImageExpand={ctx.onImageExpand}
-            />
+            {taskDraft !== null && ctx.threadRef ? (
+              <TaskDraftCard threadRef={ctx.threadRef} fields={taskDraft} />
+            ) : (
+              <ChatMarkdown
+                text={messageText}
+                renderInsights
+                cwd={ctx.markdownCwd}
+                agentDirectories={() =>
+                  ctx.threadRef && row.projectedItem
+                    ? agentWorkingDirectories(readThreadTurnItems(ctx.threadRef), row.projectedItem)
+                    : []
+                }
+                threadRef={ctx.threadRef ?? undefined}
+                isStreaming={Boolean(row.message.streaming)}
+                lineBreaks={shouldPreserveAssistantLineBreaks(messageText)}
+                skills={ctx.skills}
+                headingLevelOffset={MESSAGE_HEADING_LEVEL}
+                onUseArtifactTemplate={ctx.onUseArtifactTemplate}
+                onRunShellCommand={ctx.onRunShellCommand}
+                onImageExpand={ctx.onImageExpand}
+              />
+            )}
           </AssistantCitationSource>
         </div>
         {ctx.onOpenTurnDiff ? (

@@ -122,6 +122,8 @@ export const AgentdHandoffShowJson = Schema.Struct({
   worker_note: NullableString,
   close_reason: NullableString,
   project: NullableString,
+  /** Pull requests linked to the task, as OWNER/REPO#N. */
+  prs: Schema.optionalKey(Schema.NullOr(Schema.Array(Schema.String))),
   created: NullableString,
   updated: NullableString,
   cloud: Schema.optionalKey(
@@ -296,6 +298,10 @@ export const AgentdTask = Schema.Struct({
       workerUsd: Schema.NullOr(Schema.Number),
       inferenceUsd: Schema.NullOr(Schema.Number),
       totalUsd: Schema.NullOr(Schema.Number),
+      /** The task's own PR, else GitHub's compare page for its pushed branch; null without either. */
+      pullRequest: Schema.optionalKey(
+        Schema.NullOr(Schema.Struct({ url: Schema.String, number: Schema.NullOr(Schema.Number) })),
+      ),
     }),
   ),
 });
@@ -458,6 +464,41 @@ export const AgentdCloudSetup = Schema.Struct({
   problem: Schema.NullOr(Schema.Literals(["setup", "credit", "repository", "balance"])),
 });
 export type AgentdCloudSetup = typeof AgentdCloudSetup.Type;
+
+/** A finished cloud task's pushed branch, compared in a checkout whose origin is its repository. */
+export const AgentdCloudReviewInput = Schema.Struct({ id: AgentdHandoffId, cwd: AbsolutePath });
+export type AgentdCloudReviewInput = typeof AgentdCloudReviewInput.Type;
+export const AgentdCloudReview = Schema.Struct({
+  branch: Schema.String,
+  /** The branch's changes against the repository's default branch, as a unified diff. */
+  patch: Schema.String,
+  truncated: Schema.Boolean,
+});
+export type AgentdCloudReview = typeof AgentdCloudReview.Type;
+/** The size a chat draft gives a task; it only chooses which of agentd's estimates to use. */
+export const AgentdTaskSize = Schema.Literals(["small", "feature", "complex", ""]);
+export type AgentdTaskSize = typeof AgentdTaskSize.Type;
+export const AgentdTaskDefaultsInput = Schema.Struct({
+  cwd: AbsolutePath,
+  size: AgentdTaskSize,
+});
+export type AgentdTaskDefaultsInput = typeof AgentdTaskDefaultsInput.Type;
+/** What `agentd handoff estimate` says similar past jobs cost, in dollars. */
+export const AgentdTaskEstimate = Schema.Struct({
+  type: Schema.Literals(["small", "feature", "complex", "implement"]),
+  low: Schema.Number,
+  median: Schema.Number,
+  high: Schema.Number,
+  jobs: Schema.Number,
+});
+export type AgentdTaskEstimate = typeof AgentdTaskEstimate.Type;
+export const AgentdTaskDefaults = Schema.Struct({
+  /** Null when agentd has too few past jobs of the type, or cannot estimate. */
+  estimate: Schema.NullOr(AgentdTaskEstimate),
+  /** A check command suggested from the project's files on the environment's host. */
+  check: Schema.NullOr(Schema.String),
+});
+export type AgentdTaskDefaults = typeof AgentdTaskDefaults.Type;
 
 export const AgentdTaskOthersInput = Schema.Struct({
   cwd: AbsolutePath,

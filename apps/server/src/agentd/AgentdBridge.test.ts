@@ -287,6 +287,29 @@ describe("AgentdBridge", () => {
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
   );
 
+  it.effect("lists people without node cards when agentd has no team server", () =>
+    Effect.gen(function* () {
+      const bridge = yield* makeBridge({ AGENTD_BIN: process.execPath }, (input) => {
+        switch (input.args.join(" ")) {
+          case "user list --json":
+            return Effect.succeed(output(`[{"name":"Les","role":"owner"}]`));
+          case "server nodes --json":
+            return Effect.succeed(
+              output(
+                "agentd: agentd server is part of the team server, which the public agentd does not include (LibraOS Team or Enterprise: https://libraos.com/pricing/)",
+                2,
+              ),
+            );
+          default:
+            return Effect.die(`unexpected agentd ${input.args.join(" ")}`);
+        }
+      });
+      const read = yield* bridge.people({ includeNodes: true });
+      expect(read.people.map((person) => person.name)).toEqual(["Les"]);
+      expect(read.nodes).toBeUndefined();
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+  );
+
   it.effect("preserves requesters and node cards and names leased and cloud work", () =>
     Effect.gen(function* () {
       const bridge = yield* makeBridge({ AGENTD_BIN: process.execPath }, (input) => {
@@ -917,5 +940,36 @@ describe("AgentdBridge", () => {
         }
         expect(yield* Fiber.join(result)).toEqual([]);
       }),
+  );
+
+  it.effect("reads the estimate for the draft's size and suggests a check from the project", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const cwd = yield* fs.makeTempDirectoryScoped();
+      const runs: Array<ReadonlyArray<string>> = [];
+      let estimate = output('{"high":4.98,"low":1.78,"median":3.11,"n":846,"type":"small"}');
+      const bridge = yield* makeBridge({ AGENTD_BIN: process.execPath }, ({ args }) => {
+        runs.push(args);
+        return args[1] === "estimate" ? Effect.succeed(estimate) : Effect.die("unexpected");
+      });
+
+      expect(yield* bridge.taskDefaults({ cwd, size: "small" })).toEqual({
+        estimate: { type: "small", low: 1.78, median: 3.11, high: 4.98, jobs: 846 },
+        check: null,
+      });
+      yield* fs.writeFileString(path.join(cwd, "go.mod"), "module example.com/x\n");
+      yield* fs.writeFileString(path.join(cwd, "package.json"), '{"scripts":{"test":"vitest"}}');
+      yield* fs.writeFileString(path.join(cwd, "pnpm-lock.yaml"), "");
+      estimate = output("agentd: no ledger", 1);
+      expect(yield* bridge.taskDefaults({ cwd, size: "" })).toEqual({
+        estimate: null,
+        check: "pnpm test",
+      });
+      expect(runs).toEqual([
+        ["handoff", "estimate", "--type", "small", "--json"],
+        ["handoff", "estimate", "--type", "implement", "--json"],
+      ]);
+    }).pipe(Effect.provide(NodeServices.layer)),
   );
 });

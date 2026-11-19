@@ -14,7 +14,11 @@ import {
   AgentdWorkerTool,
   type AgentdApproval,
   type AgentdCloudSetup,
+  type AgentdCloudReview,
+  type AgentdCloudReviewInput,
   type AgentdCloudSetupInput,
+  type AgentdTaskDefaults,
+  type AgentdTaskDefaultsInput,
   type AgentdCloudTaskInput,
   type AgentdCommandOutput,
   type AgentdConnectAgentInput,
@@ -49,8 +53,10 @@ import * as Stream from "effect/Stream";
 import * as BackgroundPolicy from "../background/BackgroundPolicy.ts";
 import * as ProcessRunner from "../processRunner.ts";
 import { makeAgentdCloud } from "./agentdCloud.ts";
+import { makeCloudReview } from "./agentdCloudReview.ts";
 import { AgentdArgumentError, agentdArgs, agentdTicket } from "./agentdCommands.ts";
 import * as AgentdJson from "./agentdJson.ts";
+import { estimateType, PROJECT_FILES, readEstimate, suggestCheck } from "./taskDefaults.ts";
 import { joinedPerson, mergeTaskHolders, repositoryTargets } from "./taskOthers.ts";
 
 export class AgentdBridge extends Context.Service<
@@ -78,6 +84,12 @@ export class AgentdBridge extends Context.Service<
     readonly cloudSetup: (
       input: AgentdCloudSetupInput,
     ) => Effect.Effect<AgentdCloudSetup, AgentdError>;
+    readonly cloudReview: (
+      input: AgentdCloudReviewInput,
+    ) => Effect.Effect<AgentdCloudReview, AgentdError>;
+    readonly taskDefaults: (
+      input: AgentdTaskDefaultsInput,
+    ) => Effect.Effect<AgentdTaskDefaults, AgentdError>;
     readonly taskOthers: (
       input: AgentdTaskOthersInput,
     ) => Effect.Effect<ReadonlyArray<AgentdTaskOther>>;
@@ -232,6 +244,12 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
       Effect.flatMap((argv) => run(argv)),
       Effect.flatMap(decodeShow),
     );
+
+  const cloudReview = makeCloudReview({
+    runProcess: runner.run,
+    readShow,
+    originProject: cloud.originProject,
+  });
 
   const readTasks = run(agentdArgs.list()).pipe(
     Effect.flatMap(decodeList),
@@ -415,7 +433,16 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
             yield* run(yield* args(() => agentdArgs.who(target))).pipe(Effect.flatMap(decodeWho)),
           );
     const nodes = input.includeNodes
-      ? yield* run(agentdArgs.nodes()).pipe(Effect.flatMap(decodeNodes))
+      ? yield* run(agentdArgs.nodes()).pipe(
+          Effect.flatMap(decodeNodes),
+          // agentd v0.1.15+ public builds have no `agentd server`: no node cards, people still list.
+          Effect.catchTags({
+            AgentdCommandError: (error) =>
+              error.message.includes("part of the team server")
+                ? Effect.undefined
+                : Effect.fail(error),
+          }),
+        )
       : undefined;
     return {
       people: AgentdJson.agentdPeople(users),
@@ -473,6 +500,46 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
     Effect.orElseSucceed(() => []),
   );
 
+  const projectFile = Effect.fn("AgentdBridge.projectFile")(
+    function* (cwd: string, name: string) {
+      const file = pathService.join(cwd, name);
+      const info = yield* fs.stat(file);
+      if (info.type !== "File") return null;
+      // Only package.json is read, and only to find its test script.
+      if (name !== "package.json") return "";
+      return Number(info.size) > 1024 * 1024 ? null : yield* fs.readFileString(file);
+    },
+    Effect.orElseSucceed(() => null),
+  );
+
+  const taskDefaults = Effect.fn("AgentdBridge.taskDefaults")(function* ({
+    cwd,
+    size,
+  }: AgentdTaskDefaultsInput) {
+    const type = estimateType(size);
+    const [estimate, found] = yield* Effect.all(
+      [
+        run(agentdArgs.estimate(type)).pipe(
+          Effect.map((stdout) => readEstimate(stdout, type)),
+          Effect.timeout("10 seconds"),
+          Effect.orElseSucceed(() => null),
+        ),
+        pathService.isAbsolute(cwd) && !cwd.includes("\0")
+          ? Effect.forEach(PROJECT_FILES, (name) => projectFile(cwd, name), {
+              concurrency: "unbounded",
+            })
+          : Effect.succeed(PROJECT_FILES.map(() => null)),
+      ],
+      { concurrency: "unbounded" },
+    );
+    const contents = new Map(PROJECT_FILES.map((name, index) => [name, found[index] ?? null]));
+    const check = suggestCheck({
+      packageJson: contents.get("package.json") ?? null,
+      has: (name) => (contents.get(name as (typeof PROJECT_FILES)[number]) ?? null) !== null,
+    });
+    return { estimate, check };
+  });
+
   return AgentdBridge.of({
     status,
     subscribeTasks,
@@ -506,6 +573,8 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
       return { output: (yield* run(argv, { stdin: `${ticket[0]}\n` })).trim() };
     }),
     cloudSetup: cloud.cloudSetup,
+    cloudReview,
+    taskDefaults,
     taskOthers,
     binary,
     enrolWorker: Effect.fn("AgentdBridge.enrolWorker")(function* (server, ticket) {

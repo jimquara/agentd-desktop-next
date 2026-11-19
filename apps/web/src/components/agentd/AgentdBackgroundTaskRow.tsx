@@ -13,6 +13,7 @@ import { Button } from "../ui/button";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { AgentdTaskOutput } from "./AgentdTaskOutput";
 import { BackgroundTaskCard } from "./BackgroundTaskCard";
+import { CloudTaskReviewActions } from "./CloudTaskReview";
 import { finishedAgentdTaskLabel, runningAgentdTaskLabel } from "./backgroundTasks.logic";
 
 function AgentdTaskLocation({ location }: { readonly location: AgentdRunsOn }) {
@@ -347,7 +348,11 @@ export function AgentdBackgroundTaskRow(props: {
         </>
       }
       action={
-        finished ? null : <StopTaskButton id={row.id} title={title} environmentId={environmentId} />
+        !finished ? (
+          <StopTaskButton id={row.id} title={title} environmentId={environmentId} />
+        ) : cloud ? (
+          <CloudTaskReviewActions row={row} task={task} environmentId={environmentId} />
+        ) : null
       }
     >
       {error ? (

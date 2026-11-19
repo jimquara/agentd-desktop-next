@@ -5,6 +5,7 @@ import {
   AgentdCommandError,
   type AgentdCloudSetup,
   type AgentdStartTaskResult,
+  type AgentdTaskDefaults,
   type AgentdTaskOther,
   ThreadId,
 } from "@t3tools/contracts";
@@ -19,6 +20,8 @@ import { makeThreadFixture } from "~/test-fixtures";
 import { render } from "../../../test/render";
 import { ToastProvider } from "../ui/toast";
 import { openStartTaskDialog, StartTaskDialogHost } from "./StartTaskDialog";
+import { EMPTY_TASK_FIELDS } from "./startTask.logic";
+import { TaskDraftCard } from "./TaskDraftCard";
 
 const state = vi.hoisted(() => ({
   start: vi.fn(),
@@ -26,6 +29,9 @@ const state = vi.hoisted(() => ({
   branch: "feature/export",
   cloud: null as AgentdCloudSetup | null,
   others: [] as AgentdTaskOther[],
+  defaults: { estimate: null, check: null } as AgentdTaskDefaults,
+  gateway: false,
+  worker: "opencode" as string | null,
 }));
 
 vi.mock("~/lib/agentdState", async () => {
@@ -33,11 +39,15 @@ vi.mock("~/lib/agentdState", async () => {
   const allowed = Atom.make(true);
   return {
     agentdEnvironment: { startTask: { permissionAtom: () => allowed } },
-    useAgentdStatus: () => ({ data: { defaultWorker: "opencode" } }),
+    useAgentdStatus: () => ({ data: { defaultWorker: state.worker } }),
+    useAgentdTaskDefaults: () => ({ data: state.defaults }),
     useAgentdCloudSetup: (cwd: string | null) => ({ data: cwd ? state.cloud : null, error: null }),
     useAgentdTaskOthers: () => ({ data: state.others, isPending: false, isSuccess: true }),
   };
 });
+vi.mock("~/lib/libraosGatewayState", () => ({
+  useLibraosGatewayConnected: () => state.gateway,
+}));
 vi.mock("~/state/entities", () => ({
   useQuietThreadShell: () => thread,
   useProject: () => ({ workspaceRoot: "/repo" }),
@@ -58,17 +68,30 @@ const thread = makeThreadFixture({ worktreePath: "/repo/worktrees/export" });
 const threadRef = scopeThreadRef(thread.environmentId, thread.id);
 const parentRef = scopeThreadRef(thread.environmentId, ThreadId.make("parent-thread"));
 
-function setup(branch: string) {
+function setup(branch: string, open: boolean | typeof drafted = true) {
   state.branch = branch;
   state.cloud = null;
   state.others = [];
+  state.defaults = { estimate: null, check: null };
+  state.gateway = false;
+  state.worker = "opencode";
   state.start.mockReset();
   state.refresh
     .mockReset()
     .mockResolvedValue(AsyncResult.success({ isRepo: true, refName: branch }));
   useRightPanelStore.setState({ byThreadKey: {} });
-  openStartTaskDialog(threadRef);
+  if (open === true) openStartTaskDialog(threadRef);
+  else if (open !== false) openStartTaskDialog(threadRef, open);
 }
+
+const drafted = {
+  ...EMPTY_TASK_FIELDS,
+  goal: "Fix export",
+  accept: "Keeps the row order",
+  check: "pnpm test",
+  size: "small" as const,
+};
+const estimate = { type: "small" as const, low: 1.78, median: 3.11, high: 4.98, jobs: 146 };
 
 function renderDialog() {
   return render(
@@ -112,7 +135,7 @@ it("shows what is missing, displays a refusal in full, and opens the tasks pane 
     .not.toBeInTheDocument();
   await expect.element(page.getByText("Enter a goal.")).toBeVisible();
   await expect.element(page.getByText("Enter a check command.")).toBeVisible();
-  await expect.element(page.getByText("Enter a budget.")).toBeVisible();
+  await expect.element(page.getByLabelText("Budget")).toHaveValue("60m,$5");
   await expect
     .element(page.getByRole("combobox", { name: "Worker" }))
     .toHaveTextContent("opencode");
@@ -173,9 +196,10 @@ it("starts a cloud task with a dollar cap and a provider key path, without the l
   await expect
     .element(page.getByText("Worker time and inference are both billed to LibraOS credits."))
     .toBeVisible();
-  await expect.element(start).toBeDisabled();
-  await userEvent.fill(page.getByLabelText("Dollar cap (USD)"), "2.50");
+  await expect.element(page.getByLabelText("Dollar cap (USD)")).toHaveValue("5");
+  await expect.element(page.getByLabelText("Time limit in minutes (optional)")).toHaveValue("60");
   await expect.element(start).toBeEnabled();
+  await userEvent.fill(page.getByLabelText("Dollar cap (USD)"), "2.50");
 
   await page.getByRole("combobox", { name: "Model access" }).click();
   await page.getByRole("option", { name: "Your API key" }).click();
@@ -194,7 +218,7 @@ it("starts a cloud task with a dollar cap and a provider key path, without the l
       goal: "Fix export",
       accept: [],
       check: null,
-      cloud: { budget: "$2.50", modelAccess: "byok", anthropicKeyFile: "/private/key file" },
+      cloud: { budget: "60m,$2.50", modelAccess: "byok", anthropicKeyFile: "/private/key file" },
     },
   });
 });
@@ -206,7 +230,7 @@ it("checks an unknown cloud outcome before retrying and can replace an earlier s
     project: "acme/app",
     balanceUsd: 20,
     balanceText: null,
-    defaultBudget: "$2",
+    defaultBudget: "30m,$2",
     problem: null,
   };
   const earlier = "0123abcd-ef01-8234-8567-89abcdef0123";
@@ -235,7 +259,7 @@ it("checks an unknown cloud outcome before retrying and can replace an earlier s
     environmentId: thread.environmentId,
     input: {
       ...input,
-      cloud: { budget: "$2", modelAccess: "libraos", replaceSubmission: earlier },
+      cloud: { budget: "30m,$5", modelAccess: "libraos", replaceSubmission: earlier },
     },
   });
 
@@ -246,7 +270,7 @@ it("checks an unknown cloud outcome before retrying and can replace an earlier s
     .toBeDisabled();
   expect(state.start).toHaveBeenLastCalledWith({
     environmentId: thread.environmentId,
-    input: { ...input, cloud: { budget: "$2", modelAccess: "libraos" } },
+    input: { ...input, cloud: { budget: "30m,$5", modelAccess: "libraos" } },
   });
   answer(AsyncResult.success({ id: "hof-aabbcc", started: false, note: "Recorded." }));
   await expect.element(page.getByText(/AgentD saved task hof-aabbcc/)).toBeVisible();
@@ -283,4 +307,189 @@ it("does not contact the worker bridge when the branch changes to main before St
     .element(page.getByRole("alert"))
     .toHaveTextContent("The working directory is on main. Switch to a different branch first.");
   expect(state.start).not.toHaveBeenCalled();
+});
+
+it("shows a drafted task as one summary with Start and its inputs folded under Edit", async () => {
+  setup("feature/export", drafted);
+  state.defaults = { estimate, check: "go test ./..." };
+  state.gateway = true;
+  state.start.mockResolvedValue(
+    AsyncResult.success({ id: "hof-123abc", started: true, note: null }),
+  );
+  await using _screen = await renderDialog();
+  await expect
+    .element(page.getByText("opencode · budget up to $5.00 · LibraOS models · check: pnpm test"))
+    .toBeVisible();
+  await expect
+    .element(page.getByText("Budget up to $5.00 (similar tasks cost $1.78–$4.98)."))
+    .toBeVisible();
+  await expect.element(page.getByLabelText("Goal")).not.toBeInTheDocument();
+  await page.getByRole("button", { name: "Edit" }).click();
+  await expect.element(page.getByLabelText("Check command")).toHaveValue("pnpm test");
+  await expect.element(page.getByLabelText("Budget")).toHaveValue("60m,$5");
+  await page.getByRole("button", { name: "Start", exact: true }).click();
+  await expect.element(page.getByText("Started task hof-123abc.")).toBeVisible();
+  expect(state.start).toHaveBeenCalledExactlyOnceWith({
+    environmentId: thread.environmentId,
+    input: {
+      cwd: "/repo/worktrees/export",
+      goal: "Fix export",
+      accept: ["Keeps the row order"],
+      check: "pnpm test",
+      worker: "opencode",
+      budget: "60m,$5",
+      issue: null,
+    },
+  });
+});
+
+it("suggests an editable check for a hand-filled task", async () => {
+  setup("feature/export");
+  state.defaults = { estimate: null, check: "go test ./..." };
+  await using _screen = await renderDialog();
+  const check = page.getByLabelText("Check command");
+  await expect.element(check).toHaveValue("go test ./...");
+  await expect
+    .element(page.getByText("Budget up to $5.00 (agentd has no estimate for similar tasks yet)."))
+    .toBeVisible();
+  await userEvent.fill(check, "go test ./internal/...");
+  await expect.element(check).toHaveValue("go test ./internal/...");
+  await userEvent.fill(check, "");
+  await expect.element(page.getByText("Enter a check command.")).toBeVisible();
+});
+
+it.each([
+  ["neither signed in nor the Gateway", false, "byok"],
+  ["the Gateway", true, "libraos"],
+] as const)("defaults cloud model access with %s", async (_name, gateway, access) => {
+  setup("feature/export");
+  state.gateway = gateway;
+  state.cloud = {
+    supported: true,
+    project: "acme/app",
+    balanceUsd: null,
+    balanceText: null,
+    defaultBudget: null,
+    problem: "balance",
+  };
+  await using _screen = await renderDialog();
+  await page.getByRole("checkbox", { name: "Run in the cloud" }).click();
+  await expect
+    .element(page.getByRole("combobox", { name: "Model access" }))
+    .toHaveTextContent(access === "byok" ? "Your API key" : "LibraOS");
+  const keyPath = page.getByLabelText("Anthropic key file path");
+  if (access === "byok") await expect.element(keyPath).toBeVisible();
+  else await expect.element(keyPath).not.toBeInTheDocument();
+});
+
+it("caps a cloud budget by the balance and says the estimate comes from local runs", async () => {
+  setup("feature/export", drafted);
+  state.defaults = { estimate: { ...estimate, high: 7.2 }, check: null };
+  state.cloud = {
+    supported: true,
+    project: "acme/app",
+    balanceUsd: 3.5,
+    balanceText: null,
+    defaultBudget: null,
+    problem: null,
+  };
+  await using _screen = await renderDialog();
+  await page.getByRole("button", { name: "Edit" }).click();
+  await page.getByRole("checkbox", { name: "Run in the cloud" }).click();
+  await expect.element(page.getByLabelText("Dollar cap (USD)")).toHaveValue("3.50");
+  await expect
+    .element(
+      page.getByText(
+        "Budget up to $3.50 (similar tasks cost $1.78–$7.20). The estimate comes from local runs of similar tasks.",
+      ),
+    )
+    .toBeVisible();
+  await expect
+    .element(
+      page.getByText("Cloud Workers · budget up to $3.50 · LibraOS models · check: pnpm test"),
+    )
+    .toBeVisible();
+});
+
+it.each([
+  [
+    "a protected branch",
+    { branch: "main" },
+    "The working directory is on main. Switch to a different branch first.",
+  ],
+  ["no worker", { worker: null }, "Choose a worker. The default is set in agentd."],
+  ["no credit", { balanceUsd: 0 }, "There is not enough LibraOS credit for Cloud Workers."],
+  [
+    "no LibraOS sign-in",
+    { balanceUsd: null, access: "libraos" },
+    "Sign in to LibraOS or connect the LibraOS Gateway to use LibraOS models.",
+  ],
+] as const)("shows %s in one line and disables Start", async (_name, problem, line) => {
+  setup("branch" in problem ? problem.branch : "feature/export", drafted);
+  if ("worker" in problem) state.worker = problem.worker;
+  await using _screen = await renderDialog();
+  if ("balanceUsd" in problem) {
+    state.cloud = {
+      supported: true,
+      project: "acme/app",
+      balanceUsd: problem.balanceUsd,
+      balanceText: null,
+      defaultBudget: null,
+      problem: problem.balanceUsd === null ? "balance" : null,
+    };
+    await page.getByRole("button", { name: "Edit" }).click();
+    await page.getByRole("checkbox", { name: "Run in the cloud" }).click();
+    if ("access" in problem) {
+      await page.getByRole("combobox", { name: "Model access" }).click();
+      await page.getByRole("option", { name: "LibraOS" }).click();
+    }
+  }
+  await expect.element(page.getByText(line)).toBeVisible();
+  await expect.element(page.getByRole("button", { name: "Start", exact: true })).toBeDisabled();
+});
+
+it("renders a drafted task as a card that starts it or opens the dialog with its fields", async () => {
+  setup("feature/export", false);
+  state.defaults = { estimate, check: null };
+  state.start.mockResolvedValue(
+    AsyncResult.success({ id: "hof-123abc", started: true, note: null }),
+  );
+  await using _screen = await render(
+    <AppAtomRegistryProvider>
+      <ToastProvider>
+        <TaskDraftCard threadRef={threadRef} fields={drafted} />
+        <StartTaskDialogHost />
+      </ToastProvider>
+    </AppAtomRegistryProvider>,
+  );
+  // The dialog atom outlives a test; close one an earlier test left open.
+  if (page.getByRole("dialog").query() !== null) {
+    await page.getByRole("button", { name: "Cancel" }).click();
+  }
+  const card = page.getByRole("region", { name: "Drafted task" });
+  await expect.element(card.getByText("Fix export")).toBeVisible();
+  await expect
+    .element(card.getByText("opencode · budget up to $5.00 · check: pnpm test"))
+    .toBeVisible();
+  await card.getByRole("button", { name: "Edit" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect
+    .element(dialog.getByText("opencode · budget up to $5.00 · check: pnpm test"))
+    .toBeVisible();
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await card.getByRole("button", { name: "Start" }).click();
+  await expect.element(card.getByText("Task hof-123abc is in Background tasks.")).toBeVisible();
+  expect(state.refresh).toHaveBeenCalledOnce();
+  expect(state.start).toHaveBeenCalledExactlyOnceWith({
+    environmentId: thread.environmentId,
+    input: {
+      cwd: "/repo/worktrees/export",
+      goal: "Fix export",
+      accept: ["Keeps the row order"],
+      check: "pnpm test",
+      worker: "opencode",
+      budget: "60m,$5",
+      issue: null,
+    },
+  });
 });

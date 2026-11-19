@@ -68,7 +68,7 @@ const UNKNOWN_OUTCOME =
 const CLOSED_STATES = new Set(["cancelled", "declined", "done", "expired"]);
 const GITHUB_ORIGIN =
   /^(?:https?:\/\/(?:[^/@\s]+@)?(?:www\.)?github\.com(?::\d+)?\/|(?:git\+)?ssh:\/\/(?:git@)?(?:ssh\.)?github\.com(?::\d+)?\/|git@github\.com:\/?)(\S+)$/i;
-const GITHUB_PROJECT = /^[a-z\d][a-z\d-]{0,38}\/(?!-|\.{1,2}$)[\w.-]{1,100}$/i;
+export const GITHUB_PROJECT = /^[a-z\d][a-z\d-]{0,38}\/(?!-|\.{1,2}$)[\w.-]{1,100}$/i;
 
 const submissionShow = Schema.decodeUnknownOption(
   Schema.fromJsonString(
@@ -385,5 +385,5 @@ export const makeAgentdCloud = Effect.fn("AgentdCloud.make")(function* (deps: {
     return { id, started: note === null, note } satisfies AgentdStartTaskResult;
   });
 
-  return { cloudSetup, startCloudTask };
+  return { cloudSetup, startCloudTask, originProject };
 });
