@@ -448,13 +448,13 @@ export const serverAuthInvalidRequestReason = (
 ): "invalid_scope" | "scope_not_granted" =>
   error._tag === "ServerAuthInvalidScopeError" ? "invalid_scope" : "scope_not_granted";
 
-/** The credential is fine, but the host has not approved this the hosted relay device yet. */
+/** The credential is fine, but the host has not approved this hosted relay device yet. */
 export class ServerAuthConnectApprovalPendingError extends Schema.TaggedError<ServerAuthConnectApprovalPendingError>()(
   "ServerAuthConnectApprovalPendingError",
   {},
 ) {
   override get message(): string {
-    return "This the hosted relay device is waiting for approval.";
+    return "This hosted relay device is waiting for approval.";
   }
 }
 
@@ -1406,7 +1406,7 @@ export const make = Effect.gen(function* () {
     const proofKeyThumbprint = yield* sessions
       .proofKeyThumbprintOf(targetSessionId)
       .pipe(Effect.mapError((cause) => new ServerAuthSessionRevocationError({ cause })));
-    // A the hosted relay device would otherwise mint itself a new session right away.
+    // A hosted relay device would otherwise mint itself a new session right away.
     if (Option.isSome(proofKeyThumbprint)) {
       const currentProofKey = yield* sessions
         .proofKeyThumbprintOf(currentSessionId)

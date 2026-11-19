@@ -7,7 +7,7 @@ import { m } from "../i18n/messages";
 const isRequestFailed = Schema.is(ManagedRelay.ManagedRelayRequestFailedError);
 const isRequestTimeout = Schema.is(ManagedRelay.ManagedRelayRequestTimeoutError);
 
-/** One short line for an error toast saying why a the hosted relay request failed. */
+/** One short line for an error toast saying why a hosted relay request failed. */
 export function relayFailureReason(cause: unknown): string | null {
   for (let current = cause, depth = 0; current instanceof Error && depth < 4; depth += 1) {
     if (isRequestTimeout(current)) return m(msg("Hosted relay timed out. Try again."));

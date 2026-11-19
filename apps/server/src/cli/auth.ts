@@ -217,7 +217,7 @@ const connectDeviceRevokeCommand = Command.make("revoke", {
   ...authLocationFlags,
   code: verificationCodeArgument,
 }).pipe(
-  Command.withDescription("Stop trusting a the hosted relay device and end its sessions."),
+  Command.withDescription("Stop trusting a hosted relay device and end its sessions."),
   Command.withHandler((flags) =>
     runWithEnvironmentAuth(flags, (environmentAuth) =>
       Effect.gen(function* () {

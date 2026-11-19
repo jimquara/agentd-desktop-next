@@ -491,7 +491,7 @@ export function AddEnvironmentDialog({
       {relayRouteOffer !== null ? (
         <div className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2">
           <p className="text-xs text-muted-foreground">
-            <T>This machine is on your the hosted relay account. Use it as a fallback route.</T>
+            <T>This machine is on your hosted relay account. Use it as a fallback route.</T>
           </p>
           <Button
             size="xs"

@@ -507,7 +507,7 @@ function GateScreen({
               {tunnelLimit !== null ? (
                 <>
                   <p className="text-sm text-destructive-foreground">
-                    <T>Your the hosted relay account is out of tunnels.</T>
+                    <T>Your hosted relay account is out of tunnels.</T>
                   </p>
                   <ManageAccessButton environment={environment} label={gt("Manage tunnels")} />
                 </>
@@ -623,10 +623,10 @@ function ConnectStep({
       <p className="text-sm text-muted-foreground">
         {app === null
           ? gt(
-              "When the app opens the sign-in page, choose what it may do and approve with your the hosted relay account.",
+              "When the app opens the sign-in page, choose what it may do and approve with your hosted relay account.",
             )
           : gt(
-              "When {app} opens the sign-in page, choose what it may do and approve with your the hosted relay account.",
+              "When {app} opens the sign-in page, choose what it may do and approve with your hosted relay account.",
               { app: app.name },
             )}
       </p>

@@ -824,7 +824,7 @@ function ConfiguredCloudLinkRow({
         <SettingsRow
           title={setting("connect-device-approval").title}
           description={gt(
-            "Devices that sign in to your the hosted relay account wait until someone already connected here approves them.",
+            "Devices that sign in to your hosted relay account wait until someone already connected here approves them.",
           )}
           managed={connectDenial}
           control={

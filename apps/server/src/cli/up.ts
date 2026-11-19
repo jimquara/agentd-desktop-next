@@ -168,7 +168,7 @@ const formatSetup = (setup: Setup, hints: Hints) => {
           [
             "Hosted relay",
             setup.connect
-              ? "on · your T3 account"
+              ? "on · your hosted relay account"
               : setup.connectRevoked
                 ? `off · link revoked. Run \`${hints.connect}\`.`
                 : "off",
@@ -459,7 +459,7 @@ export const upCommand = Command.make("up", {
   ...projectLocationFlags,
   connect: Flag.Boolean("connect").pipe(
     Flag.withDescription(
-      "Allow access through the hosted relay with your T3 account. Turn off with --no-connect.",
+      "Allow access through the hosted relay with your hosted relay account. Turn off with --no-connect.",
     ),
     Flag.optional,
   ),

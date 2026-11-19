@@ -82,7 +82,7 @@ function RevokeConnectDeviceDialogPopup({
         <AlertDialogTitle>{request.title}</AlertDialogTitle>
         <AlertDialogDescription>
           <T>
-            Approval for new devices is off, so a revoked device signed in to your the hosted relay
+            Approval for new devices is off, so a revoked device signed in to your hosted relay
             account can connect again on its own.
           </T>
         </AlertDialogDescription>

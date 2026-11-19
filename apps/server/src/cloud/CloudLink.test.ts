@@ -296,7 +296,7 @@ it.effect("an update the client walks away from still finishes", () => {
   );
 });
 
-it.effect("mints a the hosted relay credential under the host's device approval setting", () =>
+it.effect("mints a hosted relay credential under the host's device approval setting", () =>
   withService({}, ({ mintCredential, connectCredentialRequests }) =>
     Effect.gen(function* () {
       const proof = yield* signRelayJwt({

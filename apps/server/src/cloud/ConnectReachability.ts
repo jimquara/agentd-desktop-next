@@ -90,7 +90,7 @@ export function classifyReachability(
     // A running server reads the link `t3 connect` stores only at startup.
     return fail(
       "not_linked",
-      "The server has not set up a the hosted relay tunnel.",
+      "The server has not set up a hosted relay tunnel.",
       "Run `agentd-desktop connect`, then restart AgentD Desktop so it applies the link.",
     );
   }

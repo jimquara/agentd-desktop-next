@@ -115,7 +115,7 @@ function headline(
     case "clock_skew":
       return resolve(msg("This device's clock is off"));
     case "not_linked":
-      return resolve(msg("{host} is not linked to your the hosted relay account", { host }));
+      return resolve(msg("{host} is not linked to your hosted relay account", { host }));
     case "relay_error":
       return resolve(msg("The hosted relay returned an error"));
     case "tunnel_pending":

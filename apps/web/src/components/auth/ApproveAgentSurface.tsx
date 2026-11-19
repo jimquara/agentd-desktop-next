@@ -73,7 +73,7 @@ function connectTransport(
 }
 
 /**
- * The consent screen for an agent sign-in on a the hosted relay environment: the owner signs in to
+ * The consent screen for an agent sign-in on a hosted relay environment: the owner signs in to
  * Hosted relay here and approves with that session, so no sign-in code is needed.
  */
 export function ApproveAgentSurface() {

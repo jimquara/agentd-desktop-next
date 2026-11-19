@@ -741,7 +741,7 @@ function ConnectionsSettingsContent({
     }
   };
 
-  // Removing a the hosted relay route preserves account registration; use a separate dialog pointing to
+  // Removing a hosted relay route preserves account registration; use a separate dialog pointing to
   // deregistration.
   const [pendingT3ConnectRemoval, setPendingT3ConnectRemoval] =
     useState<EnvironmentPresentation | null>(null);

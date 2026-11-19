@@ -95,7 +95,7 @@ export class BootstrapCredentialConnectApprovalPendingError extends Schema.Tagge
   },
 ) {
   override get message(): string {
-    return "This the hosted relay device is waiting for approval.";
+    return "This hosted relay device is waiting for approval.";
   }
 }
 
@@ -255,7 +255,7 @@ export class PairingGrantStore extends Context.Service<
       readonly purpose?: "startup";
       /** Issues a hidden `<LEVEL>-` code that only an agent sign-in at this level can spend. */
       readonly mcpApproval?: AuthMcpClientAccess;
-      /** Spendable only after someone trusts `proofKeyThumbprint` as a the hosted relay device. */
+      /** Spendable only after someone trusts `proofKeyThumbprint` as a hosted relay device. */
       readonly requiresConnectApproval?: boolean;
     }) => Effect.Effect<IssuedBootstrapCredential, BootstrapCredentialInternalError>;
     /** A device's open or denied request, reused so retries keep one request and one code. */

@@ -209,7 +209,7 @@ export function CloudEnvironmentConnectRows({
     return false;
   };
 
-  // Omit machines saved over other routes; onboarding selection must not add a the hosted relay route.
+  // Omit machines saved over other routes; onboarding selection must not add a hosted relay route.
   const isVisibleEnvironment = (environmentId: EnvironmentId) =>
     environmentId !== primaryEnvironmentId &&
     !desktopLocalIds.has(environmentId) &&

@@ -1,5 +1,5 @@
 /**
- * The hosted app's side of an agent sign-in on a the hosted relay environment: it reads the request
+ * The hosted app's side of an agent sign-in on a hosted relay environment: it reads the request
  * and sends the decision with the owner's own Connect session there, so no code is needed.
  */
 import { msg } from "gt-i18n";
