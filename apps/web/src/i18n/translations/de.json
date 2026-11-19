@@ -3239,6 +3239,20 @@
   "3ed9449038f86fe1": "No background tasks",
   "3e2b0e58ad657ac0": "Agentd tasks are unavailable in this environment.",
   "33838ca8ef5a710a": "No agentd tasks.",
+  "70227be0635ae14a": "Branch {branch} against the default branch, compared in {checkout}.",
+  "3516a93a69d05010": "Fetching the branch from GitHub…",
+  "98d35a12a5e5b9a8": "This branch has no changes against the default branch.",
+  "e2a0b11306b11e8d": "The branch changes too much to show here; only the first files are shown.",
+  "30e5685f395a35b8": "Open pull request",
+  "cb290ed8899e0ba7": [
+    "Open pull request #",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    }
+  ],
+  "efa55bbb1d3aa45e": "Änderungen prüfen",
   "668e353261860b41": "Background work",
   "65328c7f8bf4cd56": "Waiting for an AgentD worker",
   "8e7bdb314813b183": "Running",
@@ -8067,7 +8081,6 @@
   ],
   "d13378ea75992f68": "Andere Datei wählen…",
   "e1fcc4b74faaae02": "Tastenkürzel entfernen…",
-  "efa55bbb1d3aa45e": "Änderungen prüfen",
   "3e02b74615e20d82": "Manuelle Einrichtung",
   "19e5a6cccaaab987": [
     "Turn capture off in AgentD Desktop to stop it. Remove the shortcut from",

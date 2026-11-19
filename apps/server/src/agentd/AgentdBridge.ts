@@ -14,6 +14,8 @@ import {
   AgentdWorkerTool,
   type AgentdApproval,
   type AgentdCloudSetup,
+  type AgentdCloudReview,
+  type AgentdCloudReviewInput,
   type AgentdCloudSetupInput,
   type AgentdTaskDefaults,
   type AgentdTaskDefaultsInput,
@@ -51,6 +53,7 @@ import * as Stream from "effect/Stream";
 import * as BackgroundPolicy from "../background/BackgroundPolicy.ts";
 import * as ProcessRunner from "../processRunner.ts";
 import { makeAgentdCloud } from "./agentdCloud.ts";
+import { makeCloudReview } from "./agentdCloudReview.ts";
 import { AgentdArgumentError, agentdArgs, agentdTicket } from "./agentdCommands.ts";
 import * as AgentdJson from "./agentdJson.ts";
 import { estimateType, PROJECT_FILES, readEstimate, suggestCheck } from "./taskDefaults.ts";
@@ -81,6 +84,9 @@ export class AgentdBridge extends Context.Service<
     readonly cloudSetup: (
       input: AgentdCloudSetupInput,
     ) => Effect.Effect<AgentdCloudSetup, AgentdError>;
+    readonly cloudReview: (
+      input: AgentdCloudReviewInput,
+    ) => Effect.Effect<AgentdCloudReview, AgentdError>;
     readonly taskDefaults: (
       input: AgentdTaskDefaultsInput,
     ) => Effect.Effect<AgentdTaskDefaults, AgentdError>;
@@ -238,6 +244,12 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
       Effect.flatMap((argv) => run(argv)),
       Effect.flatMap(decodeShow),
     );
+
+  const cloudReview = makeCloudReview({
+    runProcess: runner.run,
+    readShow,
+    originProject: cloud.originProject,
+  });
 
   const readTasks = run(agentdArgs.list()).pipe(
     Effect.flatMap(decodeList),
@@ -421,7 +433,16 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
             yield* run(yield* args(() => agentdArgs.who(target))).pipe(Effect.flatMap(decodeWho)),
           );
     const nodes = input.includeNodes
-      ? yield* run(agentdArgs.nodes()).pipe(Effect.flatMap(decodeNodes))
+      ? yield* run(agentdArgs.nodes()).pipe(
+          Effect.flatMap(decodeNodes),
+          // agentd v0.1.15+ public builds have no `agentd server`: no node cards, people still list.
+          Effect.catchTags({
+            AgentdCommandError: (error) =>
+              error.message.includes("part of the team server")
+                ? Effect.undefined
+                : Effect.fail(error),
+          }),
+        )
       : undefined;
     return {
       people: AgentdJson.agentdPeople(users),
@@ -552,6 +573,7 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
       return { output: (yield* run(argv, { stdin: `${ticket[0]}\n` })).trim() };
     }),
     cloudSetup: cloud.cloudSetup,
+    cloudReview,
     taskDefaults,
     taskOthers,
     binary,

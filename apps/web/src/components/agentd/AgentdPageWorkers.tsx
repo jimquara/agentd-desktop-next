@@ -13,6 +13,7 @@ import {
 import { groupWorkerActivity } from "./AgentdPage.logic";
 import { AgentdLoading, AgentdReadError, AgentdTimestamp } from "./AgentdPageReads";
 import { isFinishedAgentdTask } from "./backgroundTasks.logic";
+import { CloudTaskReviewActions } from "./CloudTaskReview";
 
 function AgentdWorkerTask({
   task,
@@ -59,22 +60,32 @@ function AgentdCloudWorkerTask({
   const title = row.title || row.id;
   return (
     <li className="flex items-start gap-2">
-      <button
-        type="button"
-        className="flex min-w-0 flex-1 items-center gap-3 rounded-md p-2 text-left outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-        onClick={() => open(row)}
-      >
-        <span className="min-w-0 flex-1 space-y-1">
-          <span className="block break-words font-medium">{title}</span>
-          <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-            <AgentdCloudTaskSummary row={row} task={task} />
+      <div className="min-w-0 flex-1 space-y-1">
+        <button
+          type="button"
+          className="flex w-full min-w-0 items-center gap-3 rounded-md p-2 text-left outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          onClick={() => open(row)}
+        >
+          <span className="min-w-0 flex-1 space-y-1">
+            <span className="block break-words font-medium">{title}</span>
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+              <AgentdCloudTaskSummary row={row} task={task} />
+            </span>
+            {task?.note || error ? (
+              <span className="block break-words text-xs">{task?.note ?? error}</span>
+            ) : null}
           </span>
-          {task?.note || error ? (
-            <span className="block break-words text-xs">{task?.note ?? error}</span>
-          ) : null}
-        </span>
-        <ArrowUpRightIcon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
-      </button>
+          <ArrowUpRightIcon
+            aria-hidden="true"
+            className="size-3.5 shrink-0 text-muted-foreground"
+          />
+        </button>
+        {environmentId !== null && isFinishedAgentdTask(row.state) ? (
+          <div className="flex flex-wrap gap-2 px-2 text-xs">
+            <CloudTaskReviewActions row={row} task={task} environmentId={environmentId} />
+          </div>
+        ) : null}
+      </div>
       {environmentId !== null && !isFinishedAgentdTask(row.state) ? (
         <StopTaskButton id={row.id} title={title} environmentId={environmentId} />
       ) : null}

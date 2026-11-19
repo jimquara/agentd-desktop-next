@@ -398,6 +398,8 @@ import {
   AgentdSetupState,
   AgentdCloudSetup,
   AgentdCloudSetupInput,
+  AgentdCloudReview,
+  AgentdCloudReviewInput,
   AgentdTaskDefaults,
   AgentdTaskDefaultsInput,
   AgentdCloudTaskInput,
@@ -715,6 +717,7 @@ export const WS_METHODS = {
   agentdConnectAgent: "agentd.connectAgent",
   agentdJoinTeam: "agentd.joinTeam",
   agentdCloudSetup: "agentd.cloudSetup",
+  agentdCloudReview: "agentd.cloudReview",
   agentdTaskDefaults: "agentd.taskDefaults",
   agentdTaskOthers: "agentd.taskOthers",
   agentdSubscribeTeamNode: "agentd.subscribeTeamNode",
@@ -2375,6 +2378,12 @@ const WsAgentdCloudSetupRpc = Rpc.make(WS_METHODS.agentdCloudSetup, {
   error: AgentdRpcError,
 });
 
+const WsAgentdCloudReviewRpc = Rpc.make(WS_METHODS.agentdCloudReview, {
+  payload: AgentdCloudReviewInput,
+  success: AgentdCloudReview,
+  error: AgentdRpcError,
+});
+
 const WsAgentdTaskDefaultsRpc = Rpc.make(WS_METHODS.agentdTaskDefaults, {
   payload: AgentdTaskDefaultsInput,
   success: AgentdTaskDefaults,
@@ -2674,6 +2683,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsAgentdConnectAgentRpc,
   WsAgentdJoinTeamRpc,
   WsAgentdCloudSetupRpc,
+  WsAgentdCloudReviewRpc,
   WsAgentdTaskDefaultsRpc,
   WsAgentdTaskOthersRpc,
   WsAgentdSubscribeTeamNodeRpc,

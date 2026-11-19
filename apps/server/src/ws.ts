@@ -3607,6 +3607,7 @@ export const layerWsRpc = (
         [WS_METHODS.agentdConnectAgent]: (input) => agentd.connectAgent(input),
         [WS_METHODS.agentdJoinTeam]: (input) => agentd.joinTeam(input),
         [WS_METHODS.agentdCloudSetup]: (input) => agentd.cloudSetup(input),
+        [WS_METHODS.agentdCloudReview]: (input) => agentd.cloudReview(input),
         [WS_METHODS.agentdTaskDefaults]: (input) => agentd.taskDefaults(input),
         [WS_METHODS.agentdTaskOthers]: (input) => agentd.taskOthers(input),
         [WS_METHODS.agentdSubscribeTeamNode]: (_input) => teamNode.subscribe,
