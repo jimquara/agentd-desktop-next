@@ -17,6 +17,7 @@ import type {
 } from "@t3tools/contracts";
 
 import { cloudJobNote } from "./agentdCloud.ts";
+import { cloudPullRequest } from "./agentdCloudReview.ts";
 
 const WORKER_TOOLS = new Set(["claude", "codex", "opencode"]);
 
@@ -159,6 +160,7 @@ export function agentdTask(show: AgentdHandoffShowJson): AgentdTask {
             workerUsd: show.cloud?.worker_usd ?? null,
             inferenceUsd: show.cloud?.inference_usd ?? null,
             totalUsd: show.cloud?.total_usd ?? null,
+            pullRequest: cloudPullRequest(show),
           },
         }),
   };

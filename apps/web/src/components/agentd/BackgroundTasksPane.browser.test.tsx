@@ -19,6 +19,8 @@ const bridge = vi.hoisted(() => ({
   useAgentdTask: vi.fn<typeof AgentdState.useAgentdTask>(),
   useAgentdTaskOutput: vi.fn<typeof AgentdState.useAgentdTaskOutput>(),
   stopTask: vi.fn<ReturnType<typeof AgentdState.useAgentdCommands>["stopTask"]>(),
+  projects: vi.fn<() => ReadonlyArray<Record<string, unknown>>>(() => []),
+  review: vi.fn<() => { data: null; error: string | null }>(() => ({ data: null, error: null })),
 }));
 
 vi.mock("../../lib/agentdState", async () => {
@@ -26,10 +28,23 @@ vi.mock("../../lib/agentdState", async () => {
   const canStop = Atom.make(true);
   return {
     ...bridge,
-    agentdEnvironment: { stopTask: { permissionAtom: () => canStop } },
+    agentdEnvironment: {
+      stopTask: { permissionAtom: () => canStop },
+      cloudReview: (target: unknown) => target,
+    },
     useAgentdCommands: () => ({ stopTask: bridge.stopTask }),
   };
 });
+
+vi.mock("../../state/entities", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../state/entities")>()),
+  useProjects: () => bridge.projects(),
+}));
+
+vi.mock("../../state/query", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../state/query")>()),
+  useEnvironmentQuery: () => bridge.review(),
+}));
 
 const threadRef = {
   environmentId: EnvironmentId.make("background-tasks-environment"),
@@ -197,4 +212,58 @@ it("follows a running task's output and only stops the task after confirmation",
     environmentId: threadRef.environmentId,
     input: { id: "hof-123abc", reason: "Stopped from AgentD Desktop" },
   });
+});
+
+it("offers Review changes from a git checkout of the task's repository and opens its pull request", async () => {
+  setup();
+  bridge.useAgentdTasks.mockReturnValue(answer([finished]));
+  bridge.useAgentdTask.mockReturnValue(
+    answer(
+      taskDetails(finished, {
+        branch: "agentd/hof-456def",
+        project: "acme/app",
+        cloud: {
+          state: "completed",
+          modelAccess: "libraos",
+          workerUsd: 0.42,
+          inferenceUsd: 0,
+          totalUsd: 0.42,
+          pullRequest: { url: "https://github.com/acme/app/pull/7", number: 7 },
+        },
+      }),
+    ),
+  );
+  const folder = {
+    environmentId: threadRef.environmentId,
+    workspaceRoot: "/home/user/notes",
+    repositoryIdentity: null,
+  };
+  const checkout = {
+    environmentId: threadRef.environmentId,
+    workspaceRoot: "/home/user/app",
+    repositoryIdentity: {
+      canonicalKey: "github.com/upstream/app",
+      locator: { source: "git-remote", remoteName: "upstream", remoteUrl: "x" },
+      origin: { canonicalKey: "github.com/Acme/App" },
+    },
+  };
+  bridge.projects.mockReturnValue([folder]);
+  bridge.review.mockReturnValue({ data: null, error: "The task’s branch is no longer on GitHub." });
+
+  {
+    // A folder workspace without git offers no review; the pull request link needs no checkout.
+    await using screen = await render(<BackgroundTasksPane threadRef={threadRef} />);
+    const pullRequest = screen.getByRole("link", { name: "Open pull request #7" });
+    await expect.element(pullRequest).toHaveAttribute("href", "https://github.com/acme/app/pull/7");
+    expect(screen.getByRole("button", { name: "Review changes" }).query()).toBeNull();
+  }
+
+  bridge.projects.mockReturnValue([folder, checkout]);
+  await using screen = await render(<BackgroundTasksPane threadRef={threadRef} />);
+  await userEvent.click(screen.getByRole("button", { name: "Review changes" }));
+  const dialog = page.getByRole("dialog", { name: "Review changes" });
+  await expect.element(dialog.getByText(/agentd\/hof-456def.*\/home\/user\/app/)).toBeVisible();
+  await expect
+    .element(dialog.getByRole("alert"))
+    .toHaveTextContent("The task’s branch is no longer on GitHub.");
 });
