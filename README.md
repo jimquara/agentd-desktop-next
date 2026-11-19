@@ -59,14 +59,10 @@ A release is built by GitHub Actions: push a tag `v<upstream>-agentd.<N>` (for e
 
 Locally, `agentd/scripts/build-desktop.sh linux` builds an AppImage and a `.deb`, and `agentd/scripts/build-desktop.sh win` builds a Windows NSIS installer. They build in Docker, so a Linux host builds both. On a Mac, `agentd/scripts/build-desktop.sh mac` builds a `.dmg` for the Mac's architecture. Versions are upstream's version followed by `-agentd.N`, and the builds have no update feed. The builds are not signed: macOS apps are ad-hoc signed and not notarized. [agentd/design/build.md](./agentd/design/build.md) has the details.
 
-## Built on T3 Code
-
-AgentD Desktop is a fork of [T3 Code](https://github.com/pingdotgg/t3code) by T3 Tools Inc., used under the [MIT licence](./LICENSE). `LICENSE` keeps upstream's text and copyright line unchanged. We keep merging upstream; [agentd/UPSTREAM.md](./agentd/UPSTREAM.md) explains how, and `agentd/patches/` lists every change we make to upstream files, one note per task.
-
 ## Design
 
-The design and the plan of work are in [libraos/agentd-core#898](https://github.com/libraos/agentd-core/issues/898); the notes for each part are in [agentd/design](./agentd/design). Rules for anyone changing this repository, people or agents, are in [AGENTS.md](./AGENTS.md).
+The design and the plan of work are in [libraos/agentd-core#898](https://github.com/libraos/agentd-core/issues/898); the notes for each part are in [agentd/design](./agentd/design). Rules for anyone changing this repository, people or agents, are in [AGENTS.md](./AGENTS.md). How we merge upstream is in [agentd/UPSTREAM.md](./agentd/UPSTREAM.md), and `agentd/patches/` has one note per change to upstream files.
 
 ## Licence
 
-[MIT](./LICENSE). Copyright (c) 2026 T3 Tools Inc. for T3 Code.
+[MIT](./LICENSE). Based on [T3 Code](https://github.com/pingdotgg/t3code).
