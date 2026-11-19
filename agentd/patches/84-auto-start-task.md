@@ -38,5 +38,5 @@ Not verified:
 - **Windows:** not run. The project files are found with the host's `path.join` and `isAbsolute`, and agentd runs through the existing process runner with a fixed argument list.
 - **macOS:** not run.
 - **Linux:** the server unit and bridge tests and the web unit and browser tests ran here against a stub agentd. A real agentd answered `handoff estimate --type implement --json` and `--type small` by hand. No task was started against a real agentd or Cloud Workers, and the card was not seen in a running app.
-- **Translations:** the new strings are wrapped with `gt`, but the catalogs were not regenerated (the lead does this).
+- **Translations:** catalogs regenerated and zh filled.
 - **Minutes:** a local task has no agentd default minutes to read, so it always gets 60m. Only Cloud Workers read `default_budget`.
