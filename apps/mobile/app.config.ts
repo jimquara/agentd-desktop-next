@@ -1,6 +1,7 @@
 import type { ExpoConfig } from "expo/config";
 
 import { BRAND_ASSET_PATHS } from "../../scripts/lib/brand-assets.ts";
+import { HOSTED_RELAY_ENABLED } from "../../packages/shared/src/hostedRelay.ts";
 import { loadRepoEnv } from "../../scripts/lib/public-config.ts";
 
 type AppVariant = "development" | "preview" | "production";
@@ -259,8 +260,10 @@ const config: ExpoConfig = {
     // Avoid Personal Team fallback: it cannot sign App Groups, Apple sign-in or push entitlements.
     appleTeamId: "ARK85ZXQ4Z",
     associatedDomains: [
-      `applinks:${variant.relyingParty}`,
-      `webcredentials:${variant.relyingParty}`,
+      // The sign-in domain belongs to the hosted relay; iOS fetches each listed domain on install.
+      ...(HOSTED_RELAY_ENABLED
+        ? [`applinks:${variant.relyingParty}`, `webcredentials:${variant.relyingParty}`]
+        : []),
       ...(HOSTED_APP_HOST ? [`applinks:${HOSTED_APP_HOST}`] : []),
     ],
     entitlements: {

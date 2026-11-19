@@ -18,7 +18,7 @@ Upstream T3 Code names still showed to agents (tool names), in the CLI, in T3 Co
 - **Flag:** `HOSTED_RELAY_ENABLED = false` in `packages/shared/src/hostedRelay.ts` (`@t3tools/shared/hostedRelay`).
 - **How it hides things:** web, mobile and server `publicConfig` return no hosted-relay config while the flag is off. Every T3 Connect / t3.chat entry point already gated on that config.
   - Web/desktop: Clerk sign-in is not mounted. Hidden: the sidebar sign-in, account and t3.chat profile pages, linking an environment, public URL, the cloud environment list, connect onboarding, the relay client install dialog, "Use in another app" relay section, and guest share.
-  - Mobile: hidden are the T3 Connect profile page, the auth and notification settings entries, cloud environment rows, onboarding and device registration. App links to the hosted app are only added when `HOSTED_APP_HOST` is set.
+  - Mobile: hidden are the T3 Connect profile page, the auth and notification settings entries, cloud environment rows, onboarding and device registration. App links to the hosted app are only added when `HOSTED_APP_HOST` is set, and the iOS associated domains for the relay's sign-in domain (`clerk.t3.codes`) only when the flag is on, so iOS does not fetch from it on install.
   - Server: the CLI link/up/connect flows and startup link recovery are skipped.
 - **What is still contacted:** nothing found. Relay discovery only runs with a managed session, and none exists without sign-in.
 - **What stays:** SSH, reachable-address and Tailscale routes are untouched. The triage prompt's `app.t3.codes` lines are gone. Remaining wording says "hosted relay".
@@ -76,7 +76,8 @@ Upstream T3 Code names still showed to agents (tool names), in the CLI, in T3 Co
 - `apps/marketing/src/pages/terms-of-service.astro` — hosted relay wording / no t3.chat or app.t3.codes; "AgentD Desktop" for "T3 Code".
 - `apps/marketing/vercel.ts` — hosted relay wording / no t3.chat or app.t3.codes.
 - `apps/mobile/README.md` — hosted relay wording / no t3.chat or app.t3.codes; "AgentD Desktop" for "T3 Code".
-- `apps/mobile/app.config.ts` — MCP server/client name `agentd-desktop`; hosted relay wording / no t3.chat or app.t3.codes; "AgentD Desktop" for "T3 Code".
+- `apps/mobile/app.config.ts` — "AgentD Desktop" for "T3 Code"; hosted app link domain only with `HOSTED_APP_HOST`; relay sign-in associated domains only with `HOSTED_RELAY_ENABLED`.
+- `apps/mobile/app.config.test.ts` — no hosted link domains by default; `HOSTED_APP_HOST` opts in.
 - `apps/mobile/modules/t3-composer-editor/android/src/main/java/expo/modules/t3composereditor/T3ComposerEditorModule.kt` — hosted relay wording / no t3.chat or app.t3.codes; "AgentD Desktop" for "T3 Code".
 - `apps/mobile/modules/t3-composer-editor/ios/T3ComposerEditor.podspec` — "AgentD Desktop" for "T3 Code".
 - `apps/mobile/modules/t3-composer-editor/ios/T3ComposerEditorModule.swift` — hosted relay wording / no t3.chat or app.t3.codes.
@@ -433,8 +434,8 @@ Upstream T3 Code names still showed to agents (tool names), in the CLI, in T3 Co
 - `evals/mcp-tool-use/cases/threads-vs-tasks.ndjson` — app tool names without `t3_`.
 - `evals/mcp-tool-use/cases/visual-preview.ndjson` — app tool names without `t3_`; "AgentD Desktop" for "T3 Code".
 - `evals/mcp-tool-use/device-grading.ts` — app tool names without `t3_`.
-- `evals/mcp-tool-use/run.test.ts` — app tool names without `t3_`; MCP server/client name `agentd-desktop`.
-- `evals/mcp-tool-use/run.ts` — app tool names without `t3_`; MCP server/client name `agentd-desktop`.
+- `evals/mcp-tool-use/run.test.ts` — app tool names without `t3_`; new and legacy Codex code-mode names both graded.
+- `evals/mcp-tool-use/run.ts` — app tool names without `t3_`; MCP server/client name `agentd-desktop`; Codex code mode names `mcp__agentd_desktop__*`, old `mcp__t3_code__*` captures still graded.
 - `evals/mcp-tool-use/secret-grading.test.ts` — app tool names without `t3_`.
 - `evals/mcp-tool-use/secret-grading.ts` — app tool names without `t3_`.
 - `packages/client-runtime/src/authorization/layer.test.ts` — hosted relay wording / no t3.chat or app.t3.codes.
@@ -510,3 +511,6 @@ Upstream T3 Code names still showed to agents (tool names), in the CLI, in T3 Co
 - `apps/desktop/src/wsl/DesktopWslBackend.ts` — "data directory" for "T3 home" in the ownership error.
 - `apps/mobile/src/features/settings/SettingsRouteScreen.tsx` — "Account" for "T3 Account".
 - `apps/mobile/src/features/settings/settings-search.test.ts` — fixture label "Account".
+- `apps/server/src/preview/PreviewBrowser.test.ts` — asserts the AgentD Desktop install error.
+- `packages/provider-cursor/src/server/adapter.test.ts` — MCP server name `agentd-desktop`.
+- `packages/provider-muse/src/server/adapter.test.ts` — MCP server name `agentd-desktop`.

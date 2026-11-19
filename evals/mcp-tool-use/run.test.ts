@@ -49,6 +49,7 @@ it("grades Codex shell and subagent calls with the shared rules", () => {
   const calls = [
     { name: "exec_command", input: { cmd: "sleep 60" } },
     { name: "collaboration.spawn_agent", input: { task: "review" } },
+    { name: "mcp__agentd_desktop__delegate_task", input: {} },
     { name: "mcp__t3_code__delegate_task", input: {} },
     { name: "request_user_input", input: { questions: [{ question: "What's the PIN?" }] } },
     { name: "request_user_input_async", input: { questions: [] } },
@@ -59,7 +60,7 @@ it("grades Codex shell and subagent calls with the shared rules", () => {
   }));
   assert.deepEqual(
     calls.map((c) => c.tool),
-    ["Bash", "Agent", "delegate_task", "AskUserQuestion", "AskUserQuestion"],
+    ["Bash", "Agent", "delegate_task", "delegate_task", "AskUserQuestion", "AskUserQuestion"],
   );
   // Codex's question tools are graded as AskUserQuestion, so secret asks in them count.
   assert.deepEqual(

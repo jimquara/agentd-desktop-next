@@ -119,6 +119,9 @@ const PROXY_SHELL_MODELS = ["gpt-6-luna", "gpt-6.1-terra"] as const;
 type ShellModel = PricedModel | (typeof PROXY_SHELL_MODELS)[number];
 const isPricedModel = (model: ShellModel): model is PricedModel => model in PRICES;
 const T3_PREFIX = "mcp__agentd-desktop__";
+/** Codex code mode spells the server with underscores; captures from before the rename use the old name. */
+const CODEX_T3_PREFIX = "mcp__agentd_desktop__";
+const T3_NAME_PREFIXES = [T3_PREFIX, CODEX_T3_PREFIX, "mcp__t3_code__"];
 const RUNTIME_MARKER = "<runtime_info>";
 const TOOL_LOADED = "Tool loaded.";
 
@@ -413,7 +416,8 @@ const toolResult = (id: string, content: unknown): Block => ({
 });
 const texts = (content: typeof Content.Type) =>
   typeof content === "string" ? [content] : content.flatMap((block) => block.text ?? []);
-const isT3Name = (name: string) => name.startsWith(T3_PREFIX) || name.startsWith("mcp__t3_code__");
+const t3NamePrefix = (name: string) => T3_NAME_PREFIXES.find((prefix) => name.startsWith(prefix));
+const isT3Name = (name: string) => t3NamePrefix(name) !== undefined;
 const hasTool = (tools: ReadonlyArray<ApiTool>, name: string) =>
   tools.some((tool) => tool.name === name);
 
@@ -431,8 +435,9 @@ const CODEX_NAMES: Readonly<Record<string, string>> = {
 };
 export const normalizeToolName = (name: string) => {
   const bare = name.slice(name.lastIndexOf(".") + 1);
-  return isT3Name(bare)
-    ? bare.slice(T3_PREFIX.length)
+  const prefix = t3NamePrefix(bare);
+  return prefix !== undefined
+    ? bare.slice(prefix.length)
     : (CODEX_NAMES[bare] ?? bare.slice(bare.lastIndexOf("_") + 1));
 };
 export const normalizeToolInput = (name: string, input: unknown) => {
@@ -813,7 +818,7 @@ const codexCall = (name: string, input: unknown) => {
           : `python3 -c ${JSON.stringify(`from pathlib import Path; p=Path(${JSON.stringify(file)}); p.write_text(p.read_text().replace(${JSON.stringify(args.old_string)}, ${JSON.stringify(args.new_string)}))`)}`;
     return `text(await tools.exec_command(${JSON.stringify({ cmd: command })}));`;
   }
-  return `text(await tools.${name.replace("mcp__agentd-desktop__", "mcp__t3_code__")}(${JSON.stringify(input)}));`;
+  return `text(await tools.${name.replace(T3_PREFIX, CODEX_T3_PREFIX)}(${JSON.stringify(input)}));`;
 };
 const codexMessages = (messages: ReadonlyArray<ApiMessage>): Array<Block> =>
   messages.flatMap((message) =>
@@ -2039,7 +2044,7 @@ export const executeCodex = async (
 
 const codexCatalog = (base: Base) => [
   ...base.t3.map((tool) => ({
-    name: tool.name.replace("mcp__agentd-desktop__", "mcp__t3_code__"),
+    name: tool.name.replace(T3_PREFIX, CODEX_T3_PREFIX),
     description: `${valueText(tool.description)}\nInput JSON schema: ${JSON.stringify(tool.input_schema)}`,
   })),
   ...[
