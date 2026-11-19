@@ -61,6 +61,17 @@ import * as HostProcess from "@t3tools/shared/HostProcess";
 import packageJson from "../../package.json" with { type: "json" };
 const isCodexAppServerSpawnError = Schema.is(CodexErrors.CodexAppServerSpawnError);
 
+// npm's `codex` launcher runs, but the platform package with the native binary
+// (@openai/codex-<platform>/vendor/…) was skipped, e.g. by --omit=optional.
+const CODEX_VENDOR_PATH = /[\\/]@openai[\\/]codex-[^\\/\s]+[\\/]vendor[\\/]/;
+
+export function codexProbeFailureMessage(errorMessage: string): string {
+  return errorMessage.includes("ENOENT") && CODEX_VENDOR_PATH.test(errorMessage)
+    ? "Codex is installed without its native binary (npm skipped an optional dependency). " +
+        "Reinstall it with: npm install -g @openai/codex --include=optional"
+    : `Codex app-server provider probe failed: ${errorMessage}.`;
+}
+
 type CodexRateLimitsProbe =
   | {
       readonly snapshot: CodexRateLimitSnapshot;
@@ -1096,7 +1107,7 @@ export const checkCodexProviderStatus = Effect.fn("checkCodexProviderStatus")(fu
         status: "error",
         auth: { status: "unknown" },
         message: installed
-          ? `Codex app-server provider probe failed: ${error.message}.`
+          ? codexProbeFailureMessage(error.message)
           : `Could not start Codex CLI (\`${codexSettings.binaryPath}\`). Check Settings → Providers → Codex → Binary path on the server.` +
             (codexSettings.binaryPath === "codex"
               ? " Installing ChatGPT or Codex desktop may not add codex to PATH."
