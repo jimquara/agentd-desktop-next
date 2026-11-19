@@ -295,13 +295,23 @@ export function WelcomePage({
                       <T>Join a team</T>
                     </Link>
                   </div>
+                  <ProjectsSection
+                    scan={scans[0]}
+                    projectImport={projectImport}
+                    isImporting={isImporting}
+                  />
                   <div className="mt-7 flex justify-center">
                     <Button disabled={!agentReady || isImporting} onClick={start}>
                       {isImporting
                         ? selected.length > 0
                           ? gt("Importing…")
                           : gt("Starting…")
-                        : gt("Continue", { $context: "verb, finishes setup" })}
+                        : selected.length > 0
+                          ? gt(
+                              "{count, plural, one {Import {count} project and continue} other {Import {count} projects and continue}}",
+                              { count: selected.length },
+                            )
+                          : gt("Continue", { $context: "verb, finishes setup" })}
                     </Button>
                   </div>
                   {/* Setup must not dead-end when no agent is detected; Settings > Providers connects one later. */}
@@ -317,11 +327,6 @@ export function WelcomePage({
                       </Button>
                     </div>
                   )}
-                  <ProjectsSection
-                    scan={scans[0]}
-                    projectImport={projectImport}
-                    isImporting={isImporting}
-                  />
                   <TelemetryNotice environmentId={environmentId} />
                 </>
               )}
@@ -373,21 +378,6 @@ function TelemetryNotice({ environmentId }: { readonly environmentId: Environmen
 }
 
 // Each part of the page is one band: its label on the left, its rows on the right.
-function WelcomeSection({
-  title,
-  children,
-}: {
-  readonly title: string;
-  readonly children: ReactNode;
-}) {
-  return (
-    <section className="grid gap-x-10 border-b border-border/60 py-4 sm:grid-cols-[6rem_minmax(0,1fr)]">
-      <h2 className="text-sm leading-10 text-muted-foreground">{title}</h2>
-      <div className="min-w-0">{children}</div>
-    </section>
-  );
-}
-
 // Rows share one icon column, so names, checkboxes, and steps line up down the page.
 function RowIcon({ children }: { readonly children: ReactNode }) {
   return (
@@ -445,7 +435,7 @@ function AgentsSection({
   readonly environmentId: EnvironmentId;
   readonly label: string;
   readonly isPrimary: boolean;
-  // The project scan only reads agents that are on, so turning one on can find more history.
+  // The project scan only reads agents that are on, so turning one on or off changes what it finds.
   readonly onImportSourceEnabled: () => void;
 }) {
   const { serverConfig, primary, more } = agents;
@@ -512,7 +502,7 @@ function AgentsSection({
     });
   };
 
-  const turnOn = async (provider: ServerProvider) => {
+  const setTurnedOn = async (provider: ServerProvider, on: boolean) => {
     if (serverConfig === null) return;
     const instance = serverConfig.settings.providerInstances[provider.instanceId] ?? {
       driver: provider.driver,
@@ -520,14 +510,16 @@ function AgentsSection({
     const result = await persistProviderInstance({
       operation: "upsert",
       instanceId: provider.instanceId,
-      instance: turnedOnInstance(instance),
+      instance: on ? turnedOnInstance(instance) : { ...instance, enabled: false },
     });
     if (result._tag === "Failure") {
       if (!isAtomCommandInterrupted(result)) {
         const cause = squashAtomCommandFailure(result);
         toastManager.add({
           type: "error",
-          title: gt("Could not turn on {agent}", { agent: agentName(provider) }),
+          title: on
+            ? gt("Could not turn on {agent}", { agent: agentName(provider) })
+            : gt("Could not turn off {agent}", { agent: agentName(provider) }),
           ...(cause instanceof Error ? { description: cause.message } : {}),
         });
       }
@@ -555,6 +547,19 @@ function AgentsSection({
         {actionLabel}
       </Button>
     );
+    if (state === "ready") {
+      return (
+        <Button
+          size="xs"
+          variant="ghost-muted"
+          aria-label={gt("Turn off: {agent}", { agent: name })}
+          disabled={!canManageProviders || serverConfig === null}
+          onClick={() => void setTurnedOn(provider, false)}
+        >
+          <T>Turn off</T>
+        </Button>
+      );
+    }
     if (state === "disabled") {
       return (
         <Button
@@ -562,7 +567,7 @@ function AgentsSection({
           variant="outline"
           aria-label={gt("Turn on: {agent}", { agent: name })}
           disabled={!canManageProviders || serverConfig === null}
-          onClick={() => void turnOn(provider)}
+          onClick={() => void setTurnedOn(provider, true)}
         >
           <T>Turn on</T>
         </Button>
@@ -728,6 +733,16 @@ function AgentsSection({
   );
 }
 
+// Above Continue and boxed like the agents, so the import choice is seen before setup ends.
+function ProjectsCard({ children }: { readonly children: ReactNode }) {
+  const gt = useGT();
+  return (
+    <section aria-label={gt("Projects")} className="mt-6 rounded-lg border bg-card px-4 py-3">
+      {children}
+    </section>
+  );
+}
+
 function ProjectsSection({
   scan,
   projectImport,
@@ -754,13 +769,13 @@ function ProjectsSection({
   if (scan === undefined) return null;
   if (scan.isPending && candidates.length === 0) {
     return (
-      <WelcomeSection title={gt("Projects")}>
+      <ProjectsCard>
         <p className="text-sm leading-10 text-muted-foreground">
           <T>
             Looking for projects in your <Var>{importSourcesLabel}</Var> history…
           </T>
         </p>
-      </WelcomeSection>
+      </ProjectsCard>
     );
   }
   const retry = (
@@ -770,7 +785,7 @@ function ProjectsSection({
   );
   if (scan.error !== null && candidates.length === 0) {
     return (
-      <WelcomeSection title={gt("Projects")}>
+      <ProjectsCard>
         <div
           role="alert"
           className="flex min-h-10 items-center justify-between gap-3 text-sm text-muted-foreground"
@@ -778,16 +793,16 @@ function ProjectsSection({
           <span>{gt("Could not check projects. {error}", { error: scan.error })}</span>
           {retry}
         </div>
-      </WelcomeSection>
+      </ProjectsCard>
     );
   }
   if (candidates.length === 0) {
     return scan.data?.truncated ? (
-      <WelcomeSection title={gt("Projects")}>
+      <ProjectsCard>
         <p className="text-xs leading-10 text-muted-foreground" role="status">
           {m(SCAN_LIMIT_MESSAGE)}
         </p>
-      </WelcomeSection>
+      </ProjectsCard>
     ) : null;
   }
 
@@ -802,7 +817,7 @@ function ProjectsSection({
     selected.length < candidates.length &&
     !(selected.length === defaultKeys.length && defaultKeys.every((key) => selectedKeys.has(key)));
   return (
-    <WelcomeSection title={gt("Projects")}>
+    <ProjectsCard>
       <div className="flex min-h-10 items-center gap-3 py-1">
         <label className="flex min-w-0 flex-1 items-center gap-3">
           <RowIcon>
@@ -816,7 +831,7 @@ function ProjectsSection({
             />
           </RowIcon>
           <span className="min-w-0 flex-1">
-            <span className="block text-sm font-medium text-foreground">
+            <span className="block text-sm font-semibold text-foreground">
               {canWrite && selected.length > 0
                 ? gt(
                     "{count, plural, one {Import {count} project and their threads} other {Import {count} projects and their threads}}",
@@ -826,23 +841,25 @@ function ProjectsSection({
             </span>
             <span className="block text-xs text-muted-foreground">
               <T>
-                From your <Var>{importSourcesLabel}</Var> history
+                Found in your <Var>{importSourcesLabel}</Var> history. Nothing is imported unless
+                you choose it.
               </T>
             </span>
           </span>
         </label>
         {canWrite ? (
           <Button
-            variant="ghost-muted"
+            variant="outline"
             size="xs"
             aria-expanded={reviewing}
             onClick={() => setReviewing((open) => !open)}
           >
             {reviewing
               ? gt("Hide")
-              : gt("{count, plural, one {Review all {count}} other {Review all {count}}}", {
-                  count: candidates.length,
-                })}
+              : gt(
+                  "{count, plural, one {Choose from {count} project} other {Choose from {count} projects}}",
+                  { count: candidates.length },
+                )}
             <ChevronDownIcon className={cn("size-3.5", reviewing && "rotate-180")} />
           </Button>
         ) : null}
@@ -907,7 +924,7 @@ function ProjectsSection({
       {visibleImportError ? (
         <p className="pt-1 pl-8 text-sm text-destructive">{m(visibleImportError)}</p>
       ) : null}
-    </WelcomeSection>
+    </ProjectsCard>
   );
 }
 
@@ -1004,7 +1021,10 @@ function AgentRow({
       </div>
       <div className="shrink-0">
         {state === "ready" ? (
-          <CheckIcon className="size-4 text-success-foreground" aria-hidden />
+          <span className="flex items-center gap-2">
+            {action}
+            <CheckIcon className="size-4 text-success-foreground" aria-hidden />
+          </span>
         ) : state === "checking" ? null : (
           action
         )}
@@ -1264,15 +1284,13 @@ function useProjectImport({
   const isNewProject = isNewOnboardingProject(projects);
   const isNew = (candidate: ImportCandidate) => isNewProject(candidate.environmentId, candidate);
   const recent = recentActive.filter(isNew);
-  const recentKeys = new Set(recent.map((candidate) => candidate.key));
   const knownKeys = new Set(importSelection?.knownKeys);
   const pickedKeys = new Set(importSelection?.keys);
+  // Nothing is imported until the person picks it.
   const selected = importSelection?.optedOut
     ? []
-    : candidates.filter((candidate) =>
-        knownKeys.has(candidate.key)
-          ? pickedKeys.has(candidate.key)
-          : recentKeys.has(candidate.key),
+    : candidates.filter(
+        (candidate) => knownKeys.has(candidate.key) && pickedKeys.has(candidate.key),
       );
   const selectedKeys = new Set(selected.map((candidate) => candidate.key));
   const setSelectedKeys = (keys: ReadonlySet<string>, { optedOut = false } = {}) =>

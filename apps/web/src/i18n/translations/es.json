@@ -6388,9 +6388,12 @@
   "152184c4aefef5d1": "No se pudieron guardar tus ajustes. Vuelve a intentarlo.",
   "23ec0110d2170502": "Te damos la bienvenida",
   "fd8f75f97a5c0e6d": "Importando…",
+  "fbf8f62fea6f116f": "{count, plural, one {Import {count} project and continue} other {Import {count} projects and continue}}",
   "7be0671bbdf907c3": "Continue",
   "9877b52c6722fe99": "No se pudo activar {agent}",
+  "e2bc27598e7e40ab": "Could not turn off {agent}",
   "15903f7ea6a43f95": "{action}: {agent}",
+  "07f7bd1f79847a9e": "Turn off: {agent}",
   "82e9b02a3e95e425": "Activar: {agent}",
   "72fc7ba5bac9e666": "Actualizar",
   "4681c4c9541539a4": "Iniciar sesión",
@@ -6403,7 +6406,7 @@
   "e6bcf138d25188d7": "{count, plural, one {Importar {count} proyecto y sus hilos} other {Importar {count} proyectos y sus hilos}}",
   "d72f296745294c3a": "Importar proyectos y sus hilos",
   "18d144bcd97f0371": "Ocultar",
-  "54fc1526df1c0cce": "{count, plural, one {Revisar {count}} other {Revisar los {count}}}",
+  "4a89e13f852f2193": "{count, plural, one {Choose from {count} project} other {Choose from {count} projects}}",
   "bd2304f25f6f999e": "{selected, plural, one {{selected} de {total} seleccionado} other {{selected} de {total} seleccionados}}",
   "228cd9fd55a55070": "No se pudieron volver a comprobar los proyectos. {error}",
   "346a69e1c8e0849b": "Ready",
@@ -6442,6 +6445,7 @@
     },
     "."
   ],
+  "a780192787ba0339": "Turn off",
   "f77d000c0710f066": "Activar",
   "b13d2f57c213cbe3": "Models for all the agents above with one LibraOS account.",
   "602a8b205e7ab83d": "More agents",
@@ -6456,13 +6460,14 @@
     },
     "…"
   ],
-  "45194b35dc6d858a": [
-    "De tu historial de ",
+  "caf6128745705cc9": [
+    "Found in your ",
     {
       "i": 1,
       "k": "_gt_value_1",
       "v": "v"
-    }
+    },
+    " history. Nothing is imported unless you choose it."
   ],
   "5c6a6009aedbf1d0": "Seleccionar todo",
   "24c98c5086b8e76e": "No seleccionar ninguno",
