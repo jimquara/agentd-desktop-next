@@ -25,4 +25,4 @@ Not verified:
 - **Windows:** not run natively. The process runner, `isAbsolute` path check and argv construction are unchanged. The tests use Windows-shaped paths when the platform is win32. The pin record and the `--state` marker contain no paths.
 - **macOS:** not run.
 - **Linux:** the server and browser tests ran here against a stub agentd. A real agentd v0.1.14 answered only `pin list --session … --json` and `find … --kind handoff --json`, both read-only. No paid cloud offer was made, so `--idem` deduplication on `handoff offer --cloud` is taken from agentd's documented rule and the reference's use of it.
-- **zh:** the new dialog strings are wrapped with gt, but `i18n:generate` was not run and the catalogs were not filled. That step is open.
+- **zh:** catalogs regenerated and the three new strings filled.
