@@ -242,6 +242,7 @@ import { RpcInstrumentation, rpcInstrumentationLayer } from "./observability/Rpc
 import * as AgentdBridge from "./agentd/AgentdBridge.ts";
 import * as AgentdTeamNode from "./agentd/AgentdTeamNode.ts";
 import * as AgentdInit from "./agentd/agentdInit.ts";
+import * as LibraosGateway from "./gateway/LibraosGateway.ts";
 import * as ProcessDiagnostics from "./diagnostics/ProcessDiagnostics.ts";
 import * as ProcessResourceMonitor from "./diagnostics/ProcessResourceMonitor.ts";
 import * as ResourceTelemetry from "./resourceTelemetry/ResourceTelemetry.ts";
@@ -1596,6 +1597,7 @@ export const layerWsRpc = (
       const agentd = yield* AgentdBridge.AgentdBridge;
       const teamNode = yield* AgentdTeamNode.AgentdTeamNode;
       const agentdInit = yield* AgentdInit.AgentdInit;
+      const libraosGateway = yield* LibraosGateway.LibraosGateway;
       const triage = yield* TriageService.TriageService;
       const hostResources = yield* HostResources.HostResources;
       const processResourceMonitor = yield* ProcessResourceMonitor.ProcessResourceMonitor;
@@ -3612,6 +3614,9 @@ export const layerWsRpc = (
         [WS_METHODS.agentdEula]: (_input) => agentd.eula,
         [WS_METHODS.agentdSetupStart]: (_input) => agentdInit.start,
         [WS_METHODS.agentdSubscribeSetup]: (_input) => agentdInit.subscribe,
+        [WS_METHODS.libraosGatewayStatus]: (_input) => libraosGateway.status,
+        [WS_METHODS.libraosGatewayConnect]: (input) => libraosGateway.connect(input.key),
+        [WS_METHODS.libraosGatewayDisconnect]: (_input) => libraosGateway.disconnect,
       });
       const splitHandlers: Pick<typeof handlers, SplitWsRpc["_tag"]> = handlers;
       const otherHandlers: Pick<typeof handlers, Exclude<ServerWsRpc, SplitWsRpc>["_tag"]> =

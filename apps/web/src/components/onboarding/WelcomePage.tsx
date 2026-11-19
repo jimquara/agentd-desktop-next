@@ -256,6 +256,7 @@ export function WelcomePage({
                 <ConnectEndpointScreen
                   key={screen}
                   gatewayChosen={screen === "gateway"}
+                  environmentId={environmentId}
                   back={
                     <Link to="." search={{ screen: undefined }} hash={true}>
                       <T>Back</T>

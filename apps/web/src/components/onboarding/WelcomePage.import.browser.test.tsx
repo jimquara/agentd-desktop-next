@@ -774,8 +774,13 @@ it("shows only compatible endpoints and keeps the Gateway shortcut selected", as
     expect(options.getByRole("button").elements()).toHaveLength(expected.length);
     for (const name of expected) {
       const option = options.getByRole("button", { name, exact: true });
-      await expect.element(option).toBeDisabled();
-      await expect.element(option).toHaveAccessibleDescription(/Not available yet/);
+      if (name === "LibraOS Gateway") {
+        await expect.element(option).toBeEnabled();
+        await expect.element(option).not.toHaveAccessibleDescription(/Not available yet/);
+      } else {
+        await expect.element(option).toBeDisabled();
+        await expect.element(option).toHaveAccessibleDescription(/Not available yet/);
+      }
     }
   }
   await expect
@@ -794,7 +799,9 @@ it("shows only compatible endpoints and keeps the Gateway shortcut selected", as
   await expect
     .element(options.getByRole("button", { name: "LibraOS Gateway" }))
     .toHaveAttribute("aria-pressed", "true");
-  expect(document.querySelector('input[type="password"]')).toBeNull();
+  await expect
+    .element(screen.getByLabelText("LibraOS API key"))
+    .toHaveAttribute("type", "password");
   await screen.getByRole("link", { name: "Back" }).click();
   await expect.element(firstHeading).toBeVisible();
 

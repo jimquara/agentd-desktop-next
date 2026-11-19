@@ -340,6 +340,7 @@ export function ProviderSettingsPanel(target: ProviderSettingsTarget) {
     <SettingsPageContainer className="@container/providers gap-8">
       {target.setupEndpoint ? (
         <ConnectEndpointScreen
+          environmentId={target.environmentId}
           back={
             <Link
               to="/settings/providers"
