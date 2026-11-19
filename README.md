@@ -4,15 +4,15 @@ AgentD Next is an IDE for working with coding agents. You chat with an agent, wo
 
 It uses the agents already installed and signed in on your machine, such as Claude Code, Codex and opencode. It has no model access of its own and favours no agent. agentd is the authority on tasks, approvals and workers: the app shows them and keeps no copy of its own as the truth.
 
-The desktop app runs on macOS, Linux and Windows. You can also connect from a browser.
+It runs on macOS, Linux and Windows.
 
 ![A project thread with its branch, changes, background tasks and AgentD workers beside the conversation](agentd/design/shots/session-panel.png)
 
 ## What you can do
 
 - **Connect the agents you already use.** The first run lists Claude Code, Codex and opencode, with more under **More agents**. If no agent is detected, choose **Skip for now**, then open **Settings → Providers** after installing one.
-- **Use LibraOS Gateway.** In **Use an API key or gateway**, connect with a LibraOS Console API key, then select the **LibraOS Gateway** provider instance for your agent. This does not change your regular provider profiles. Other endpoint options are not available yet.
-- **Join a team.** Use a device enrollment link from your team's AgentD server.
+- **Use LibraOS Gateway.** In **Use an API key or gateway**, enter your key in **LibraOS API key**, then choose the agent marked **LibraOS Gateway** in the model picker. Other endpoint options are not available yet.
+- **Join a team.** Paste the **Team invitation link** from your team.
 - **Chat or Code.** Chat is a conversation with an agent. Code is a project: its files, branch and changes sit beside the conversation.
 - **Hand a task to a worker.** From a session, or from a task card the chat drafts, start an agentd worker with a goal, acceptance criteria, a check command and a budget. The budget comes from agentd's estimate for similar tasks. **Run in the cloud** sends it to Cloud Workers instead of this machine.
 - **Follow the work.** The session panel lists the project's background tasks, running and finished, with live output and Stop, and every AgentD worker running now, on this machine, a team node or in the cloud.
@@ -35,7 +35,12 @@ Installers are on the [releases page](https://github.com/libraos/agentd-desktop-
 | Windows (x64)         | `AgentD-Desktop-…-x64.exe`                    |
 | Linux (x64)           | `…-x64.AppImage` or `…-amd64.deb`             |
 
-Download from the official releases page and check the installer against `SHA256SUMS` before opening it. A matching checksum checks the file against the published checksum; it is not a publisher signature. macOS beta builds are ad-hoc signed and not notarized; Windows installers are unsigned. If your system blocks the installer, follow your organization's software policy or use an approved build.
+Download from the official releases page and check the installer against `SHA256SUMS` before opening it. A matching checksum checks the file against the published checksum; it is not a publisher signature. macOS beta builds are ad-hoc signed and not notarized; Windows installers are unsigned. If you verified the download, trust the source, and your organization's policy allows it, use the operating system's per-app option:
+
+- **macOS:** Move the app to Applications and try to open it once. If macOS reports that it cannot verify the developer, go to **System Settings → Privacy & Security → Open Anyway** and confirm. See [Apple's guidance](https://support.apple.com/en-us/102445).
+- **Windows:** If Microsoft Defender SmartScreen shows **Windows protected your PC**, choose **More info → Run anyway** if available. See [Microsoft's SmartScreen guidance](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation).
+
+Do not override a malware warning or a block enforced by your organization.
 
 The app finds agents on your login shell's `PATH` and in the folders their installers use, such as `~/.local/bin`, `~/.claude/local` and `/opt/homebrew/bin`. Its command line tool is `agentd-desktop`; the first run offers to put it on `PATH`.
 
@@ -56,7 +61,7 @@ vp i
 vp run dev
 ```
 
-Open the pairing URL the dev runner prints. To run the Electron app instead, use `vp run dev:desktop`. The [development runbook](./docs/operations/development.md#choosing-a-dev-process) covers ports, remote access and desktop builds. Its upstream remotes example is for T3 Code; use the [AgentD Next remote setup](./agentd/UPSTREAM.md#remotes) for this fork.
+Open the pairing URL the dev runner prints. To run the Electron app instead, use `vp run dev:desktop`. The [development runbook](./docs/operations/development.md#choosing-a-dev-process) covers ports, remote access and desktop builds. For this fork's Git remotes, see [AgentD Next remote setup](./agentd/UPSTREAM.md#remotes).
 
 ## Build the installers
 
