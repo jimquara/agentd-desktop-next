@@ -1,4 +1,6 @@
 import * as Schema from "effect/Schema";
+
+import { handoffRecord, reserveRecord, submissionMarker } from "./agentdCloudSubmissions.ts";
 import type {
   AgentdCloudTaskInput,
   AgentdConnectAgentInput,
@@ -130,10 +132,38 @@ export const agentdArgs = {
     "--cwd",
     text("working directory", cwd),
   ],
-  cloudOffer: (input: AgentdCloudTaskInput, project: string) => [
+  submissionPins: (session: string) => ["pin", "list", "--session", session, "--json"],
+  reserveSubmission: (session: string, id: string, after: string | null, fingerprint: string) => [
+    "pin",
+    "add",
+    reserveRecord(id, after, fingerprint),
+    "--session",
+    session,
+    "--json",
+  ],
+  rememberSubmission: (session: string, id: string, handoff: string) => [
+    "pin",
+    "add",
+    handoffRecord(id, handoff),
+    "--session",
+    session,
+    "--json",
+  ],
+  findSubmission: (id: string) => [
+    "find",
+    `"${submissionMarker(id)}"`,
+    "--kind",
+    "handoff",
+    "--json",
+  ],
+  cloudOffer: (input: AgentdCloudTaskInput, project: string, submission: string) => [
     "handoff",
     "offer",
     "--cloud",
+    "--idem",
+    submission,
+    "--state",
+    submissionMarker(submission),
     "--to",
     "any",
     "--session",

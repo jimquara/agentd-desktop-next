@@ -8,14 +8,28 @@ import {
   type AgentdError,
   type AgentdStartTaskResult,
 } from "@t3tools/contracts";
-import { parseGitRemoteRepository } from "@t3tools/shared/git";
 import * as Cache from "effect/Cache";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Schema from "effect/Schema";
 
 import type { ProcessRunner } from "../processRunner.ts";
+import {
+  currentReservation,
+  foundHandoffs,
+  nextSubmissionId,
+  type Reservation,
+  submissionFingerprint,
+  submissionMarker,
+  submissionSession,
+} from "./agentdCloudSubmissions.ts";
 import { agentdArgs } from "./agentdCommands.ts";
+import {
+  CLOUD_REASONS,
+  cloudFailureReason,
+  cloudReason,
+  cloudSetupProblem,
+} from "./cloudFailure.ts";
 
 const isCloudTask = Schema.is(AgentdCloudBudget);
 const isKeyFile = Schema.is(AgentdCloudKeyFile);
@@ -49,22 +63,36 @@ const emptySetup = {
   problem: null,
 };
 const originError = "Cloud Workers require a GitHub repository as the checkout’s origin.";
+const UNKNOWN_OUTCOME =
+  "AgentD may have created this cloud task. Check Background tasks. Start checks whether AgentD recorded it before submitting again.";
+const CLOSED_STATES = new Set(["cancelled", "declined", "done", "expired"]);
+const GITHUB_ORIGIN =
+  /^(?:https?:\/\/(?:[^/@\s]+@)?(?:www\.)?github\.com(?::\d+)?\/|(?:git\+)?ssh:\/\/(?:git@)?(?:ssh\.)?github\.com(?::\d+)?\/|git@github\.com:\/?)(\S+)$/i;
+const GITHUB_PROJECT = /^[a-z\d][a-z\d-]{0,38}\/(?!-|\.{1,2}$)[\w.-]{1,100}$/i;
+
+const submissionShow = Schema.decodeUnknownOption(
+  Schema.fromJsonString(
+    Schema.Struct({
+      id: Schema.String,
+      state: Schema.String,
+      cloud_state: Schema.optionalKey(Schema.NullOr(Schema.String)),
+      body: Schema.optionalKey(
+        Schema.NullOr(Schema.Struct({ state: Schema.optionalKey(Schema.NullOr(Schema.String)) })),
+      ),
+    }),
+  ),
+);
+
+/** OWNER/REPO of a GitHub origin in any form git accepts for github.com; null for any other host. */
+function githubProject(origin: string): string | null {
+  const path = GITHUB_ORIGIN.exec(origin.trim())?.[1]
+    ?.replace(/\/+$/, "")
+    .replace(/\.git$/i, "");
+  return path !== undefined && GITHUB_PROJECT.test(path) ? path.toLowerCase() : null;
+}
 
 function cloudProblem(message: string): NonNullable<AgentdCloudSetup["problem"]> {
-  if (
-    /\[cloud\]|cloud(?:[._ -])key(?:[._ -]file)?|cloud_not_configured|agentd access revoked/i.test(
-      message,
-    )
-  )
-    return "setup";
-  if (/insufficient[ _]credit/i.test(message)) return "credit";
-  if (
-    /github[ _-]app.*(?:not installed|installation|not configured)|repo(?:sitory)?[ _]not[ _]allowed/i.test(
-      message,
-    )
-  )
-    return "repository";
-  return "balance";
+  return cloudSetupProblem(message) ?? "balance";
 }
 
 function commandError(message: string, notSetUp = false) {
@@ -72,31 +100,26 @@ function commandError(message: string, notSetUp = false) {
 }
 
 function offerError(message: string, notSetUp = false): AgentdCommandError {
-  const problem = notSetUp ? "setup" : cloudProblem(message);
-  switch (problem) {
-    case "setup":
-      return commandError(
-        "Cloud Workers aren’t set up. Check the cloud configuration and account key file.",
-        true,
-      );
-    case "credit":
-      return commandError("There is not enough LibraOS credit for this dollar cap.");
-    case "repository":
-      return commandError(
-        "The repository owner must install the Cloud Workers GitHub App on this repository.",
-      );
-    default:
-      return commandError(
-        /byok|(?:openai|anthropic)[._ -]key/i.test(message)
-          ? "AgentD couldn’t use the provider key files. Check their paths, contents and permissions."
-          : "AgentD couldn’t submit this task to Cloud Workers.",
-      );
-  }
+  if (notSetUp) return commandError(CLOUD_REASONS.setup, true);
+  const problem = cloudSetupProblem(message);
+  return commandError(cloudReason(message) ?? CLOUD_REASONS.submit, problem === "setup");
 }
 
-export function cloudJobNote(message: string | null | undefined): string | null {
-  if (!message || cloudProblem(message) === "balance") return null;
-  return offerError(message).message;
+const unknownOutcome = (message = UNKNOWN_OUTCOME) =>
+  new AgentdCommandError({ message, notSetUp: false, outcomeUnknown: true });
+
+/** A cloud job's one-line reason: why it failed, or a setup problem agentd is still waiting on. */
+export function cloudJobNote(
+  state: string | null,
+  messages: ReadonlyArray<string | null | undefined>,
+): string | null {
+  const failure = state === null ? null : cloudFailureReason(state, messages);
+  if (failure !== null) return failure;
+  for (const message of messages) {
+    const problem = message ? cloudSetupProblem(message) : null;
+    if (problem !== null) return CLOUD_REASONS[problem];
+  }
+  return null;
 }
 
 function readBalance(stdout: string) {
@@ -131,6 +154,8 @@ export const makeAgentdCloud = Effect.fn("AgentdCloud.make")(function* (deps: {
   ) => Effect.Effect<ReadonlyArray<string>, AgentdError>;
 }) {
   const { binary, run, runProcess, isAbsolute, args } = deps;
+  // A second Start for a project waits on agentd's answer to the first, in this server too.
+  const inFlight = new Set<string>();
   const capabilities = yield* Cache.makeWith(
     ([command]: readonly [string, string]) =>
       run(agentdArgs.cloudHelp(), { command, jsonOnFailure: true }).pipe(
@@ -155,14 +180,7 @@ export const makeAgentdCloud = Effect.fn("AgentdCloud.make")(function* (deps: {
       maxOutputBytes: 4096,
     }).pipe(Effect.option);
     if (result._tag === "None" || result.value.code !== 0) return null;
-    const url = result.value.stdout.trim();
-    const remote = parseGitRemoteRepository(url);
-    return remote &&
-      (remote.host.toLowerCase() === "github.com" ||
-        /^ssh:\/\/git@ssh\.github\.com:443\//i.test(url)) &&
-      /^[a-z0-9][a-z0-9-]*\/[\w.-]+$/i.test(remote.path)
-      ? remote.path
-      : null;
+    return githubProject(result.value.stdout);
   });
 
   const cloudSetup = Effect.fn("AgentdCloud.setup")(function* ({
@@ -211,9 +229,116 @@ export const makeAgentdCloud = Effect.fn("AgentdCloud.make")(function* (deps: {
       return yield* commandError("This version of AgentD does not support Cloud Workers.");
     const project = yield* originProject(input.cwd);
     if (project === null) return yield* commandError(originError);
-    const argv = yield* args(() => agentdArgs.cloudOffer(input, project));
-    const session = yield* args(() => agentdArgs.cloudSession(input.cwd));
-    yield* run(session, { command }).pipe(
+    if (inFlight.has(project))
+      return yield* commandError(
+        `A Cloud Workers submission for ${project} is in progress. Wait for it before starting another.`,
+      );
+    inFlight.add(project);
+    return yield* submitCloudTask(command, project, input).pipe(
+      Effect.ensuring(Effect.sync(() => inFlight.delete(project))),
+    );
+  });
+
+  const submitCloudTask = Effect.fn("AgentdCloud.submit")(function* (
+    command: string,
+    project: string,
+    input: AgentdCloudTaskInput,
+  ) {
+    const session = submissionSession(project);
+    const fingerprint = submissionFingerprint(input, project);
+    const agentd = (build: () => ReadonlyArray<string>) =>
+      args(build).pipe(Effect.flatMap((argv) => run(argv, { command })));
+    const reservation = agentd(() => agentdArgs.submissionPins(session)).pipe(
+      Effect.map((stdout) => currentReservation(stdout, session)),
+      Effect.filterOrFail(
+        (current): current is Reservation | null => current !== undefined,
+        () => unknownOutcome(),
+      ),
+      Effect.mapError(() =>
+        unknownOutcome(
+          "AgentD couldn’t check this project’s earlier Cloud Workers submission, so nothing was submitted. Try again.",
+        ),
+      ),
+    );
+    // The task agentd recorded for a submission; null when it has none.
+    const recorded = (id: string) =>
+      agentd(() => agentdArgs.findSubmission(id)).pipe(
+        Effect.map(foundHandoffs),
+        Effect.flatMap((hits) =>
+          hits === undefined || hits.length > 1
+            ? Effect.fail(unknownOutcome())
+            : Effect.forEach(hits, (hit) =>
+                agentd(() => agentdArgs.show(hit)).pipe(Effect.map(submissionShow)),
+              ),
+        ),
+        Effect.flatMap((shows) => {
+          const show = shows[0];
+          if (show === undefined) return Effect.succeed(null);
+          return show._tag === "Some" && show.value.body?.state === submissionMarker(id)
+            ? Effect.succeed(show.value.id)
+            : Effect.fail(unknownOutcome());
+        }),
+        Effect.mapError(() => unknownOutcome()),
+      );
+    const remember = (id: string, handoff: string) =>
+      agentd(() => agentdArgs.rememberSubmission(session, id, handoff)).pipe(Effect.ignore);
+    const alreadyRecorded = (handoff: string): AgentdStartTaskResult => ({
+      id: handoff,
+      started: false,
+      note: `AgentD already recorded this Cloud Workers submission as task ${handoff}. See it in Background tasks before starting again.`,
+    });
+
+    const current = yield* reservation;
+    let submission: string;
+    if (current !== null && current.handoff === null) {
+      const handoff = yield* recorded(current.id);
+      if (handoff !== null) {
+        yield* remember(current.id, handoff);
+        return alreadyRecorded(handoff);
+      }
+      if (current.fingerprint !== fingerprint && input.cloud.replaceSubmission !== current.id) {
+        return yield* new AgentdCommandError({
+          message: `${project} holds an AgentD reservation for an earlier Cloud Workers submission that has no task. Start that task again, or replace it with this one.`,
+          notSetUp: false,
+          replaceSubmission: current.id,
+        });
+      }
+      // The same key again: agentd's --idem makes this the earlier offer, never a second one.
+      submission = current.id;
+    } else {
+      if (current !== null && current.handoff !== null) {
+        const holder = current.handoff;
+        const show = yield* agentd(() => agentdArgs.show(holder)).pipe(
+          Effect.map(submissionShow),
+          Effect.mapError(() => unknownOutcome()),
+        );
+        if (show._tag === "None") return yield* unknownOutcome();
+        if (show.value.cloud_state === "submitting" && !CLOSED_STATES.has(show.value.state)) {
+          return yield* commandError(
+            `${project} already holds an AgentD reservation: task ${holder} is still being submitted to Cloud Workers. Wait for it, or stop it in Background tasks.`,
+          );
+        }
+      }
+      submission = nextSubmissionId(session, current?.id ?? null);
+      yield* agentd(() =>
+        agentdArgs.reserveSubmission(session, submission, current?.id ?? null, fingerprint),
+      ).pipe(
+        Effect.mapError(() =>
+          commandError(
+            "AgentD couldn’t reserve this Cloud Workers submission, so nothing was submitted.",
+          ),
+        ),
+      );
+      const saved = yield* reservation;
+      if (saved?.id !== submission || saved.fingerprint !== fingerprint) {
+        return yield* commandError(
+          `Another window started a Cloud Workers submission for ${project}. Press Start to check it.`,
+        );
+      }
+    }
+
+    const argv = yield* args(() => agentdArgs.cloudOffer(input, project, submission));
+    yield* agentd(() => agentdArgs.cloudSession(input.cwd)).pipe(
       Effect.catchTags({
         AgentdCommandError: (error) =>
           Effect.fail(
@@ -223,17 +348,35 @@ export const makeAgentdCloud = Effect.fn("AgentdCloud.make")(function* (deps: {
           ),
       }),
     );
-    const stdout = yield* run(argv, { command }).pipe(
-      Effect.catchTags({
-        AgentdCommandError: (error) => Effect.fail(offerError(error.message, error.notSetUp)),
-      }),
-    );
-    const receipt = offerReceipt(stdout);
-    if (receipt._tag === "None")
-      return yield* commandError(
-        "AgentD did not return a cloud task receipt. Check Background tasks before trying again.",
+    const reconcile = (said: string | null) =>
+      recorded(submission).pipe(
+        Effect.orElseSucceed(() => null),
+        Effect.flatMap((handoff) => {
+          if (handoff !== null)
+            return remember(submission, handoff).pipe(
+              Effect.as({
+                id: handoff,
+                started: false,
+                note:
+                  (said && cloudReason(said)) ??
+                  `AgentD recorded task ${handoff} but didn’t confirm that Cloud Workers accepted it. Check Background tasks for updates.`,
+              } satisfies AgentdStartTaskResult),
+            );
+          const reason = said ? cloudReason(said) : null;
+          return Effect.fail(reason === null ? unknownOutcome() : commandError(reason));
+        }),
       );
+    const offered = yield* run(argv, { command }).pipe(Effect.result);
+    if (offered._tag === "Failure") {
+      const error = offered.failure;
+      if (error._tag !== "AgentdCommandError") return yield* error;
+      if (error.notSetUp) return yield* offerError(error.message, true);
+      return yield* reconcile(error.message);
+    }
+    const receipt = offerReceipt(offered.success);
+    if (receipt._tag === "None") return yield* reconcile(null);
     const { handoff: id, cloud } = receipt.value;
+    yield* remember(submission, id);
     const note = cloud?.error
       ? offerError(cloud.error).message
       : cloud === undefined

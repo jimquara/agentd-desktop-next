@@ -21,6 +21,10 @@ export class AgentdCommandError extends Schema.TaggedError<AgentdCommandError>()
     message: Schema.String,
     /** agentd answered that it is not set up yet (`agentd init` has not run). */
     notSetUp: Schema.Boolean,
+    /** A cloud offer may have reached agentd; the next Start checks before offering again. */
+    outcomeUnknown: Schema.optionalKey(Schema.Boolean),
+    /** An earlier cloud submission agentd has no task for, which Start may replace with this draft. */
+    replaceSubmission: Schema.optionalKey(Schema.String),
   },
 ) {}
 
@@ -71,7 +75,13 @@ export const AgentdHandoffShowJson = Schema.Struct({
   state: Schema.String,
   title: NullableString,
   body: Schema.optionalKey(
-    Schema.NullOr(Schema.Struct({ goal: NullableString, model_access: NullableString })),
+    Schema.NullOr(
+      Schema.Struct({
+        goal: NullableString,
+        model_access: NullableString,
+        state: Schema.optionalKey(NullableString),
+      }),
+    ),
   ),
   accept: Schema.optionalKey(Schema.NullOr(Schema.Array(Schema.String))),
   check_cmd: NullableString,
@@ -424,6 +434,12 @@ export const AgentdCloudTaskInput = Schema.Struct({
     modelAccess: AgentdCloudModelAccess,
     anthropicKeyFile: Schema.optionalKey(AgentdCloudKeyFile),
     openaiKeyFile: Schema.optionalKey(AgentdCloudKeyFile),
+    /** The user saw that agentd has no task for this earlier submission and offers this draft in its place. */
+    replaceSubmission: Schema.optionalKey(
+      Schema.String.check(
+        Schema.isPattern(/^[a-f0-9]{8}-[a-f0-9]{4}-8[a-f0-9]{3}-8[a-f0-9]{3}-[a-f0-9]{12}$/),
+      ),
+    ),
   }),
 });
 export type AgentdCloudTaskInput = typeof AgentdCloudTaskInput.Type;

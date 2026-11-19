@@ -199,6 +199,63 @@ it("starts a cloud task with a dollar cap and a provider key path, without the l
   });
 });
 
+it("checks an unknown cloud outcome before retrying and can replace an earlier submission", async () => {
+  setup("main");
+  state.cloud = {
+    supported: true,
+    project: "acme/app",
+    balanceUsd: 20,
+    balanceText: null,
+    defaultBudget: "$2",
+    problem: null,
+  };
+  const earlier = "0123abcd-ef01-8234-8567-89abcdef0123";
+  let answer: (value: unknown) => void = () => {};
+  const refused = (fields: {
+    message: string;
+    outcomeUnknown?: true;
+    replaceSubmission?: string;
+  }) => AsyncResult.failure(Cause.fail(new AgentdCommandError({ notSetUp: false, ...fields })));
+  state.start
+    .mockResolvedValueOnce(
+      refused({ message: "acme/app holds an AgentD reservation.", replaceSubmission: earlier }),
+    )
+    .mockResolvedValueOnce(
+      refused({ message: "AgentD may have created this cloud task.", outcomeUnknown: true }),
+    )
+    .mockImplementationOnce(() => new Promise((resolve) => (answer = resolve)));
+  await using _screen = await renderDialog();
+  await page.getByRole("checkbox", { name: "Run in the cloud" }).click();
+  await userEvent.fill(page.getByLabelText("Goal"), "Fix export");
+  await page.getByRole("button", { name: "Start", exact: true }).click();
+  await expect.element(page.getByText("acme/app holds an AgentD reservation.")).toBeVisible();
+  await page.getByRole("button", { name: "Submit this task in its place" }).click();
+  const input = { cwd: "/repo/worktrees/export", goal: "Fix export", accept: [], check: null };
+  expect(state.start).toHaveBeenLastCalledWith({
+    environmentId: thread.environmentId,
+    input: {
+      ...input,
+      cloud: { budget: "$2", modelAccess: "libraos", replaceSubmission: earlier },
+    },
+  });
+
+  const retry = page.getByRole("button", { name: "Check and retry" });
+  await retry.click();
+  await expect
+    .element(page.getByRole("button", { name: "Checking the earlier submission…" }))
+    .toBeDisabled();
+  expect(state.start).toHaveBeenLastCalledWith({
+    environmentId: thread.environmentId,
+    input: { ...input, cloud: { budget: "$2", modelAccess: "libraos" } },
+  });
+  answer(AsyncResult.success({ id: "hof-aabbcc", started: false, note: "Recorded." }));
+  await expect.element(page.getByText(/AgentD saved task hof-aabbcc/)).toBeVisible();
+  await expect
+    .element(page.getByRole("button", { name: /Start|Check and retry/ }))
+    .not.toBeInTheDocument();
+  expect(state.start).toHaveBeenCalledTimes(3);
+});
+
 it("turns off cloud start if the checkout’s origin is not a GitHub repository", async () => {
   setup("feature/export");
   state.cloud = {

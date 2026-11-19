@@ -138,8 +138,7 @@ export function agentdTask(show: AgentdHandoffShowJson): AgentdTask {
     budgetState: nonEmpty(show.budget_state),
     branch: nonEmpty(show.worker_branch) ?? nonEmpty(show.lease_branch),
     note:
-      cloudJobNote(show.cloud?.note) ??
-      cloudJobNote(show.cloud?.result) ??
+      cloudJobNote(cloudState, [show.cloud?.result, show.cloud?.note]) ??
       nonEmpty(show.worker_note) ??
       nonEmpty(show.close_reason),
     project: nonEmpty(show.project),

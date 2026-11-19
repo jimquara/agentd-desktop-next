@@ -2,12 +2,14 @@ import { useAtomValue } from "@effect/atom-react";
 import { scopeProjectRef, scopedThreadKey } from "@t3tools/client-runtime/environment";
 import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 import { threadRuntimeIsActive } from "@t3tools/client-runtime/state/shell";
-import type {
-  AgentdWorkerTool,
-  EnvironmentId,
-  MessageId,
-  ScopedThreadRef,
+import {
+  AgentdCommandError,
+  type AgentdWorkerTool,
+  type EnvironmentId,
+  type MessageId,
+  type ScopedThreadRef,
 } from "@t3tools/contracts";
+import * as Schema from "effect/Schema";
 import { Atom } from "effect/reactivity";
 import { T, useGT } from "gt-react";
 import { useId, useRef, useState } from "react";
@@ -52,6 +54,8 @@ import {
   taskBranchProblem,
   type TaskFields,
 } from "./startTask.logic";
+
+const isCommandError = Schema.is(AgentdCommandError);
 
 const dialogThread = Atom.make<ScopedThreadRef | null>(null).pipe(
   Atom.keepAlive,
@@ -130,6 +134,9 @@ function StartTaskDialog({
   const [draftError, setDraftError] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
   const [offeredId, setOfferedId] = useState<string | null>(null);
+  // An earlier cloud offer whose outcome is unknown: Start checks agentd before offering again.
+  const [outcomeUnknown, setOutcomeUnknown] = useState(false);
+  const [replaceSubmission, setReplaceSubmission] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const startingRef = useRef(false);
   const projection = useThreadProjection(draft === null ? null : threadRef)?.projection;
@@ -242,7 +249,11 @@ function StartTaskDialog({
     }
   }
 
-  async function startCheckedTask(cwd: string, worker: AgentdWorkerTool | null) {
+  async function startCheckedTask(
+    cwd: string,
+    worker: AgentdWorkerTool | null,
+    replacing: string | null,
+  ) {
     const panelRef = rightPanelHostRef(threadRef);
     if (!cloud.enabled) {
       const current = await refreshBranch({ environmentId, input: { cwd, localOnly: true } });
@@ -263,7 +274,14 @@ function StartTaskDialog({
     }
     const { goal, accept, check } = validation.input;
     const input = cloud.enabled
-      ? cloud.input && { goal, accept, check: check || null, cwd, cloud: cloud.input }
+      ? cloud.input && {
+          goal,
+          accept,
+          check: check || null,
+          cwd,
+          cloud:
+            replacing === null ? cloud.input : { ...cloud.input, replaceSubmission: replacing },
+        }
       : worker !== null && { ...validation.input, cwd, worker };
     if (!input) return;
     const result = await startTask({
@@ -271,11 +289,16 @@ function StartTaskDialog({
       input,
     });
     if (result._tag === "Failure") {
-      setStartError(
-        showFailure(squashAtomCommandFailure(result), gt("AgentD could not start the task.")),
-      );
+      const failure = squashAtomCommandFailure(result);
+      if (isCommandError(failure)) {
+        setOutcomeUnknown(failure.outcomeUnknown === true);
+        setReplaceSubmission(failure.replaceSubmission ?? null);
+      }
+      setStartError(showFailure(failure, gt("AgentD could not start the task.")));
       return;
     }
+    setOutcomeUnknown(false);
+    setReplaceSubmission(null);
     const task = result.value;
     if (!task.started) {
       setOfferedId(task.id);
@@ -290,12 +313,12 @@ function StartTaskDialog({
     onClose();
   }
 
-  function submit() {
+  function submit(replacing: string | null = null) {
     if (disabled || startingRef.current || cwd === null) return;
     startingRef.current = true;
     setStarting(true);
     setStartError(null);
-    void startCheckedTask(cwd, worker)
+    void startCheckedTask(cwd, worker, cloud.enabled ? replacing : null)
       .catch((error: unknown) => {
         setStartError(showFailure(error, gt("AgentD could not start the task.")));
       })
@@ -482,6 +505,17 @@ function StartTaskDialog({
                 </p>
               )}
               <pre className="wrap-anywhere whitespace-pre-wrap">{startError}</pre>
+              {cloud.enabled && replaceSubmission !== null ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={disabled}
+                  onClick={() => submit(replaceSubmission)}
+                >
+                  <T>Submit this task in its place</T>
+                </Button>
+              ) : null}
               {cloud.enabled &&
               cloud.setup?.problem !== "setup" &&
               /cloud configuration and account key file/.test(startError) ? (
@@ -503,8 +537,18 @@ function StartTaskDialog({
             {offeredId === null ? <T>Cancel</T> : <T>Close</T>}
           </Button>
           {offeredId === null && (
-            <Button type="button" disabled={disabled} onClick={submit}>
-              {starting ? <T>Starting…</T> : <T>Start</T>}
+            <Button type="button" disabled={disabled} onClick={() => submit()}>
+              {cloud.enabled && outcomeUnknown ? (
+                starting ? (
+                  <T>Checking the earlier submission…</T>
+                ) : (
+                  <T>Check and retry</T>
+                )
+              ) : starting ? (
+                <T>Starting…</T>
+              ) : (
+                <T>Start</T>
+              )}
             </Button>
           )}
         </DialogFooter>
