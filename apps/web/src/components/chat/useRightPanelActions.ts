@@ -15,7 +15,6 @@ import {
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
 import { useDiffPanelStore } from "../../diffPanelStore";
-import { revealCodeMode } from "../../chatCodeModeStore";
 import { type ThreadPanelPresentation } from "../../rightPanelLayout";
 import {
   selectThreadPanelOpen,
@@ -323,10 +322,6 @@ export function useRightPanelActions(input: RightPanelActionsInput) {
 
   const toggleRightPanelFromShortcut = useStableCallback(() => {
     if (!activeThreadRef) return false;
-    if (revealCodeMode(scopedThreadKey(activeThreadRef)) && rightPanelOpen) {
-      focusActivePanelTerminal(activeThreadRef);
-      return;
-    }
     toggleRightPanel();
   });
 
@@ -342,10 +337,6 @@ export function useRightPanelActions(input: RightPanelActionsInput) {
     },
     "diff.toggle": () => {
       if (!isServerThread || !activeThreadRef) return false;
-      if (revealCodeMode(scopedThreadKey(activeThreadRef)) && diffOpen) {
-        useRightPanelStore.getState().open(activeThreadRef, "diff");
-        return;
-      }
       onToggleDiff();
     },
   } satisfies ChatShortcutCommands;

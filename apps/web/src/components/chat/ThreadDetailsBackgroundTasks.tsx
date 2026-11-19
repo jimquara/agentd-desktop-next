@@ -1,5 +1,4 @@
 import { useAtomValue } from "@effect/atom-react";
-import { scopedThreadKey } from "@t3tools/client-runtime/environment";
 import {
   AgentdHandoffId,
   type AgentdTaskRow,
@@ -13,7 +12,6 @@ import { T, Var, useGT, useMessages } from "gt-react";
 import { LayersIcon, SquareIcon, TerminalSquareIcon } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 
-import { revealCodeMode } from "../../chatCodeModeStore";
 import { agentdTaskBelongsToProject, isFinishedAgentdTask } from "../agentd/backgroundTasks.logic";
 import { useNowSecond } from "../../hooks/useNowSecond";
 import {
@@ -159,7 +157,6 @@ export function ThreadDetailsBackgroundTasks({
   }
 
   const openPane = () => {
-    revealCodeMode(scopedThreadKey(threadRef));
     openBackgroundTasks(threadRef);
   };
 

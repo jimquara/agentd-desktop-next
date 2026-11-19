@@ -19,6 +19,8 @@ import { act, fakeTimers, render } from "../../test/render";
 import { openCommandPalette } from "../commandPaletteBus";
 import { makeThreadFixture } from "../test-fixtures";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
+import { useScratchProject } from "../hooks/useScratchProject";
+import { rememberSidebarTabThread, setSidebarTab } from "../sidebarTabStore";
 import { useNowMinute } from "../hooks/useNowMinute";
 import { __setClientSettingsForTests, getClientSettings } from "../hooks/useSettings";
 import { useThreadRouteTarget } from "../hooks/useThreadRouteTarget";
@@ -46,6 +48,7 @@ vi.mock(import("../state/olderSettledShelf"), async (original) => {
 vi.mock("../state/entities", { spy: true });
 vi.mock("../state/environments", { spy: true });
 vi.mock("../hooks/useHandleNewThread", { spy: true });
+vi.mock("../hooks/useScratchProject", { spy: true });
 vi.mock("../hooks/useNowMinute", { spy: true });
 vi.mock("../hooks/useThreadRouteTarget", { spy: true });
 vi.mock("./sidebar/SidebarThreadRow", { spy: true });
@@ -519,5 +522,132 @@ describe("sidebar settled pagination", () => {
     await scope(busy);
     expect(shelf()?.getAttribute("aria-expanded") ?? "false").toBe("false");
     await scope(null);
+  });
+});
+
+describe("sidebar Chat and Code tabs", () => {
+  const scratch = { ...project("scratch"), workspaceRoot: "/home/a/scratch" };
+  const app = project("app");
+  const scratchChat = makeThreadFixture({
+    environmentId: scratch.environmentId,
+    projectId: scratch.id,
+    id: ThreadId.make("scratch-chat"),
+    title: "Scratch chat",
+  });
+  const appThread = threadShell(app.id, 1);
+
+  function setup(options: {
+    threads: ReadonlyArray<EnvironmentThreadShell>;
+    route: ScopedThreadRef | null;
+  }) {
+    const stack = new DisposableStack();
+    const previousSettings = getClientSettings();
+    stack.defer(() => __setClientSettingsForTests(previousSettings));
+    stack.defer(() => setSidebarTab("code"));
+    __setClientSettingsForTests(DEFAULT_CLIENT_SETTINGS);
+    const startScratchThread = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(useScratchProject).mockReturnValue({
+      scratchEnvironmentId: () => scratch.environmentId,
+      scratchWorkspaceRootFor: () => scratch.workspaceRoot,
+      openScratchProject: vi.fn().mockResolvedValue(null),
+      startScratchThread,
+    });
+    vi.mocked(usePrimaryEnvironmentId).mockReturnValue(scratch.environmentId);
+    vi.mocked(useProjects).mockReturnValue([scratch, app]);
+    vi.mocked(useQuietThreadShells).mockReturnValue(options.threads);
+    vi.mocked(useThreadRouteTarget).mockReturnValue(
+      options.route ? { kind: "server", threadRef: options.route } : null,
+    );
+    vi.mocked(useHandleNewThread).mockReturnValue({
+      activeDraftThread: null,
+      activeThread: null,
+      defaultProjectRef: { environmentId: app.environmentId, projectId: app.id },
+      defaultProjectFallbackReady: true,
+      handleNewThread: vi.fn().mockResolvedValue(null),
+      routeDraftId: null,
+      routeThreadRef: options.route,
+    });
+    vi.mocked(useServerConfigs).mockReturnValue(
+      new Map([
+        [
+          scratch.environmentId,
+          {
+            scratchWorkspaceRoot: scratch.workspaceRoot,
+            shellThreadFamilies: false,
+          } as unknown as EnvironmentServerConfig,
+        ],
+      ]),
+    );
+    return { stack, startScratchThread };
+  }
+
+  const renderSidebar = () =>
+    render(
+      <SidebarProvider>
+        <Sidebar routeReveal={{ observedKey: null, pendingKey: null }} />
+      </SidebarProvider>,
+    );
+
+  it("lists chats under Chat and project sessions under Code", async () => {
+    using _setup = setup({ threads: [scratchChat, appThread], route: null }).stack;
+    await using screen = await renderSidebar();
+    const chatRow = () => screen.getByText("Scratch chat", { exact: true });
+    const codeRow = () => screen.getByText("Thread 1", { exact: true });
+
+    await expect.element(codeRow()).toBeVisible();
+    expect(chatRow().elements()).toHaveLength(0);
+
+    await userEvent.click(screen.getByRole("button", { name: "Chat", exact: true }));
+    await expect.element(chatRow()).toBeVisible();
+    await expect.poll(() => codeRow().elements()).toHaveLength(0);
+    expect(
+      screen.getByRole("button", { name: "Filter threads by project" }).elements(),
+    ).toHaveLength(0);
+  });
+
+  it("follows the route to the tab of the open thread", async () => {
+    using _setup = setup({
+      threads: [scratchChat, appThread],
+      route: { environmentId: scratchChat.environmentId, threadId: scratchChat.id },
+    }).stack;
+    await using screen = await renderSidebar();
+
+    await expect
+      .element(screen.getByRole("button", { name: "Chat", exact: true }))
+      .toHaveAttribute("aria-pressed", "true");
+    await expect.element(screen.getByText("Scratch chat", { exact: true })).toBeVisible();
+  });
+
+  it("a thread whose project is unknown stays under Code", async () => {
+    const orphan = threadShell(ProjectId.make("not-loaded"), 2);
+    using _setup = setup({
+      threads: [scratchChat, orphan],
+      route: { environmentId: orphan.environmentId, threadId: orphan.id },
+    }).stack;
+    await using screen = await renderSidebar();
+
+    await expect
+      .element(screen.getByRole("button", { name: "Code", exact: true }))
+      .toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("a remembered chat that was archived is not reopened", async () => {
+    const archived = { ...scratchChat, archivedAt: "2026-01-02T00:00:00.000Z" };
+    rememberSidebarTabThread("chat", {
+      environmentId: archived.environmentId,
+      threadId: archived.id,
+    });
+    const { stack, startScratchThread } = setup({
+      threads: [archived, appThread],
+      route: { environmentId: appThread.environmentId, threadId: appThread.id },
+    });
+    using _setup = stack;
+    await using screen = await renderSidebar();
+    await expect.element(screen.getByText("Thread 1", { exact: true })).toBeVisible();
+    const navigate = vi.spyOn(screen.router!, "navigate");
+
+    await userEvent.click(screen.getByRole("button", { name: "Chat", exact: true }));
+    expect(startScratchThread).toHaveBeenCalledExactlyOnceWith(scratch.environmentId);
+    expect(navigate).not.toHaveBeenCalled();
   });
 });

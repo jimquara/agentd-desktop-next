@@ -1,4 +1,4 @@
-import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environment";
+import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import {
   AgentdHandoffId,
   AgentdNotFoundError,
@@ -11,7 +11,6 @@ import { T, useGT } from "gt-react";
 import { RefreshCwIcon } from "lucide-react";
 import { useState } from "react";
 
-import { revealCodeMode } from "../../chatCodeModeStore";
 import {
   useAgentdApprovals,
   useAgentdInbox,
@@ -83,7 +82,6 @@ export function AgentdPage() {
       setSelectedTask({ id: row.id, environmentId: activeEnvironmentId });
       return;
     }
-    revealCodeMode(scopedThreadKey(threadRef));
     openBackgroundTasks(threadRef);
     void navigate({
       to: "/$environmentId/$threadId",

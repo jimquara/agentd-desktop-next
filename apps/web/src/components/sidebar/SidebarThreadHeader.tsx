@@ -9,11 +9,13 @@ import {
 } from "react";
 
 import { cn } from "~/lib/utils";
+import type { SidebarTab } from "../../sidebarTabStore";
 import { Button } from "../ui/button";
 import { SidebarInput, SidebarMenuButton } from "../ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 
 export interface SidebarThreadHeaderProps {
+  tab: SidebarTab;
   hasProjects: boolean;
   projectScope: ReactNode;
   onNewProject: () => void;
@@ -33,6 +35,7 @@ export interface SidebarThreadHeaderProps {
 }
 
 export function SidebarThreadHeader({
+  tab,
   hasProjects,
   projectScope,
   onNewProject,
@@ -54,9 +57,11 @@ export function SidebarThreadHeader({
   const resultsVisible = isSearching && searchResultCount > 0;
   // Shrinking results can remove the active option; never leave aria-activedescendant pointing at it.
   const activeResultExists = resultsVisible && activeSearchResultIndex < searchResultCount;
-  const newThreadLabel = newThreadShortcutLabel
-    ? gt("New thread ({shortcut})", { shortcut: newThreadShortcutLabel })
-    : gt("New thread");
+  const newThreadName = tab === "chat" ? gt("New chat") : gt("New thread");
+  const newThreadLabel =
+    tab === "code" && newThreadShortcutLabel
+      ? gt("New thread ({shortcut})", { shortcut: newThreadShortcutLabel })
+      : newThreadName;
 
   return (
     <div className="flex items-center gap-1">
@@ -99,7 +104,7 @@ export function SidebarThreadHeader({
         ) : null}
       </div>
       <div className="flex shrink-0 items-center">
-        {hasProjects ? (
+        {tab === "code" && hasProjects ? (
           <>
             {projectScope}
             <SidebarHeaderIconButton label={gt("Add project")} onClick={onNewProject}>
@@ -108,9 +113,9 @@ export function SidebarThreadHeader({
           </>
         ) : null}
         <SidebarHeaderIconButton
-          label={gt("New thread")}
+          label={newThreadName}
           tooltip={
-            showNewThreadInProjectHint ? (
+            tab === "code" && showNewThreadInProjectHint ? (
               <span className="flex flex-col gap-0.5">
                 <span>{newThreadLabel}</span>
                 <span className="text-muted-foreground">

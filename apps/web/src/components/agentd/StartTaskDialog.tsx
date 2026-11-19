@@ -12,7 +12,6 @@ import { Atom } from "effect/reactivity";
 import { T, useGT } from "gt-react";
 import { useId, useRef, useState } from "react";
 
-import { revealCodeMode } from "~/chatCodeModeStore";
 import { agentdEnvironment, useAgentdStatus } from "~/lib/agentdState";
 import { newMessageId } from "~/lib/utils";
 import { rightPanelHostRef, useRightPanelStore } from "~/rightPanelStore";
@@ -283,7 +282,6 @@ function StartTaskDialog({
       setStartError(task.note ?? gt("AgentD did not dispatch the task."));
       return;
     }
-    revealCodeMode(scopedThreadKey(panelRef));
     useRightPanelStore.getState().open(panelRef, "background-tasks");
     toastManager.add({
       type: "success",

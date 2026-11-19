@@ -11,7 +11,6 @@ import {
   type ScopedThreadRef,
   type ThreadPullRequestLink,
 } from "@t3tools/contracts";
-import { scopedThreadKey } from "@t3tools/client-runtime/environment";
 import type { ThreadStructure } from "@t3tools/client-runtime/state/shell";
 import type { ThreadCheckpointSummary } from "@t3tools/client-runtime/state/thread-checkpoints";
 import {
@@ -130,7 +129,6 @@ vi.mock(import("~/state/vcs"), async (importOriginal) => {
 });
 
 import { render } from "../../../test/render";
-import { setChatCodeMode, useChatCodeMode } from "../../chatCodeModeStore";
 import { selectThreadDiffPanelSelection, useDiffPanelStore } from "../../diffPanelStore";
 import { selectActiveRightPanel, useRightPanelStore } from "../../rightPanelStore";
 import { makeThreadProjectionFixture } from "../../test-fixtures";
@@ -339,15 +337,9 @@ it("limits background tasks to this project and session, confirms Stop, and open
       agentdRow(9, { project: "other/repo", state: "done", workerRunning: false }),
     ],
   });
-  const threadKey = scopedThreadKey(threadRef);
-  setChatCodeMode(threadKey, "chat");
-  function ModeProbe() {
-    return <output aria-label="Session mode">{useChatCodeMode(threadKey)}</output>;
-  }
   await using _screen = await render(
     <>
       <Panel fixture={fixture} />
-      <ModeProbe />
       <ConfirmDialogHost />
     </>,
   );
@@ -384,11 +376,7 @@ it("limits background tasks to this project and session, confirms Stop, and open
     region.getByRole("button", { name: "2 finished" }),
   ]) {
     useRightPanelStore.getState().closeAllSurfaces(threadRef);
-    setChatCodeMode(threadKey, "chat");
     await entry.click();
-    await expect
-      .element(page.getByRole("status", { name: "Session mode" }))
-      .toHaveTextContent("code");
     expect(selectActiveRightPanel(useRightPanelStore.getState().byThreadKey, threadRef)).toBe(
       "background-tasks",
     );
