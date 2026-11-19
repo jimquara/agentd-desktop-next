@@ -14,7 +14,7 @@ type Unreachable = Extract<EnvironmentConnectReachability, { readonly status: "u
 
 /**
  * What stands between the user and the wizard's steps. Only `open` lets them go on: cloud apps
- * need a public address, so the environment must answer on its the hosted relay tunnel.
+ * need a public address, so the environment must answer on its hosted relay tunnel.
  */
 export type McpGate =
   | { readonly kind: "checking" }

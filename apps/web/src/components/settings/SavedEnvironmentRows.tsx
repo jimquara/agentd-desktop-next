@@ -829,7 +829,7 @@ function ConfiguredCloudLinkRow({
           managed={connectDenial}
           control={
             <CloudLinkSwitch
-              ariaLabel={gt("Require approval for new the hosted relay devices")}
+              ariaLabel={gt("Require approval for new hosted relay devices")}
               checked={connectDeviceApproval.required}
               disabled={!connectDeviceApproval.canManage}
               disabledReason={

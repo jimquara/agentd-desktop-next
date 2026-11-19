@@ -136,7 +136,7 @@ export function useCloudLinkController(environmentId: EnvironmentId | null) {
       const state = readCachedCloudLinkState(target);
       if (state === null) {
         reportUpdateFailure(
-          new Error(m(msg("Wait until the current the hosted relay settings can be read."))),
+          new Error(m(msg("Wait until the current hosted relay settings can be read."))),
         );
       }
       return state;

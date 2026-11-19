@@ -92,7 +92,7 @@ describe("resolveMcpGate", () => {
   });
 
   it.each([
-    ["no the hosted relay sign-in", { ...open, signedIn: false }, "sign-in"],
+    ["no hosted relay sign-in", { ...open, signedIn: false }, "sign-in"],
     ["no permission to read the hosted relay", { ...open, canReadRelay: false }, "no-relay-read"],
     ["a server without approval codes", { ...open, approvalCodes: false }, "update"],
     ["no tunnel", { ...open, linkState: { ...tunnel, managedTunnelActive: false } }, "turn-on"],

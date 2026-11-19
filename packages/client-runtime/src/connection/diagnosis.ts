@@ -107,7 +107,7 @@ function headline(
     case "offline":
       return resolve(msg("This device is offline"));
     case "session_pending":
-      return resolve(msg("This device is still loading its the hosted relay sign-in"));
+      return resolve(msg("This device is still loading its hosted relay sign-in"));
     case "approval_pending":
       return resolve(msg("{host} is waiting for someone to approve this device", { host }));
     case "outdated":
@@ -221,9 +221,7 @@ function steps(
     case "not_linked":
       return [
         resolve(
-          msg(
-            "Check that this device is signed in to the same the hosted relay account as the host.",
-          ),
+          msg("Check that this device is signed in to the same hosted relay account as the host."),
         ),
         resolve(
           msg("On {host}, open Settings > Sharing & access and turn the hosted relay on.", {

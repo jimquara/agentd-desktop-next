@@ -34,7 +34,7 @@ function readEnvironmentId(): EnvironmentId | null {
   return value ? EnvironmentId.make(value) : null;
 }
 
-/** Sends each call with the owner's the hosted relay session and remembers where the environment is. */
+/** Sends each call with the owner's hosted relay session and remembers where the environment is. */
 function connectTransport(
   environmentId: EnvironmentId,
   onEnvironment: (environment: { readonly url: string; readonly label: string }) => void,

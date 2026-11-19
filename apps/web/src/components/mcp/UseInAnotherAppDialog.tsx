@@ -401,7 +401,7 @@ function GateScreen({
       <T>Check again</T>
     </Button>
   );
-  const offlineTitle = gt("{environment}''s the hosted relay is offline", { environment: name });
+  const offlineTitle = gt("{environment}''s hosted relay is offline", { environment: name });
   const cannotCheckTitle = gt("Can't check the hosted relay on {environment}", {
     environment: name,
   });

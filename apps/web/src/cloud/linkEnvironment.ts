@@ -291,7 +291,7 @@ export const readCloudLinkState: (input: {
     );
   });
 
-/** Runs the environment's the hosted relay reachability check now; the link state then reports it. */
+/** Runs the environment's hosted relay reachability check now; the link state then reports it. */
 export const checkCloudReachability: (input: {
   readonly target: CloudLinkTarget;
 }) => Effect.Effect<EnvironmentConnectReachability, CloudEnvironmentLinkError, CloudLinkServices> =

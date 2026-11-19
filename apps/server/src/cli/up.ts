@@ -116,7 +116,7 @@ export const planRoutes = (
   };
 };
 
-/** A running service reads T3CODE_LAN and its the hosted relay link only when it starts. */
+/** A running service reads T3CODE_LAN and its hosted relay link only when it starts. */
 const needsRestart = (before: Routes, after: Routes) =>
   after.lan !== before.lan || (after.connect && !before.connect);
 
@@ -342,7 +342,7 @@ const setUp = Effect.fn("cli.up")(function* (flags: {
   yield* CliService.writeServiceEnv(baseDir, { T3CODE_LAN: String(routes.lan) });
   // When the service step fails, an installed service still runs with the old
   // value, so the file goes back to match it.
-  // A new the hosted relay link is undone too, with any tunnel the failed start saved, so a
+  // A new hosted relay link is undone too, with any tunnel the failed start saved, so a
   // rerun sees it as a change and restarts. The sign-in stays.
   const restoreServiceEnv = before.service.installed
     ? CliService.writeServiceEnv(baseDir, { T3CODE_LAN: previousLan }).pipe(

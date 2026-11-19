@@ -258,7 +258,7 @@ export const watchManagedTunnelOrigin = Effect.fn("ManagedTunnelOrigin.watch")(f
       Effect.catchCause((cause) =>
         Cause.hasInterrupts(cause)
           ? Effect.interrupt
-          : Effect.logWarning("Failed to register this server's the hosted relay origin again", {
+          : Effect.logWarning("Failed to register this server's hosted relay origin again", {
               cause,
             }),
       ),

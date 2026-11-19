@@ -325,12 +325,12 @@ export function T3ConnectUserProfilePage() {
               </EmptyMedia>
               <EmptyHeader>
                 <EmptyTitle>
-                  <T>No the hosted relay environments</T>
+                  <T>No hosted relay environments</T>
                 </EmptyTitle>
                 <EmptyDescription>
                   <T>
-                    Link an environment from its local Settings to make it available through T3
-                    Connect.
+                    Link an environment from its local Settings to make it available through the
+                    hosted relay.
                   </T>
                 </EmptyDescription>
               </EmptyHeader>

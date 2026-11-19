@@ -64,7 +64,7 @@ export function relayProtectedErrorText(error: RelayProtectedError): MarkedText 
         ];
       }
       if (error.reason === "managed_endpoint_allocation_not_ready") {
-        return [msg("The environment's the hosted relay tunnel is still being set up.")];
+        return [msg("The environment's hosted relay tunnel is still being set up.")];
       }
       if (error.reason === "endpoint_provider_not_managed") {
         return [
@@ -175,7 +175,7 @@ export function relayOfflineReasonMessage(
     case "tunnel_released":
       return resolve(
         msg(
-          "Offline for a while, so its the hosted relay tunnel was removed. Start AgentD Desktop on that computer and update it to the latest version to reconnect.",
+          "Offline for a while, so its hosted relay tunnel was removed. Start AgentD Desktop on that computer and update it to the latest version to reconnect.",
         ),
       );
     case undefined:

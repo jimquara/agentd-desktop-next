@@ -87,7 +87,7 @@ export class BootstrapCredentialScopeNotGrantedError extends Schema.TaggedError<
   }
 }
 
-/** The credential is valid but its the hosted relay device key still waits for approval. */
+/** The credential is valid but its hosted relay device key still waits for approval. */
 export class BootstrapCredentialConnectApprovalPendingError extends Schema.TaggedError<BootstrapCredentialConnectApprovalPendingError>()(
   "BootstrapCredentialConnectApprovalPendingError",
   {

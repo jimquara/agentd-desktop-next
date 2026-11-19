@@ -22,7 +22,7 @@ export function isManagedTunnelActive(
 const TUNNEL_HOSTNAME = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i;
 
 /**
- * An environment's MCP URL on its the hosted relay tunnel, or null. This machine reports its own
+ * An environment's MCP URL on its hosted relay tunnel, or null. This machine reports its own
  * tunnel hostname; a saved machine's comes from the hosted relay, and only a tunnel counts there,
  * since a publish-only link registers its local address as `manual`.
  */

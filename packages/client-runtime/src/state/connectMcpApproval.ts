@@ -59,7 +59,7 @@ const refused = (error: { readonly message: string }) =>
   Effect.succeed<ConnectMcpApprovalAnswer>({ kind: "refused", message: error.message });
 
 /**
- * Sends one approval call to `environmentId` with this account's the hosted relay session. Its
+ * Sends one approval call to `environmentId` with this account's hosted relay session. Its
  * address comes from the relay, which only grants access to the environment's owner.
  */
 const callConnectMcpApproval = Effect.fn("clientRuntime.state.connectMcpApproval")(

@@ -472,7 +472,7 @@ export const EnvironmentConnectReachabilityCause = Schema.Literals([
 ]);
 export type EnvironmentConnectReachabilityCause = typeof EnvironmentConnectReachabilityCause.Type;
 
-/** Whether other devices can reach this environment through its the hosted relay tunnel. */
+/** Whether other devices can reach this environment through its hosted relay tunnel. */
 export const EnvironmentConnectReachability = Schema.Union([
   Schema.Struct({
     status: Schema.Literal("reachable"),
@@ -699,7 +699,7 @@ class EnvironmentMcpOAuthHttpApi extends HttpApiGroup.make("mcpOAuth")
   .add(HttpApiEndpoint.get("authorize", "/oauth/mcp/authorize"))
   .add(
     HttpApiEndpoint.post("approval", "/oauth/mcp/approval", {
-      // The hosted app sends the owner's the hosted relay credential; the environment's own page uses its cookie.
+      // The hosted app sends the owner's hosted relay credential; the environment's own page uses its cookie.
       headers: OptionalBearerHeaders,
       payload: AuthMcpAuthorizationRequest,
       success: [AuthMcpApprovalDetails, AuthMcpApprovalRedirect],
@@ -708,7 +708,7 @@ class EnvironmentMcpOAuthHttpApi extends HttpApiGroup.make("mcpOAuth")
   )
   .add(
     HttpApiEndpoint.post("decision", "/oauth/mcp/decision", {
-      // The hosted app sends the owner's the hosted relay credential; the environment's own page uses its cookie.
+      // The hosted app sends the owner's hosted relay credential; the environment's own page uses its cookie.
       headers: OptionalBearerHeaders,
       payload: AuthMcpApprovalDecisionRequest,
       success: AuthMcpApprovalRedirect,
