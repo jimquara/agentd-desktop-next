@@ -6502,35 +6502,37 @@
     "を実行してください。"
   ],
   "9d9b9624c7bd95df": "その他のフォルダー",
-  "1eb8f3d4695033fb": [
+  "667a3b1d59b5d5b8": [
+    "Added to ",
     {
       "i": 1,
       "k": "_gt_value_1",
       "v": "v"
     },
-    " に追加しました。",
+    ". Open a new terminal to use",
     " ",
     {
       "t": "code",
       "i": 2,
-      "c": "t3"
+      "c": "agentd-desktop"
     },
-    " を使うには新しいターミナルを開いてください。"
+    "."
   ],
-  "ad72bb102aa39c31": [
+  "c5e1f5ec5e883057": [
+    "Use ",
     {
       "t": "code",
       "i": 1,
-      "c": "t3"
+      "c": "agentd-desktop"
     },
-    " をどのターミナルからでも使えるようにします。",
+    " from any terminal. Adds one line to",
     " ",
     {
       "i": 2,
       "k": "_gt_value_2",
       "v": "v"
     },
-    " に 1 行追加します。"
+    "."
   ],
   "f5d986fad54b4670": "PATH に追加",
   "7f5a37821edc1814": "許可済み",

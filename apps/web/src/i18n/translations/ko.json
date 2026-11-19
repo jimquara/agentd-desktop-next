@@ -6499,36 +6499,37 @@
     "을(를) 실행하세요."
   ],
   "9d9b9624c7bd95df": "기타 폴더",
-  "1eb8f3d4695033fb": [
+  "667a3b1d59b5d5b8": [
+    "Added to ",
     {
       "i": 1,
       "k": "_gt_value_1",
       "v": "v"
     },
-    "에 추가했습니다.",
+    ". Open a new terminal to use",
     " ",
     {
       "t": "code",
       "i": 2,
-      "c": "t3"
+      "c": "agentd-desktop"
     },
-    "을(를) 사용하려면 새 터미널을 여세요."
+    "."
   ],
-  "ad72bb102aa39c31": [
-    "어느 터미널에서나 ",
+  "c5e1f5ec5e883057": [
+    "Use ",
     {
       "t": "code",
       "i": 1,
-      "c": "t3"
+      "c": "agentd-desktop"
     },
-    "을(를) 사용합니다.",
+    " from any terminal. Adds one line to",
     " ",
     {
       "i": 2,
       "k": "_gt_value_2",
       "v": "v"
     },
-    "에 한 줄을 추가합니다."
+    "."
   ],
   "f5d986fad54b4670": "PATH에 추가",
   "7f5a37821edc1814": "허용됨",

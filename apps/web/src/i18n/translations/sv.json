@@ -6519,30 +6519,30 @@
     "i den här terminalen."
   ],
   "9d9b9624c7bd95df": "Andra mappar",
-  "1eb8f3d4695033fb": [
-    "Tillagd i ",
+  "667a3b1d59b5d5b8": [
+    "Added to ",
     {
       "i": 1,
       "k": "_gt_value_1",
       "v": "v"
     },
-    ". Öppna en ny terminal för att använda",
+    ". Open a new terminal to use",
     " ",
     {
       "t": "code",
       "i": 2,
-      "c": "t3"
+      "c": "agentd-desktop"
     },
     "."
   ],
-  "ad72bb102aa39c31": [
-    "Använd ",
+  "c5e1f5ec5e883057": [
+    "Use ",
     {
       "t": "code",
       "i": 1,
-      "c": "t3"
+      "c": "agentd-desktop"
     },
-    " från valfri terminal. Lägger till en rad i",
+    " from any terminal. Adds one line to",
     " ",
     {
       "i": 2,

@@ -6519,30 +6519,30 @@
     "dans ce terminal."
   ],
   "9d9b9624c7bd95df": "Autres dossiers",
-  "1eb8f3d4695033fb": [
-    "Ajouté à ",
+  "667a3b1d59b5d5b8": [
+    "Added to ",
     {
       "i": 1,
       "k": "_gt_value_1",
       "v": "v"
     },
-    ". Ouvrez un nouveau terminal pour utiliser",
+    ". Open a new terminal to use",
     " ",
     {
       "t": "code",
       "i": 2,
-      "c": "t3"
+      "c": "agentd-desktop"
     },
     "."
   ],
-  "ad72bb102aa39c31": [
-    "Utilisez ",
+  "c5e1f5ec5e883057": [
+    "Use ",
     {
       "t": "code",
       "i": 1,
-      "c": "t3"
+      "c": "agentd-desktop"
     },
-    " depuis n’importe quel terminal. Ajoute une ligne à",
+    " from any terminal. Adds one line to",
     " ",
     {
       "i": 2,

@@ -6520,7 +6520,7 @@
     "in this terminal."
   ],
   "9d9b9624c7bd95df": "Other folders",
-  "1eb8f3d4695033fb": [
+  "667a3b1d59b5d5b8": [
     "Added to ",
     {
       "i": 1,
@@ -6532,16 +6532,16 @@
     {
       "t": "code",
       "i": 2,
-      "c": "t3"
+      "c": "agentd-desktop"
     },
     "."
   ],
-  "ad72bb102aa39c31": [
+  "c5e1f5ec5e883057": [
     "Use ",
     {
       "t": "code",
       "i": 1,
-      "c": "t3"
+      "c": "agentd-desktop"
     },
     " from any terminal. Adds one line to",
     " ",

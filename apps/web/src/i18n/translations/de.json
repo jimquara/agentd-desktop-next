@@ -6519,37 +6519,37 @@
     "in diesem Terminal aus."
   ],
   "9d9b9624c7bd95df": "Andere Ordner",
-  "1eb8f3d4695033fb": [
-    "Zu ",
+  "667a3b1d59b5d5b8": [
+    "Added to ",
     {
       "i": 1,
       "k": "_gt_value_1",
       "v": "v"
     },
-    " hinzugefügt. Öffne ein neues Terminal, um",
+    ". Open a new terminal to use",
     " ",
     {
       "t": "code",
       "i": 2,
-      "c": "t3"
+      "c": "agentd-desktop"
     },
-    " zu verwenden."
+    "."
   ],
-  "ad72bb102aa39c31": [
-    "Verwende ",
+  "c5e1f5ec5e883057": [
+    "Use ",
     {
       "t": "code",
       "i": 1,
-      "c": "t3"
+      "c": "agentd-desktop"
     },
-    " in jedem Terminal. Fügt eine Zeile zu",
+    " from any terminal. Adds one line to",
     " ",
     {
       "i": 2,
       "k": "_gt_value_2",
       "v": "v"
     },
-    " hinzu."
+    "."
   ],
   "f5d986fad54b4670": "Zu PATH hinzufügen",
   "7f5a37821edc1814": "Erlaubt",

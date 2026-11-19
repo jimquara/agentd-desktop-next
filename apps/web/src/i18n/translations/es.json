@@ -6518,30 +6518,30 @@
     "en esta terminal."
   ],
   "9d9b9624c7bd95df": "Otras carpetas",
-  "1eb8f3d4695033fb": [
-    "Añadido a ",
+  "667a3b1d59b5d5b8": [
+    "Added to ",
     {
       "i": 1,
       "k": "_gt_value_1",
       "v": "v"
     },
-    ". Abre una terminal nueva para usar",
+    ". Open a new terminal to use",
     " ",
     {
       "t": "code",
       "i": 2,
-      "c": "t3"
+      "c": "agentd-desktop"
     },
     "."
   ],
-  "ad72bb102aa39c31": [
-    "Usa ",
+  "c5e1f5ec5e883057": [
+    "Use ",
     {
       "t": "code",
       "i": 1,
-      "c": "t3"
+      "c": "agentd-desktop"
     },
-    " desde cualquier terminal. Añade una línea a",
+    " from any terminal. Adds one line to",
     " ",
     {
       "i": 2,
