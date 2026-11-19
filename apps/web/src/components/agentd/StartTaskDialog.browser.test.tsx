@@ -1,6 +1,6 @@
 import "~/index.css";
 
-import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environment";
+import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import {
   AgentdCommandError,
   type AgentdCloudSetup,
@@ -13,7 +13,6 @@ import { AsyncResult } from "effect/reactivity";
 import { expect, it, vi } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
 
-import { setChatCodeMode, useChatCodeMode } from "~/chatCodeModeStore";
 import { hostRightPanel, selectActiveRightPanel, useRightPanelStore } from "~/rightPanelStore";
 import { AppAtomRegistryProvider } from "~/rpc/atomRegistry";
 import { makeThreadFixture } from "~/test-fixtures";
@@ -58,7 +57,6 @@ vi.mock("~/state/use-atom-command", () => ({
 const thread = makeThreadFixture({ worktreePath: "/repo/worktrees/export" });
 const threadRef = scopeThreadRef(thread.environmentId, thread.id);
 const parentRef = scopeThreadRef(thread.environmentId, ThreadId.make("parent-thread"));
-const parentKey = scopedThreadKey(parentRef);
 
 function setup(branch: string) {
   state.branch = branch;
@@ -69,12 +67,7 @@ function setup(branch: string) {
     .mockReset()
     .mockResolvedValue(AsyncResult.success({ isRepo: true, refName: branch }));
   useRightPanelStore.setState({ byThreadKey: {} });
-  setChatCodeMode(parentKey, "chat");
   openStartTaskDialog(threadRef);
-}
-
-function ParentCodeMode() {
-  return <output data-testid="parent-mode">{useChatCodeMode(parentKey)}</output>;
 }
 
 function renderDialog() {
@@ -82,7 +75,6 @@ function renderDialog() {
     <AppAtomRegistryProvider>
       <ToastProvider>
         <StartTaskDialogHost />
-        <ParentCodeMode />
       </ToastProvider>
     </AppAtomRegistryProvider>,
   );
@@ -141,7 +133,6 @@ it("shows what is missing, displays a refusal in full, and opens the tasks pane 
   await start.click();
   await expect.element(page.getByText("Started task hof-123abc.")).toBeVisible();
   await expect.element(page.getByRole("dialog")).not.toBeInTheDocument();
-  await expect.element(page.getByTestId("parent-mode")).toHaveTextContent("code");
   expect(selectActiveRightPanel(useRightPanelStore.getState().byThreadKey, parentRef)).toBe(
     "background-tasks",
   );

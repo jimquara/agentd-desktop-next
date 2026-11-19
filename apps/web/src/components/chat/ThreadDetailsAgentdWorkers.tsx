@@ -1,11 +1,9 @@
-import { scopedThreadKey } from "@t3tools/client-runtime/environment";
 import { type AgentdTaskRow, type ScopedThreadRef } from "@t3tools/contracts";
 import { useNavigate } from "@tanstack/react-router";
 import { T, Var, useGT } from "gt-react";
 import { BotIcon, ListIcon } from "lucide-react";
 import { useId } from "react";
 
-import { revealCodeMode } from "../../chatCodeModeStore";
 import { useAgentdTasks } from "../../lib/agentdState";
 import { buildThreadRouteParams } from "../../threadRoutes";
 import { cn } from "../../lib/utils";
@@ -63,7 +61,6 @@ export function ThreadDetailsAgentdWorkers({ threadRef }: { readonly threadRef: 
   ];
 
   const openWorker = (row: AgentdTaskRow) => {
-    revealCodeMode(scopedThreadKey(threadRef));
     openBackgroundTasks(threadRef);
     void navigate({
       to: "/$environmentId/$threadId",

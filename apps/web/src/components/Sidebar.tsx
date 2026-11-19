@@ -256,8 +256,19 @@ import {
 } from "./ui/combobox";
 import { SidebarContent, SidebarGroup, useSidebar } from "./ui/sidebar";
 import { SidebarChromeFooter, SidebarChromeHeader } from "./sidebar/SidebarChrome";
-import { ChatCodeSwitch } from "./sidebar/ChatCodeSwitch";
+import { SidebarTabSwitch } from "./sidebar/SidebarTabSwitch";
 import { SidebarHeaderIconButton, SidebarThreadHeader } from "./sidebar/SidebarThreadHeader";
+import {
+  followRouteTab,
+  lastSidebarTabThread,
+  rememberSidebarTabThread,
+  setSidebarTab,
+  type SidebarTab,
+  sidebarTabForProject,
+  useFollowedRouteKey,
+  useSidebarTab,
+} from "../sidebarTabStore";
+import { useScratchProject } from "../hooks/useScratchProject";
 import { TooltipProvider } from "./ui/tooltip";
 import {
   composerDraftHasUserContent,
@@ -1007,6 +1018,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   const newThreadContext = useHandleNewThread();
   // Row callbacks capture only the handler; the rest of the context changes with the route.
   const { handleNewThread } = newThreadContext;
+  const { scratchEnvironmentId, startScratchThread } = useScratchProject();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const clearSelection = useThreadSelectionStore((s) => s.clearSelection);
   const setSelectionAnchor = useThreadSelectionStore((s) => s.setAnchor);
@@ -1123,11 +1135,43 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
           ),
         );
   const threads = useQuietThreadShells();
+  const tabOfThread = (thread: { environmentId: EnvironmentId; projectId: ProjectId }) =>
+    sidebarTabForProject(
+      projectByKey.get(`${thread.environmentId}:${thread.projectId}`),
+      serverConfigs.get(thread.environmentId)?.scratchWorkspaceRoot,
+    );
+  // The open thread's tab wins once per route; until its project is known it reads as Code.
+  const routeTabThread =
+    routeDraftThread ??
+    (routeThreadKey === null
+      ? undefined
+      : threads.find((candidate) => threadShellKey(candidate) === routeThreadKey));
+  const routeTab: SidebarTab = routeTabThread ? tabOfThread(routeTabThread) : "code";
+  const routeTabFollowKey = routeThreadKey === null ? null : `${routeTab}:${routeThreadKey}`;
+  const rememberedRouteThreadRef =
+    routeTarget?.kind === "server" &&
+    routeTabThread !== undefined &&
+    projectByKey.has(`${routeTabThread.environmentId}:${routeTabThread.projectId}`)
+      ? routeThreadRef
+      : null;
+  const storedSidebarTab = useSidebarTab();
+  const followedRouteTabKey = useFollowedRouteKey();
+  const sidebarTab =
+    routeTabFollowKey !== null && routeTabFollowKey !== followedRouteTabKey
+      ? routeTab
+      : storedSidebarTab;
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- routes come from history, links, the palette and AgentD panels; only the sidebar knows each thread's tab, so it writes the route's tab to the tab store
+  useEffect(() => {
+    if (routeTabFollowKey === null) return;
+    followRouteTab(routeTabFollowKey, routeTab);
+    if (rememberedRouteThreadRef) rememberSidebarTabThread(routeTab, rememberedRouteThreadRef);
+  }, [rememberedRouteThreadRef, routeTab, routeTabFollowKey]);
+  const tabThreads = threads.filter((thread) => tabOfThread(thread) === sidebarTab);
   const promotingDraftThreadKeys = usePromotingDraftThreadKeys();
   const listedThreads =
     promotingDraftThreadKeys.length === 0
-      ? threads
-      : threads.map((thread) =>
+      ? tabThreads
+      : tabThreads.map((thread) =>
           promotingDraftThreadKeys.includes(threadShellKey(thread))
             ? asLaunchingThread(thread)
             : thread,
@@ -1150,11 +1194,11 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     routeKey: routeRowThreadKey,
     routeKeyInPlace,
     isSearching: isSearchingThreads,
-    scopedProjectKeys: chosenScopeProjectKeys,
+    scopedProjectKeys: sidebarTab === "chat" ? null : chosenScopeProjectKeys,
     delegatedUnderParent,
     findThread: (key) => threads.find((candidate) => threadShellKey(candidate) === key),
   });
-  const projectScopeKeys = revealWidensScope ? [] : chosenProjectScopeKeys;
+  const projectScopeKeys = revealWidensScope || sidebarTab === "chat" ? [] : chosenProjectScopeKeys;
   const projectScopeKey = projectScopeKeys.length === 0 ? null : projectScopeKeys.join("\n");
   const toggleProjectScopeKey = (key: string) =>
     setProjectScopeKeys(
@@ -1204,9 +1248,10 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     matches: (item, query) =>
       projectScopeFilter.contains(item, query, (candidate) => candidate.label),
   });
-  const scopedProjectGroups = revealWidensScope ? [] : chosenProjectGroups;
+  const scopedProjectGroups = revealWidensScope || sidebarTab === "chat" ? [] : chosenProjectGroups;
   const scopedProjectRefs = scopedProjectGroups.flatMap((project) => project.memberProjectRefs);
-  const scopedProjectKeys = revealWidensScope ? null : chosenScopeProjectKeys;
+  const scopedProjectKeys =
+    revealWidensScope || sidebarTab === "chat" ? null : chosenScopeProjectKeys;
   const threadSearch = useThreadSearch(
     connectedEnvironmentIds,
     threadSearchQuery,
@@ -1222,6 +1267,9 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
         continue;
       }
       if (!composerDraftHasUserContent(store.draftsByThreadKey[draftKey])) {
+        continue;
+      }
+      if (tabOfThread(session) !== sidebarTab) {
         continue;
       }
       if (
@@ -1366,12 +1414,13 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     threads: listedThreads,
     delegatedUnderParent,
     routeRowThreadKey,
-    folderGroups: boringSidebarEnabled
-      ? scopedProjectGroups.length === 0
-        ? // An archived project keeps a folder for its active threads, below the rest.
-          [...scopeGroups, ...projectGroups.filter((project) => project.archived)]
-        : scopedProjectGroups
-      : null,
+    folderGroups:
+      boringSidebarEnabled && sidebarTab === "code"
+        ? scopedProjectGroups.length === 0
+          ? // An archived project keeps a folder for its active threads, below the rest.
+            [...scopeGroups, ...projectGroups.filter((project) => project.archived)]
+          : scopedProjectGroups
+        : null,
     keepEmptyFolders: (group) =>
       scopedProjectGroups.length > 0 || (group.pinned && !group.archived),
   });
@@ -2959,7 +3008,57 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
 
   const showJumpHints = useThreadJumpHintsVisible(keybindings, routeThreadRef);
 
+  const chatEnvironmentId = scratchEnvironmentId(primaryEnvironmentId);
+  const startChat = () => {
+    if (chatEnvironmentId === null) return;
+    if (isMobile) setOpenMobile(false);
+    void startScratchThread(chatEnvironmentId);
+  };
+  const selectSidebarTab = (tab: SidebarTab) => {
+    setSidebarTab(tab);
+    const last = lastSidebarTabThread(tab);
+    const lastKey = last === null ? null : scopedThreadKey(last);
+    // `threads` holds no archived or deleted thread, so a dead remembered route is never opened.
+    if (
+      last !== null &&
+      threads.some(
+        (thread) =>
+          threadShellKey(thread) === lastKey &&
+          thread.archivedAt === null &&
+          tabOfThread(thread) === tab,
+      )
+    ) {
+      void navigateToThread(last);
+      return;
+    }
+    if (tab === "chat") {
+      startChat();
+      return;
+    }
+    const codeProjects = projects.filter(
+      (project) =>
+        project.archivedAt == null &&
+        tabOfThread({ environmentId: project.environmentId, projectId: project.id }) === "code",
+    );
+    const defaultRef = newThreadContext.defaultProjectRef;
+    const defaultCodeProject =
+      codeProjects.find(
+        (project) =>
+          defaultRef !== null &&
+          project.environmentId === defaultRef.environmentId &&
+          project.id === defaultRef.projectId,
+      ) ?? codeProjects[0];
+    const defaultCodeProjectRef = defaultCodeProject
+      ? scopeProjectRef(defaultCodeProject.environmentId, defaultCodeProject.id)
+      : null;
+    if (defaultCodeProjectRef) void handleNewThread(defaultCodeProjectRef);
+    else void router.navigate({ to: "/" });
+  };
   const handleNewThreadClick = (event?: ReactMouseEvent) => {
+    if (sidebarTab === "chat") {
+      startChat();
+      return;
+    }
     if (
       shouldCreateNewThreadInCurrentProject(
         event?.shiftKey ?? false,
@@ -2992,21 +3091,14 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   return (
     <SidebarFolderDrop>
       <SidebarChromeHeader isElectron={isElectron} />
-      <ChatCodeSwitch
-        threadKey={
-          routeDraftThread
-            ? scopedThreadKey(
-                scopeThreadRef(routeDraftThread.environmentId, routeDraftThread.threadId),
-              )
-            : routeThreadKey
-        }
-      />
+      <SidebarTabSwitch tab={sidebarTab} onSelect={selectSidebarTab} />
       <SidebarContent
         ref={sidebarContentRef}
         className="min-h-full"
         fixedHeader={
           <SidebarGroup className="z-[1]">
             <SidebarThreadHeader
+              tab={sidebarTab}
               hasProjects={projectGroups.length > 0}
               projectScope={
                 <Combobox
@@ -3219,7 +3311,9 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
               }
               onNewProject={openAddProjectCommandPalette}
               onNewThread={handleNewThreadClick}
-              newThreadDisabled={projects.length === 0}
+              newThreadDisabled={
+                sidebarTab === "chat" ? chatEnvironmentId === null : projects.length === 0
+              }
               newThreadShortcutLabel={newThreadShortcutLabel}
               newThreadInProjectShortcutLabel={newThreadInProjectShortcutLabel}
               showNewThreadInProjectHint={

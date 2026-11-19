@@ -34,7 +34,7 @@ import {
 import { useTimelineRewind } from "./chat/useTimelineRewind";
 import { useThreadLifecycle } from "./chat/useThreadLifecycle";
 import { useRightPanelActions } from "./chat/useRightPanelActions";
-import { revealCodeMode, useChatCodeMode } from "../chatCodeModeStore";
+import { sidebarTabForProject } from "../sidebarTabStore";
 import { type TerminalLaunchContext, useChatTerminalActions } from "./chat/useChatTerminalActions";
 import { useComposerSend } from "./chat/useComposerSend";
 import { useComposerResume } from "./chat/useComposerResume";
@@ -50,7 +50,6 @@ import { useStableCallback } from "../hooks/useStableCallback";
 import { useProjectScriptEditing } from "./chat/useProjectScriptEditing";
 import { RightPanelSurfaceContent } from "./chat/RightPanelSurfaceContent";
 import { usePendingThreadRequests } from "./chat/usePendingThreadRequests";
-import { isScratchProject } from "@t3tools/client-runtime/state/projects";
 import { visibleThreadPullRequests } from "@t3tools/shared/threadPullRequests";
 import type { UsageLimitSourceSnapshots } from "@t3tools/contracts";
 import { feedbackBannerItem } from "./chat/ComposerFeedback";
@@ -58,7 +57,7 @@ import { freshSessionBannerItem } from "./chat/ComposerFreshSession";
 import { armFreshSession, disarmFreshSession, useFreshSessionArmed } from "./chat/freshSessionArms";
 import { useUsageLimitsPanel } from "./chat/useUsageLimitsPanel";
 import { useWorktreeSetup } from "./chat/useWorktreeSetup";
-import { useChatShortcuts } from "./chat/useChatShortcuts";
+import { type ChatShortcutCommands, useChatShortcuts } from "./chat/useChatShortcuts";
 import { ChatBannerLane } from "./chat/ChatBannerLane";
 import * as Schema from "effect/Schema";
 import {
@@ -233,7 +232,7 @@ import { usePanelAnimationSettings, usePanelPresence } from "../panelAnimations"
 import { useNewThreadHandler } from "../hooks/useHandleNewThread";
 import { useOpenPanelPullRequestUrl } from "../hooks/useOpenPanelPullRequestUrl";
 import { isPreviewFocused } from "../lib/previewFocus";
-import { focusActiveDrawerTerminal, getTerminalFocusOwner } from "../lib/terminalFocus";
+import { getTerminalFocusOwner } from "../lib/terminalFocus";
 import { draftModelSelectionApplies, threadHasStarted } from "../lib/chatThreadActions";
 import {
   deriveLogicalProjectKeyFromSettings,
@@ -443,6 +442,8 @@ type ChatViewProps =
 const DismissedFallbackWindowSchema = Schema.NullOr(Schema.String);
 
 const ignoreComposerFocus = () => {};
+const disableShortcuts = (commands: ChatShortcutCommands): ChatShortcutCommands =>
+  Object.fromEntries(Object.keys(commands).map((command) => [command, () => false]));
 
 export default function ChatView(props: ChatViewProps) {
   const gt = useGT();
@@ -1035,8 +1036,19 @@ export default function ChatView(props: ChatViewProps) {
   })();
   const activeThreadRef = useActiveThreadRef(activeThread);
   const activeThreadKey = activeThreadRef ? scopedThreadKey(activeThreadRef) : null;
-  const chatCodeMode = useChatCodeMode(activeThreadKey);
-  const showCodeSurfaces = !embedded && chatCodeMode === "code";
+  const activeThreadEnvironmentId = activeThread?.environmentId;
+  const activeThreadProjectId = activeThread?.projectId;
+  const activeProjectRef =
+    activeThreadEnvironmentId !== undefined && activeThreadProjectId !== undefined
+      ? scopeProjectRef(activeThreadEnvironmentId, activeThreadProjectId)
+      : null;
+  const activeProject = useProject(activeProjectRef);
+  const activeScratchWorkspaceRoot = activeProject
+    ? (environmentById.get(activeProject.environmentId)?.serverConfig?.scratchWorkspaceRoot ?? null)
+    : null;
+  const activeProjectIsScratch =
+    sidebarTabForProject(activeProject, activeScratchWorkspaceRoot) === "chat";
+  const showCodeSurfaces = !embedded && !activeProjectIsScratch;
   const activeEnvironmentServerBrowser = useEnvironmentSupportsServerBrowser(
     activeThreadRef?.environmentId ?? null,
   );
@@ -1110,7 +1122,10 @@ export default function ChatView(props: ChatViewProps) {
   );
   const canReuseTerminal = activeThreadKnownSessionsRaw !== null;
   const previewPanelOpen = activeRightPanelKind === "preview" && browserAvailable;
-  const rightPanelOpen = showCodeSurfaces && rightPanelState.isOpen;
+  // A chat keeps only the AgentD background-tasks surface, opened by its own entry points.
+  const rightPanelSurfaceShown =
+    showCodeSurfaces || (!embedded && activeRightPanelSurface?.kind === "background-tasks");
+  const rightPanelOpen = rightPanelSurfaceShown && rightPanelState.isOpen;
   const { active: panelAnimationsActive, durationMs: panelAnimationDurationMs } =
     usePanelAnimationSettings();
   const rightPanelPresenceValue = {
@@ -1124,7 +1139,7 @@ export default function ChatView(props: ChatViewProps) {
     activeThreadKey,
     panelAnimationDurationMs,
   );
-  const rightPanelPresent = showCodeSurfaces && rightPanelPresence.present;
+  const rightPanelPresent = rightPanelSurfaceShown && rightPanelPresence.present;
   const rightPanelControlsInPanel =
     shouldUsePlanSidebarSheet && rightPanelPresent && rightPanelOpen;
   const rightPanelControlsAtRoot = rightPanelPresent && !shouldUsePlanSidebarSheet;
@@ -1141,13 +1156,6 @@ export default function ChatView(props: ChatViewProps) {
   const [chatCanvasStore] = useState(createChatCanvasStore);
 
   const latestRunSettled = isLatestRunSettled(activeLatestRun, activeRuntime);
-  const activeThreadEnvironmentId = activeThread?.environmentId;
-  const activeThreadProjectId = activeThread?.projectId;
-  const activeProjectRef =
-    activeThreadEnvironmentId !== undefined && activeThreadProjectId !== undefined
-      ? scopeProjectRef(activeThreadEnvironmentId, activeThreadProjectId)
-      : null;
-  const activeProject = useProject(activeProjectRef);
   const activeProjectSettings = resolveProjectSettings(
     settings,
     activeProject?.id ?? null,
@@ -1229,12 +1237,6 @@ export default function ChatView(props: ChatViewProps) {
       connection: activeEnvironment.connection,
     };
   })() as EnvironmentUnavailableState | null;
-  const activeProjectIsScratch =
-    activeProject !== null &&
-    isScratchProject(
-      activeProject,
-      environmentById.get(activeProject.environmentId)?.serverConfig?.scratchWorkspaceRoot ?? null,
-    );
   const logicalProjectEnvironments = useLogicalProjectEnvironments(
     activeProject,
     activeProjectIsScratch && draftId !== null,
@@ -2789,18 +2791,14 @@ export default function ChatView(props: ChatViewProps) {
       focusComposerStable();
     },
     commands: {
-      ...terminalShortcuts,
-      ...rightPanelShortcuts,
+      ...(showCodeSurfaces ? terminalShortcuts : disableShortcuts(terminalShortcuts)),
+      ...(showCodeSurfaces
+        ? rightPanelShortcuts
+        : {
+            ...disableShortcuts(rightPanelShortcuts),
+            "rightPanel.close": rightPanelShortcuts["rightPanel.close"],
+          }),
       ...threadLifecycleShortcuts,
-      "terminal.toggle": () => {
-        if (!activeThreadKey || !activeThreadRef) return false;
-        if (terminalUiState.terminalOpen && revealCodeMode(activeThreadKey)) {
-          focusActiveDrawerTerminal(activeThreadRef);
-          return;
-        }
-        if (terminalShortcuts["terminal.toggle"]() === false) return false;
-        revealCodeMode(activeThreadKey);
-      },
       "thread.copyReference": ({ event }) => {
         if (!event.repeat) copyActiveThreadReference();
       },
@@ -2841,12 +2839,12 @@ export default function ChatView(props: ChatViewProps) {
   // A focused desktop browser page forwards these chords as menu actions.
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- subscribes to desktop bridge menu actions that toggle the right panel
   useEffect(() => {
-    if (embedded) return;
+    if (!showCodeSurfaces) return;
     return window.desktopBridge?.onMenuAction((action) => {
       if (action === "rightPanel.toggle") toggleRightPanelFromShortcut();
       else if (action === "rightPanel.toggleMaximized") toggleRightPanelMaximizedStable();
     });
-  }, [embedded, toggleRightPanelFromShortcut, toggleRightPanelMaximizedStable]);
+  }, [showCodeSurfaces, toggleRightPanelFromShortcut, toggleRightPanelMaximizedStable]);
 
   usePasteToFocusComposer(embedded ? null : activeThreadId, composerRef);
   // A delegated task is a remote thread's subagent.

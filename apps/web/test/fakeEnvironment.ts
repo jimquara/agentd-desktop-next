@@ -219,6 +219,8 @@ function run(
 }
 
 export interface FakeThread {
+  /** Defaults to `PROJECT_ID`. */
+  readonly projectId?: ProjectId;
   /** Makes this a side chat of that thread. */
   readonly sideChatOf?: ThreadId;
   /** Makes this an older settled thread the shell leaves out; only its family read returns it. */
@@ -307,7 +309,7 @@ function shellOf(thread: FakeThread): OrchestrationV2ThreadShell {
   const modelSelection = thread.modelSelection ?? MODEL;
   return {
     id: thread.id,
-    projectId: PROJECT_ID,
+    projectId: thread.projectId ?? PROJECT_ID,
     title: thread.title,
     providerInstanceId: modelSelection.instanceId,
     modelSelection,
@@ -569,12 +571,16 @@ export function installFakeEnvironment(
     /** Commands left unanswered even when accepting, until `rejectPendingCommand`. */
     readonly holdCommand?: (command: OrchestrationV2Command) => boolean;
     readonly providers?: ReadonlyArray<unknown>;
+    readonly scratchWorkspaceRoot?: string;
   },
 ): Disposable {
   threads = fixtures;
   baseServerConfig = {
     ...makeServerConfig(options?.providers ?? [CODEX_PROVIDER]),
     keybindings: options?.keybindings ?? DEFAULT_RESOLVED_KEYBINDINGS,
+    ...(options?.scratchWorkspaceRoot
+      ? { scratchWorkspaceRoot: options.scratchWorkspaceRoot }
+      : {}),
   };
   dispatched = [];
   acceptCommands = options?.acceptCommands === true;
