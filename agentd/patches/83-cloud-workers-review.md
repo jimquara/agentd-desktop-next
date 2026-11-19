@@ -31,4 +31,4 @@ Not verified:
 - **Windows:** not run natively. Git runs through the existing process runner with an argv list and no shell string. The ref names and refspecs contain no paths. A Windows checkout path reaches git only as `-C` and the process cwd.
 - **macOS:** not run.
 - **Linux:** the server tests ran here with real git 2.56 on temporary repositories, with options that older Git lacks refused, as in the reference. The browser test ran in Chromium. No real GitHub fetch was made, so the access and network wording is matched against GitHub's and git's documented messages, not observed ones. Opening the link through the desktop bridge was not exercised in Electron.
-- **i18n:** new strings are wrapped with `gt` and `T`; catalogs are not regenerated here. The server's one-line reasons are English, as batch 1's are.
+- **i18n:** new strings are wrapped with `gt` and `T`; catalogs regenerated and zh filled. The server's one-line reasons are English, as batch 1's are.
