@@ -6536,15 +6536,14 @@
     },
     "."
   ],
-  "c5e1f5ec5e883057": [
+  "9b79f300c0a8d27c": [
     "Use ",
     {
       "t": "code",
       "i": 1,
       "c": "agentd-desktop"
     },
-    " from any terminal. Adds one line to",
-    " ",
+    " from any terminal. Adds one line to ",
     {
       "i": 2,
       "k": "_gt_value_2",
