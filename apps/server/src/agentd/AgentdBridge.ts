@@ -427,7 +427,16 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
             yield* run(yield* args(() => agentdArgs.who(target))).pipe(Effect.flatMap(decodeWho)),
           );
     const nodes = input.includeNodes
-      ? yield* run(agentdArgs.nodes()).pipe(Effect.flatMap(decodeNodes))
+      ? yield* run(agentdArgs.nodes()).pipe(
+          Effect.flatMap(decodeNodes),
+          // agentd v0.1.15+ public builds have no `agentd server`: no node cards, people still list.
+          Effect.catchTags({
+            AgentdCommandError: (error) =>
+              error.message.includes("part of the team server")
+                ? Effect.undefined
+                : Effect.fail(error),
+          }),
+        )
       : undefined;
     return {
       people: AgentdJson.agentdPeople(users),

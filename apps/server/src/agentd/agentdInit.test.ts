@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 
 import { agentdStatus } from "./agentdJson.ts";
-import { initPrompt, terminalText } from "./agentdInit.ts";
+import { initPhase, initPrompt, terminalText } from "./agentdInit.ts";
 
 describe("initPrompt", () => {
   it.each([
@@ -15,6 +15,19 @@ describe("initPrompt", () => {
     ["", null],
   ] as const)("%j asks %s", (line, asks) => {
     expect(initPrompt(line)).toBe(asks);
+  });
+});
+
+describe("initPhase", () => {
+  it.each([
+    [0, null, "succeeded"],
+    [3, null, "succeeded"],
+    [1, null, "failed"],
+    [2, null, "failed"],
+    [null, "timeout", "failed"],
+    [3, "prompt", "failed"],
+  ] as const)("exit %s, stopped %s: %s", (exitCode, stopped, phase) => {
+    expect(initPhase(exitCode, stopped)).toBe(phase);
   });
 });
 
