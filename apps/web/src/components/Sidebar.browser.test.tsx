@@ -33,6 +33,11 @@ import Sidebar from "./Sidebar";
 import { THREAD_JUMP_HINT_SHOW_DELAY_MS } from "./Sidebar.logic";
 import { SortableThreadRow } from "./sidebar/SidebarThreadRow";
 import { SidebarProvider } from "./ui/sidebar";
+import {
+  deriveLogicalProjectKeyFromSettings,
+  selectProjectGroupingSettings,
+} from "@t3tools/client-runtime/state/project-grouping";
+import { useUiStateStore } from "../uiStateStore";
 
 vi.mock(import("../state/olderSettledShelf"), async (original) => {
   const actual = await original();
@@ -443,5 +448,76 @@ describe("sidebar settled pagination", () => {
     const loadedRows = screen.container.querySelectorAll("[data-thread-item]").length;
     await act(() => moreButton.click());
     expect(screen.container.querySelectorAll("[data-thread-item]")).toHaveLength(loadedRows);
+  });
+
+  it("opens Settled for a chosen project whose threads are all settled, until it is closed", async () => {
+    localStorage.removeItem("t3code:sidebar:settled-expanded");
+    const imported = project("imported");
+    const busy = project("busy");
+    const threads = [
+      threadShell(busy.id, 1),
+      makeThreadFixture({
+        environmentId: imported.environmentId,
+        projectId: imported.id,
+        id: ThreadId.make("imported-1"),
+        title: "Imported thread",
+        settledOverride: "settled",
+        settledAt: "2026-01-01T00:00:00.000Z",
+      }),
+    ];
+    vi.mocked(useProjects).mockReturnValue([imported, busy]);
+    vi.mocked(useQuietThreadShells).mockReturnValue(threads);
+    vi.mocked(useThreadRouteTarget).mockReturnValue(null);
+    vi.mocked(useHandleNewThread).mockReturnValue({
+      activeDraftThread: null,
+      activeThread: null,
+      defaultProjectRef: { environmentId: busy.environmentId, projectId: busy.id },
+      defaultProjectFallbackReady: true,
+      handleNewThread: vi.fn().mockResolvedValue(null),
+      routeDraftId: null,
+      routeThreadRef: null,
+    });
+    vi.mocked(useServerConfigs).mockReturnValue(
+      new Map([
+        [
+          imported.environmentId,
+          {
+            scratchWorkspaceRoot: null,
+            shellThreadFamilies: false,
+          } as unknown as EnvironmentServerConfig,
+        ],
+      ]),
+    );
+    const keyOf = (p: Project) =>
+      deriveLogicalProjectKeyFromSettings(
+        p,
+        selectProjectGroupingSettings(DEFAULT_CLIENT_SETTINGS),
+      );
+    const scope = (p: Project | null) =>
+      act(() => useUiStateStore.getState().setSidebarProjectScopeKeys(p ? [keyOf(p)] : []));
+    await using screen = await render(
+      <SidebarProvider>
+        <Sidebar routeReveal={{ observedKey: null, pendingKey: null }} />
+      </SidebarProvider>,
+    );
+    const importedRow = () => screen.getByText("Imported thread", { exact: true });
+    const shelf = () =>
+      screen.container.querySelector<HTMLElement>('[data-sidebar-row="shelf:settled"]')!;
+
+    // All projects: the settled shelf stays as the user left it, closed.
+    await expect.element(screen.getByText("Thread 1", { exact: true })).toBeVisible();
+    expect(importedRow().elements()).toHaveLength(0);
+
+    await scope(imported);
+    await expect.element(importedRow()).toBeVisible();
+    expect(shelf().getAttribute("aria-expanded")).toBe("true");
+
+    await act(() => shelf().click());
+    await expect.poll(() => importedRow().elements()).toHaveLength(0);
+
+    // A project with other threads keeps the shelf closed.
+    await scope(busy);
+    expect(shelf()?.getAttribute("aria-expanded") ?? "false").toBe("false");
+    await scope(null);
   });
 });
