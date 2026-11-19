@@ -287,6 +287,29 @@ describe("AgentdBridge", () => {
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
   );
 
+  it.effect("lists people without node cards when agentd has no team server", () =>
+    Effect.gen(function* () {
+      const bridge = yield* makeBridge({ AGENTD_BIN: process.execPath }, (input) => {
+        switch (input.args.join(" ")) {
+          case "user list --json":
+            return Effect.succeed(output(`[{"name":"Les","role":"owner"}]`));
+          case "server nodes --json":
+            return Effect.succeed(
+              output(
+                "agentd: agentd server is part of the team server, which the public agentd does not include (LibraOS Team or Enterprise: https://libraos.com/pricing/)",
+                2,
+              ),
+            );
+          default:
+            return Effect.die(`unexpected agentd ${input.args.join(" ")}`);
+        }
+      });
+      const read = yield* bridge.people({ includeNodes: true });
+      expect(read.people.map((person) => person.name)).toEqual(["Les"]);
+      expect(read.nodes).toBeUndefined();
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+  );
+
   it.effect("preserves requesters and node cards and names leased and cloud work", () =>
     Effect.gen(function* () {
       const bridge = yield* makeBridge({ AGENTD_BIN: process.execPath }, (input) => {
