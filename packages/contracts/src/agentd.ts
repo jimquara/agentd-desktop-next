@@ -459,6 +459,31 @@ export const AgentdCloudSetup = Schema.Struct({
 });
 export type AgentdCloudSetup = typeof AgentdCloudSetup.Type;
 
+/** The size a chat draft gives a task; it only chooses which of agentd's estimates to use. */
+export const AgentdTaskSize = Schema.Literals(["small", "feature", "complex", ""]);
+export type AgentdTaskSize = typeof AgentdTaskSize.Type;
+export const AgentdTaskDefaultsInput = Schema.Struct({
+  cwd: AbsolutePath,
+  size: AgentdTaskSize,
+});
+export type AgentdTaskDefaultsInput = typeof AgentdTaskDefaultsInput.Type;
+/** What `agentd handoff estimate` says similar past jobs cost, in dollars. */
+export const AgentdTaskEstimate = Schema.Struct({
+  type: Schema.Literals(["small", "feature", "complex", "implement"]),
+  low: Schema.Number,
+  median: Schema.Number,
+  high: Schema.Number,
+  jobs: Schema.Number,
+});
+export type AgentdTaskEstimate = typeof AgentdTaskEstimate.Type;
+export const AgentdTaskDefaults = Schema.Struct({
+  /** Null when agentd has too few past jobs of the type, or cannot estimate. */
+  estimate: Schema.NullOr(AgentdTaskEstimate),
+  /** A check command suggested from the project's files on the environment's host. */
+  check: Schema.NullOr(Schema.String),
+});
+export type AgentdTaskDefaults = typeof AgentdTaskDefaults.Type;
+
 export const AgentdTaskOthersInput = Schema.Struct({
   cwd: AbsolutePath,
   issue: Schema.NullOr(IssueRef),

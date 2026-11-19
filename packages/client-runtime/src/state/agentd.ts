@@ -102,6 +102,11 @@ export function createAgentdEnvironmentAtoms<R, E>(
       tag: WS_METHODS.agentdCloudSetup,
       staleTimeMs: 0,
     }),
+    taskDefaults: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:agentd:task-defaults",
+      tag: WS_METHODS.agentdTaskDefaults,
+      staleTimeMs: 60_000,
+    }),
     taskOthers: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:agentd:task-others",
       tag: WS_METHODS.agentdTaskOthers,

@@ -2,6 +2,7 @@ import {
   AgentdCloudBudget,
   AgentdCloudKeyFile,
   type AgentdCloudTaskInput,
+  type AgentdTaskEstimate,
   type EnvironmentId,
 } from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
@@ -13,6 +14,7 @@ import { Checkbox } from "../ui/checkbox";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
+import { autoBudget, budgetDollars, budgetMinutes, defaultModelAccess } from "./startTask.logic";
 
 const validBudget = Schema.is(AgentdCloudBudget);
 const validPath = Schema.is(AgentdCloudKeyFile);
@@ -24,7 +26,17 @@ function keyPath(value: string): KeyPath {
   return path === "" || validPath(path) ? path : null;
 }
 
-export function useStartTaskCloud(cwd: string | null, environmentId: EnvironmentId) {
+export function useStartTaskCloud(
+  cwd: string | null,
+  environmentId: EnvironmentId,
+  {
+    estimate,
+    gatewayConnected,
+  }: {
+    readonly estimate: Pick<AgentdTaskEstimate, "high"> | null;
+    readonly gatewayConnected: boolean;
+  },
+) {
   const [requested, setRequested] = useState(false);
   const { data: availability } = useAgentdCloudSetup(cwd, environmentId, false);
   const billing = useAgentdCloudSetup(
@@ -33,16 +45,24 @@ export function useStartTaskCloud(cwd: string | null, environmentId: Environment
     true,
   );
   const setup = requested ? (billing.data ?? availability) : availability;
-  const [modelAccess, setModelAccess] = useState<CloudInput["modelAccess"]>("libraos");
+  const [chosenAccess, setModelAccess] = useState<CloudInput["modelAccess"] | null>(null);
   const [enteredDollars, setDollars] = useState<string | null>(null);
   const [enteredMinutes, setMinutes] = useState<string | null>(null);
   const [anthropicKey, setAnthropicKey] = useState<KeyPath>("");
   const [openaiKey, setOpenaiKey] = useState<KeyPath>("");
-  const [defaultTime = "", defaultCap = ""] = setup?.defaultBudget?.includes(",")
-    ? setup.defaultBudget.split(",")
-    : ["", setup?.defaultBudget ?? ""];
-  const dollars = enteredDollars ?? defaultCap.slice(1);
-  const minutes = enteredMinutes ?? defaultTime.replace(/m$/, "");
+  // Signed in: agentd read the LibraOS account's balance with its cloud key.
+  const signedIn =
+    billing.data != null &&
+    billing.data.problem !== "setup" &&
+    (billing.data.balanceUsd !== null || billing.data.balanceText !== null);
+  const modelAccess = chosenAccess ?? defaultModelAccess(signedIn, gatewayConnected);
+  const filled = autoBudget({
+    estimate,
+    defaultMinutes: budgetMinutes(setup?.defaultBudget),
+    balanceUsd: setup?.balanceUsd ?? null,
+  });
+  const dollars = enteredDollars ?? budgetDollars(filled.dollars);
+  const minutes = enteredMinutes ?? String(filled.minutes);
   const budget = `${minutes === "" ? "" : `${minutes}m,`}$${dollars}`;
   const budgetValid = validBudget(budget);
   const keysValid =
@@ -66,6 +86,7 @@ export function useStartTaskCloud(cwd: string | null, environmentId: Environment
   return {
     setup,
     enabled,
+    signedIn,
     checkingBalance,
     setRequested,
     modelAccess,

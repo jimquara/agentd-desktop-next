@@ -918,4 +918,35 @@ describe("AgentdBridge", () => {
         expect(yield* Fiber.join(result)).toEqual([]);
       }),
   );
+
+  it.effect("reads the estimate for the draft's size and suggests a check from the project", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const cwd = yield* fs.makeTempDirectoryScoped();
+      const runs: Array<ReadonlyArray<string>> = [];
+      let estimate = output('{"high":4.98,"low":1.78,"median":3.11,"n":846,"type":"small"}');
+      const bridge = yield* makeBridge({ AGENTD_BIN: process.execPath }, ({ args }) => {
+        runs.push(args);
+        return args[1] === "estimate" ? Effect.succeed(estimate) : Effect.die("unexpected");
+      });
+
+      expect(yield* bridge.taskDefaults({ cwd, size: "small" })).toEqual({
+        estimate: { type: "small", low: 1.78, median: 3.11, high: 4.98, jobs: 846 },
+        check: null,
+      });
+      yield* fs.writeFileString(path.join(cwd, "go.mod"), "module example.com/x\n");
+      yield* fs.writeFileString(path.join(cwd, "package.json"), '{"scripts":{"test":"vitest"}}');
+      yield* fs.writeFileString(path.join(cwd, "pnpm-lock.yaml"), "");
+      estimate = output("agentd: no ledger", 1);
+      expect(yield* bridge.taskDefaults({ cwd, size: "" })).toEqual({
+        estimate: null,
+        check: "pnpm test",
+      });
+      expect(runs).toEqual([
+        ["handoff", "estimate", "--type", "small", "--json"],
+        ["handoff", "estimate", "--type", "implement", "--json"],
+      ]);
+    }).pipe(Effect.provide(NodeServices.layer)),
+  );
 });

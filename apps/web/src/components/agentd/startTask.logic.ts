@@ -1,6 +1,8 @@
 import {
   AgentdStartTaskInput,
+  AgentdTaskSize,
   AgentdWorkerTool,
+  type AgentdTaskEstimate,
   type MessageId,
   type OrchestrationV2ThreadProjection,
 } from "@t3tools/contracts";
@@ -23,6 +25,8 @@ export interface TaskFields {
   readonly worker: AgentdWorkerTool | null;
   readonly budget: string;
   readonly issue: string;
+  /** The chat draft's size; it only chooses which agentd estimate fills the budget. */
+  readonly size: AgentdTaskSize;
 }
 
 export const EMPTY_TASK_FIELDS: TaskFields = {
@@ -32,6 +36,7 @@ export const EMPTY_TASK_FIELDS: TaskFields = {
   worker: null,
   budget: "",
   issue: "",
+  size: "",
 };
 
 const isBudget = Schema.is(AgentdStartTaskInput.fields.budget);
@@ -83,8 +88,8 @@ export function taskBranchProblem(status: {
 
 export const TASK_DRAFT_PROMPT = `Draft an AgentD worker task from this conversation. Draft only: do not call tools, run commands, change files, create or dispatch a task, or request approval. I will review the fields myself.
 Respond with only a JSON object in this exact shape:
-{"goal":"","accept":[],"check":"","worker":null,"budget":"","issue":""}
-Write up to ${TASK_ACCEPT_LIMIT} acceptance criteria as an array of single-line strings. Suggest a check command but do not run it. Leave the budget and issue empty unless we discussed them. A budget uses minutes (30m), dollars ($2), or both (30m,$2); an issue uses OWNER/REPO#123. Leave worker null unless I asked for claude, codex, or opencode. Use empty strings for unknown fields.`;
+{"goal":"","accept":[],"check":"","worker":null,"budget":"","issue":"","size":""}
+Write up to ${TASK_ACCEPT_LIMIT} acceptance criteria as an array of single-line strings. Suggest a check command but do not run it. Leave the budget and issue empty unless we discussed them. A budget uses minutes (30m), dollars ($2), or both (30m,$2); an issue uses OWNER/REPO#123. Leave worker null unless I asked for claude, codex, or opencode. Set size to "small" for a small fix or test, "feature" for a feature or integration, "complex" for a larger change, or "" if unsure. Use empty strings for unknown fields.`;
 
 const draftSchema = Schema.Struct({
   goal: Schema.String.check(Schema.isMaxLength(TASK_TEXT_LIMIT)),
@@ -95,6 +100,7 @@ const draftSchema = Schema.Struct({
   worker: Schema.NullOr(AgentdWorkerTool),
   budget: Schema.String.check(Schema.isMaxLength(TASK_BUDGET_LIMIT)),
   issue: Schema.String.check(Schema.isMaxLength(TASK_ISSUE_LIMIT)),
+  size: Schema.optionalKey(AgentdTaskSize),
 });
 const decodeDraft = Schema.decodeUnknownOption(Schema.fromJsonString(draftSchema));
 
@@ -103,11 +109,11 @@ function parseTaskDraft(reply: string): TaskFields | null {
   const fenced = /^```(?:json)?[\t ]*\r?\n([\s\S]*?)\r?\n```$/i.exec(text)?.[1];
   const decoded = decodeDraft(fenced ?? text);
   if (decoded._tag === "None") return null;
-  const { accept, worker, ...fields } = decoded.value;
+  const { accept, worker, size = "", ...fields } = decoded.value;
   const acceptanceText = accept.join("\n");
   if (acceptanceText.length > TASK_TEXT_LIMIT || accept.some((line) => /[\r\n]/.test(line)))
     return null;
-  return { ...fields, accept: acceptanceText, worker };
+  return { ...fields, accept: acceptanceText, worker, size };
 }
 
 export function conversationTaskDraft(
@@ -128,4 +134,106 @@ export function conversationTaskDraft(
   );
   const fields = reply?.type === "assistant_message" ? parseTaskDraft(reply.text) : null;
   return fields === null ? { kind: "failed" } : { kind: "ready", fields };
+}
+
+/** The prompt's opening, which marks a user message as a request for a task draft. */
+const DRAFT_PROMPT_OPENING = TASK_DRAFT_PROMPT.slice(0, TASK_DRAFT_PROMPT.indexOf("."));
+
+/** A finished assistant reply to the task draft prompt, as task fields; null for any other reply. */
+export function taskDraftReply(
+  items: ReadonlyArray<{ readonly type: string; readonly runId?: unknown }>,
+  reply: {
+    readonly type: string;
+    readonly runId?: unknown;
+    readonly phase?: unknown;
+    readonly text: string;
+  },
+): TaskFields | null {
+  if (reply.type !== "assistant_message" || reply.phase === "commentary") return null;
+  if (reply.runId === undefined || !/^\s*[{`]/.test(reply.text)) return null;
+  const asked = items.some(
+    (item) =>
+      item.type === "user_message" &&
+      item.runId === reply.runId &&
+      "text" in item &&
+      typeof item.text === "string" &&
+      item.text.startsWith(DRAFT_PROMPT_OPENING),
+  );
+  return asked ? parseTaskDraft(reply.text) : null;
+}
+
+const FALLBACK_MINUTES = 60;
+const FALLBACK_DOLLARS = 5;
+
+/** Whole dollars, or cents when the amount has them. */
+export function budgetDollars(amount: number): string {
+  return Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
+}
+
+/**
+ * The budget a Start fills in: agentd's high estimate rounded up to a whole dollar (capped by the
+ * balance for Cloud Workers), agentd's default minutes or 60; `60m,$5` when there is no estimate.
+ */
+export function autoBudget({
+  estimate,
+  defaultMinutes,
+  balanceUsd,
+}: {
+  readonly estimate: Pick<AgentdTaskEstimate, "high"> | null;
+  readonly defaultMinutes: number | null;
+  /** Cloud Workers only: the available credit. */
+  readonly balanceUsd: number | null;
+}): { readonly minutes: number; readonly dollars: number } {
+  const minutes = defaultMinutes ?? FALLBACK_MINUTES;
+  const wanted = estimate === null ? FALLBACK_DOLLARS : Math.ceil(estimate.high);
+  const dollars =
+    balanceUsd === null
+      ? wanted
+      : Math.min(wanted, Math.floor(Math.max(balanceUsd, 0) * 100) / 100);
+  return { minutes, dollars };
+}
+
+/** The minutes of an agentd budget such as `30m,$5`; null when it names none. */
+export function budgetMinutes(budget: string | null | undefined): number | null {
+  const match = /^(\d{1,4})m(?:,|$)/.exec(budget ?? "");
+  return match ? Number(match[1]) : null;
+}
+
+/** LibraOS when the person is signed in to it or the Gateway is connected; else their own key. */
+export function defaultModelAccess(signedIn: boolean, gatewayConnected: boolean) {
+  return signedIn || gatewayConnected ? ("libraos" as const) : ("byok" as const);
+}
+
+export type TaskStartProblem =
+  | "balance"
+  | "sign-in"
+  | "worker"
+  | "no-directory"
+  | "not-repo"
+  | "detached"
+  | "protected";
+
+/** The first thing that stops a Start, for one line beside a disabled Start; null when none. */
+export function taskStartProblem(input: {
+  readonly cloud: boolean;
+  readonly balanceUsd: number | null;
+  readonly creditProblem: boolean;
+  readonly modelAccess: "libraos" | "byok";
+  readonly signedIn: boolean;
+  readonly gatewayConnected: boolean;
+  readonly worker: AgentdWorkerTool | null;
+  readonly hasDirectory: boolean;
+  readonly branch: ReturnType<typeof taskBranchProblem> | null;
+}): TaskStartProblem | null {
+  if (!input.hasDirectory) return "no-directory";
+  if (input.cloud) {
+    if (input.creditProblem || (input.balanceUsd !== null && input.balanceUsd < 0.01))
+      return "balance";
+    if (input.modelAccess === "libraos" && !input.signedIn && !input.gatewayConnected)
+      return "sign-in";
+    return null;
+  }
+  if (input.branch !== null) return input.branch;
+  if (input.worker === null) return "worker";
+  return null;
 }
