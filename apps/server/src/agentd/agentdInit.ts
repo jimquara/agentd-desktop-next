@@ -56,6 +56,19 @@ export function terminalText(raw: string): string {
   return raw.replace(ESCAPES, "").replace(/\r+\n/g, "\n").replace(/\r/g, "");
 }
 
+// agentd v0.1.15 init exits 3 when setup finished but no Claude Code, Codex or opencode was found;
+// the AgentD page's checks then say what to install.
+const INIT_NO_CODING_CLIENT = 3;
+
+export function initPhase(
+  exitCode: number | null,
+  stopped: AgentdSetupState["stopped"],
+): "succeeded" | "failed" {
+  return stopped === null && (exitCode === 0 || exitCode === INIT_NO_CODING_CLIENT)
+    ? "succeeded"
+    : "failed";
+}
+
 function lastLine(text: string): string {
   return text.slice(text.lastIndexOf("\n") + 1);
 }
@@ -181,7 +194,7 @@ const make = Effect.fn("AgentdInit.make")(function* () {
     );
     yield* SubscriptionRef.update(state, (s): AgentdSetupState => ({
       ...s,
-      phase: exitCode === 0 && stopped === null ? "succeeded" : "failed",
+      phase: initPhase(exitCode, stopped),
       exitCode,
       stopped,
     }));
