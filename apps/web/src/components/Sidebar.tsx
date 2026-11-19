@@ -499,10 +499,20 @@ function useSidebarThreads(input: {
 
   const { pinnedThreads, activeThreads, workingThreads, snoozedThreads, settledThreads } =
     partition;
+  // A project with only settled threads, such as one just imported, opens its Settled shelf
+  // until it is closed there, so choosing that project does not show an empty list.
+  const [closedSettledScope, setClosedSettledScope] = useState<string | null>(null);
+  const settledOpenedForScope =
+    !settledShelfExpanded &&
+    scopedProjectKeys !== null &&
+    closedSettledScope !== projectScopeKey &&
+    pinnedThreads.length + activeThreads.length + workingThreads.length + snoozedThreads.length ===
+      0;
+  const settledExpanded = settledShelfExpanded || settledOpenedForScope;
   // Older settled threads load in pages; the shelf lists them only as far as they are loaded.
   const olderSettledShelf = useOlderSettledShelf({
     scopes: olderSettledScopes([...serverConfigs.keys()], scopedProjectKeys),
-    expanded: settledShelfExpanded,
+    expanded: settledExpanded,
     visibleCount: settledVisibleCount,
   });
   const listedSettledThreads = settledThreads.filter(olderSettledShelf.isListed);
@@ -522,7 +532,7 @@ function useSidebarThreads(input: {
     }
     return visible.length === settledThreads.length ? settledThreads : visible;
   })();
-  const renderedSettledThreads = settledShelfExpanded
+  const renderedSettledThreads = settledExpanded
     ? visibleSettledThreads
     : routeThreadOnly(visibleSettledThreads, routeRowThreadKey);
   const visibleSnoozedThreads = snoozedShelfExpanded
@@ -590,8 +600,11 @@ function useSidebarThreads(input: {
         scopeKey: current.scopeKey,
         count: current.count + SETTLED_TAIL_PAGE_COUNT,
       })),
-    settledShelfExpanded,
-    toggleSettledShelf: () => setSettledShelfExpanded((value) => !value),
+    settledShelfExpanded: settledExpanded,
+    toggleSettledShelf: () =>
+      settledOpenedForScope
+        ? setClosedSettledScope(projectScopeKey)
+        : setSettledShelfExpanded((value) => !value),
     snoozedShelfExpanded,
     toggleSnoozedShelf: () => setSnoozedShelfExpanded((value) => !value),
     workingShelfExpanded,
