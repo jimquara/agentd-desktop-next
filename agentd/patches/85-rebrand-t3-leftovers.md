@@ -30,6 +30,8 @@ Upstream T3 Code names still showed to agents (tool names), in the CLI, in T3 Co
 - `@t3tools/*` package names, the `t3` server package name, lint rule names (`t3code/…`), and file, component and native module names.
 - The mobile Expo `slug`, bundle ids and URL schemes. Changing them breaks installs and EAS links.
 - Prompt tag names such as `<t3_code_instructions>` (their text now says AgentD Desktop), and MCP tool titles such as "Create T3 threads".
+- Text on the hosted relay and T3 Chat pages that only render with the flag on (for example "Link T3 Chat") names the upstream service they link to; it is never shown while the flag is off.
+- Maintainer-only scripts (`apps/server/scripts`, `apps/mobile/scripts`) and the marketing site's legal pages, which are not part of the app.
 - The standalone server CLI self-install (`npx t3` → `t3`, `apps/server/src/cli/install.ts`) still installs and names `t3`. Renaming that runtime layout is outside this patch.
 
 ## Not verified per platform
@@ -504,3 +506,7 @@ Upstream T3 Code names still showed to agents (tool names), in the CLI, in T3 Co
 - `packages/shared/src/themeCss.ts` — app tool names without `t3_`.
 - `packages/shared/src/themePalettes.ts` — MCP server/client name `agentd-desktop`.
 - `packages/source-control-github/src/shared/definition.ts` — "AgentD Desktop" for "T3 Code".
+- `apps/desktop/src/backend/DesktopHomeOwner.ts` — "data directory" for "T3 home" in the ownership error.
+- `apps/desktop/src/wsl/DesktopWslBackend.ts` — "data directory" for "T3 home" in the ownership error.
+- `apps/mobile/src/features/settings/SettingsRouteScreen.tsx` — "Account" for "T3 Account".
+- `apps/mobile/src/features/settings/settings-search.test.ts` — fixture label "Account".
