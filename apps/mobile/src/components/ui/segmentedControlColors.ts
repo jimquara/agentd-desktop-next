@@ -31,6 +31,7 @@ export function segmentedControlColors(
   let selectedColor = colors["--color-secondary"];
   if (card && !dark) selectedColor = colors["--color-screen"];
   if (dark && (!card || themeId === "t3-code")) {
+    // legacy theme id, kept for saved settings
     selectedColor = flattenThemeColor(themeColorWithAlpha(accent, 0.32), colors["--color-screen"]);
   }
   let selectedTextColor =

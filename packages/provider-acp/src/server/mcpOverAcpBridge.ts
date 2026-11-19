@@ -227,7 +227,8 @@ export const makeAcpMcpOverAcpBridge = Effect.fn("AcpMcpOverAcpBridge.make")(fun
 
   return {
     connect: Effect.fn("mcpOverAcpBridge.connect")(function* (request) {
-      if (request.serverId !== "t3-code") {
+      if (request.serverId !== "agentd-desktop" && request.serverId !== "t3-code") {
+        // legacy id from older sessions
         return yield* new AcpMcpOverAcpError({
           message: `Unknown ACP MCP server "${request.serverId}".`,
         });
