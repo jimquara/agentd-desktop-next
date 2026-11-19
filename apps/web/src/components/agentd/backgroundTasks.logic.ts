@@ -1,4 +1,9 @@
-import type { AgentdTaskRow, AgentdTaskVerdict } from "@t3tools/contracts";
+import type {
+  AgentdTaskRow,
+  AgentdTaskVerdict,
+  EnvironmentId,
+  RepositoryIdentity,
+} from "@t3tools/contracts";
 import { msg } from "gt-react";
 
 import { m, type MessageResolver } from "../../i18n/messages";
@@ -24,6 +29,31 @@ export function agentdTaskBelongsToProject(
     return cwd === root || cwd.startsWith(`${root}/`);
   }
   return repository !== null && task.project?.toLowerCase() === repository;
+}
+
+/**
+ * A git checkout in the environment whose origin is the cloud task's GitHub repository, where its
+ * branch can be fetched and compared; null when none is, such as a folder workspace without git.
+ */
+export function cloudReviewCheckout(
+  projects: ReadonlyArray<{
+    readonly environmentId: EnvironmentId;
+    readonly workspaceRoot: string;
+    readonly repositoryIdentity?: RepositoryIdentity | null | undefined;
+    readonly archivedAt?: string | null | undefined;
+  }>,
+  environmentId: EnvironmentId,
+  repository: string | null,
+): string | null {
+  if (repository === null) return null;
+  const wanted = `github.com/${repository.toLowerCase()}`;
+  const match = projects.find((project) => {
+    const identity = project.repositoryIdentity;
+    if (project.environmentId !== environmentId || !identity || project.archivedAt) return false;
+    // The origin decides, as for the cloud offer: a fork's identity may name its upstream.
+    return (identity.origin?.canonicalKey ?? identity.canonicalKey).toLowerCase() === wanted;
+  });
+  return match?.workspaceRoot ?? null;
 }
 
 export function isFinishedAgentdTask(state: string): boolean {

@@ -14,6 +14,8 @@ import {
   AgentdWorkerTool,
   type AgentdApproval,
   type AgentdCloudSetup,
+  type AgentdCloudReview,
+  type AgentdCloudReviewInput,
   type AgentdCloudSetupInput,
   type AgentdCloudTaskInput,
   type AgentdCommandOutput,
@@ -49,6 +51,7 @@ import * as Stream from "effect/Stream";
 import * as BackgroundPolicy from "../background/BackgroundPolicy.ts";
 import * as ProcessRunner from "../processRunner.ts";
 import { makeAgentdCloud } from "./agentdCloud.ts";
+import { makeCloudReview } from "./agentdCloudReview.ts";
 import { AgentdArgumentError, agentdArgs, agentdTicket } from "./agentdCommands.ts";
 import * as AgentdJson from "./agentdJson.ts";
 import { joinedPerson, mergeTaskHolders, repositoryTargets } from "./taskOthers.ts";
@@ -78,6 +81,9 @@ export class AgentdBridge extends Context.Service<
     readonly cloudSetup: (
       input: AgentdCloudSetupInput,
     ) => Effect.Effect<AgentdCloudSetup, AgentdError>;
+    readonly cloudReview: (
+      input: AgentdCloudReviewInput,
+    ) => Effect.Effect<AgentdCloudReview, AgentdError>;
     readonly taskOthers: (
       input: AgentdTaskOthersInput,
     ) => Effect.Effect<ReadonlyArray<AgentdTaskOther>>;
@@ -232,6 +238,12 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
       Effect.flatMap((argv) => run(argv)),
       Effect.flatMap(decodeShow),
     );
+
+  const cloudReview = makeCloudReview({
+    runProcess: runner.run,
+    readShow,
+    originProject: cloud.originProject,
+  });
 
   const readTasks = run(agentdArgs.list()).pipe(
     Effect.flatMap(decodeList),
@@ -506,6 +518,7 @@ export const make = Effect.fn("AgentdBridge.make")(function* () {
       return { output: (yield* run(argv, { stdin: `${ticket[0]}\n` })).trim() };
     }),
     cloudSetup: cloud.cloudSetup,
+    cloudReview,
     taskOthers,
     binary,
     enrolWorker: Effect.fn("AgentdBridge.enrolWorker")(function* (server, ticket) {
